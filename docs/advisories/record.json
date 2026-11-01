@@ -1,0 +1,851 @@
+{
+  "generated": "2026-11-01",
+  "buckets": {
+    "A": "Already refused by an existing check",
+    "B": "Preventable from a header field our readers can see",
+    "B2": "Preventable only by a coarse policy on a PDF's contents",
+    "C": "Needs decoding to detect; out of this library's reach by design",
+    "D": "Reaches pdfinfo itself",
+    "N": "Not reached by opening a file",
+    "U": "A reserved CVE with no text yet"
+  },
+  "reached_by": {
+    "open": "by opening or reading a file",
+    "save": "on a save or encode path",
+    "api": "through a call beyond opening, such as a filter or transform",
+    "tool": "through a command-line tool, not the library",
+    "other": "some other way; the finding says"
+  },
+  "counts": {
+    "records": 22,
+    "refused_by_default": 15,
+    "by_bucket": {
+      "A": 5,
+      "B": 15,
+      "B2": 0,
+      "C": 0,
+      "D": 0,
+      "N": 2,
+      "U": 0
+    },
+    "by_library": {
+      "Pillow": 14,
+      "libpng": 5,
+      "libtiff": 3
+    }
+  },
+  "records": [
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": null,
+      "key": "CVE-2026-112398",
+      "aliases": [
+        "GHSA-5x8w-8jj5-q52h"
+      ],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A FlashPix file runs code when opened, if olefile is installed",
+      "summary": "Heap buffer overflow in FlashPix (FPX) JPEG-tile decoding leads to code execution.",
+      "published": "2026-10-23",
+      "severity": 9.2,
+      "affected": "<= 12.3.0",
+      "fixed": "13.0.0",
+      "reached_by": "open",
+      "trigger": "A single crafted FlashPix file, recognised by its OLE2 bytes, opened with Image.open() on an installation with the optional olefile package.",
+      "bucket": "A",
+      "finding": "OLE (which carries FlashPix and old Office files) is refused by name from the first bytes.",
+      "refusal": {
+        "check": "formats",
+        "default": true,
+        "setting": "OLE is refused whatever the policy says"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_renamed_ole_file"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 13.0.0. Do not install olefile where it is not needed.",
+        "specific": "formats=[...] on Image.open, or sillybos in front of it."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-5x8w-8jj5-q52h"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": "Bounded, not closed: the limit turns an unbounded cost into a bounded one.",
+      "key": "CVE-2026-96643",
+      "aliases": [
+        "GHSA-g4qv-2jxx-769h"
+      ],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A PNG's EXIF chunk makes parsing take quadratic time",
+      "summary": "A PNG eXIf chunk full of repeated six-byte markers makes Exif.load() copy the buffer once per marker.",
+      "published": "2026-10-22",
+      "severity": 7.1,
+      "affected": ">= 11.0.0, < 13.0.0",
+      "fixed": "13.0.0",
+      "reached_by": "open",
+      "trigger": "Opening a PNG and reading its EXIF (getexif()) when the eXIf chunk is large and filled with repeated markers. The advisory says a photo-sized file is enough.",
+      "bucket": "B",
+      "finding": "The size of every PNG chunk other than image data is read before decoding and held to max_metadata_bytes (4 MiB by default, 1 MiB strict). That bounds the cost; it does not remove it, since a chunk under the limit still costs seconds.",
+      "refusal": {
+        "check": "max_metadata_bytes",
+        "default": true,
+        "setting": "lower max_metadata_bytes for files from outside"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_png_with_an_enormous_exif_chunk",
+        "tests/test_check.py::TestHostileFiles::test_strict_allows_less_metadata"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 13.0.0.",
+        "specific": "Cap metadata blocks well below what a scan carries (kilobytes): sillybos --max-metadata-bytes."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-g4qv-2jxx-769h"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": null,
+      "key": "CVE-2026-96639",
+      "aliases": [
+        "GHSA-v9pv-5gc8-w2m6"
+      ],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A multi-frame file that changes colour mode writes into a buffer sized for the first frame",
+      "summary": "Multi-frame loaders can reuse stale native image storage after a mode transition, giving out-of-bounds writes; command execution was demonstrated through the MPO path.",
+      "published": "2026-10-22",
+      "severity": 9.8,
+      "affected": ">= 11.0.0, < 13.0.0",
+      "fixed": "13.0.0",
+      "reached_by": "open",
+      "trigger": "Iterating the frames of a crafted multi-picture JPEG (MPO), TIFF or Photoshop file whose later frame is a wider colour mode than the first.",
+      "bucket": "B",
+      "finding": "Every frame of a TIFF and every picture of a multi-picture JPEG is read and required to match the first in colour mode, samples and bit depth; a file that changes is refused. Photoshop files are refused by format.",
+      "refusal": {
+        "check": "headers",
+        "default": true,
+        "setting": "no setting: a frame that differs from the first is always a refusal"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_tiff_that_changes_mode_between_frames",
+        "tests/test_check.py::TestHostileFiles::test_a_multi_picture_jpeg_that_changes_mode"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 13.0.0.",
+        "specific": "Require every frame of a multi-frame file to share the first frame's mode and size before decoding; sillybos does."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-v9pv-5gc8-w2m6"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": null,
+      "key": "CVE-2026-96637",
+      "aliases": [
+        "GHSA-g842-9rc4-69pw"
+      ],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A SPIDER stack file bypasses the pixel limit on seek",
+      "summary": "SpiderImagePlugin's seek() re-parses the header without the decompression-bomb check, so a file under 1 KB can trigger a multi-gigabyte allocation.",
+      "published": "2026-10-22",
+      "severity": 7.1,
+      "affected": "< 13.0.0",
+      "fixed": "13.0.0",
+      "reached_by": "open",
+      "trigger": "Opening a crafted SPIDER file and loading a later frame.",
+      "bucket": "A",
+      "finding": "SPIDER is not a format the check knows, so the file is refused as an unknown format before any reader runs.",
+      "refusal": {
+        "check": "formats",
+        "default": true,
+        "setting": "unknown formats are refused whatever the policy says"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_an_unknown_format"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 13.0.0.",
+        "specific": "Allow-list the formats you mean to read; everything else, including this one, never reaches a reader."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-g842-9rc4-69pw"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": null,
+      "key": "CVE-2026-96636",
+      "aliases": [
+        "GHSA-p8hx-v2p6-rp84"
+      ],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A later frame of an MPO or DCX file is never checked against the pixel limit",
+      "summary": "The decompression-bomb check runs only on the first frame; MpoImageFile.seek() and DcxImageFile.seek() do not repeat it.",
+      "published": "2026-10-22",
+      "severity": 6.5,
+      "affected": "< 13.0.0",
+      "fixed": "13.0.0",
+      "reached_by": "open",
+      "trigger": "Seeking to a later frame of a multi-picture JPEG, or a DCX file, whose first frame is tiny and whose later frame declares enormous dimensions.",
+      "bucket": "B",
+      "finding": "Every picture of a multi-picture JPEG is read from the index and each held to max_pixels. DCX is not a known format and is refused as unknown.",
+      "refusal": {
+        "check": "max_pixels",
+        "default": true,
+        "setting": "applied to every picture, not the first"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_multi_picture_jpeg_whose_second_picture_is_a_bomb",
+        "tests/test_check.py::TestHostileFiles::test_an_unknown_format"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 13.0.0.",
+        "specific": "Apply the pixel limit to every frame, not the first; sillybos does."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-p8hx-v2p6-rp84"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": null,
+      "key": "CVE-2026-112901",
+      "aliases": [
+        "GHSA-xgh8-jp6q-p5x8",
+        "PYSEC-2026-4335"
+      ],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A 512-byte XBM file stalls Image.open() for minutes",
+      "summary": "A regular expression in XbmImagePlugin takes about six minutes of CPU on a crafted 512-byte file before Image.open() gives up.",
+      "published": "2026-10-21",
+      "severity": 6.9,
+      "affected": "<= 12.3.0",
+      "fixed": "13.0.0",
+      "reached_by": "open",
+      "trigger": "Opening a crafted file that looks enough like an XBM for Pillow to try its XBM reader.",
+      "bucket": "A",
+      "finding": "XBM is not a format the check knows, so the file is refused as an unknown format; with formats=[...] set, Pillow never tries the XBM reader either.",
+      "refusal": {
+        "check": "formats",
+        "default": true,
+        "setting": "unknown formats are refused whatever the policy says"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_an_unknown_format"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 13.0.0.",
+        "specific": "Allow-list the formats you mean to read."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-xgh8-jp6q-p5x8"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": null,
+      "key": "CVE-2026-112900",
+      "aliases": [
+        "GHSA-w889-685w-c8fh"
+      ],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "An EPS file's name is passed to Ghostscript as an option",
+      "summary": "Argument injection in the Ghostscript call, potentially leading to remote code execution.",
+      "published": "2026-10-21",
+      "severity": 9.2,
+      "affected": ">= 2.6.0, < 13.0.0",
+      "fixed": "13.0.0",
+      "reached_by": "open",
+      "trigger": "Opening an EPS (PostScript) file, recognised by content whatever its name, when Ghostscript is installed; the file's own name is read as a Ghostscript option.",
+      "bucket": "A",
+      "finding": "PostScript is not one of the four formats and is refused by name from the first bytes, so no PostScript file reaches Pillow's EPS reader through the check.",
+      "refusal": {
+        "check": "formats",
+        "default": true,
+        "setting": "PostScript is refused whatever the policy says"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_renamed_postscript_file"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 13.0.0. Do not install Ghostscript on a machine that opens files from outside unless it is needed.",
+        "specific": "Image.open(path, formats=[\"JPEG\", \"PNG\", \"TIFF\"]) keeps the EPS reader from ever running; sillybos refuses the file before that."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-w889-685w-c8fh"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": null,
+      "key": "CVE-2026-112399",
+      "aliases": [
+        "GHSA-5xm2-6676-qcp9"
+      ],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "An animated PNG allocates its full canvas before the pixel limit is checked",
+      "summary": "APNG background disposal allocates the full canvas before the decompression-bomb check; a 126-byte file claiming 22,000 x 22,000 pixels costs about 1.9 GB.",
+      "published": "2026-10-21",
+      "severity": 8.7,
+      "affected": ">= 8.1.0, < 13.0.0",
+      "fixed": "13.0.0",
+      "reached_by": "open",
+      "trigger": "Opening a small animated PNG whose IHDR claims enormous dimensions.",
+      "bucket": "B",
+      "finding": "Width and height are read from the IHDR, and the frame count from acTL, before any decoder runs; the product is held to max_pixels and the count to max_pages.",
+      "refusal": {
+        "check": "max_pixels",
+        "default": true,
+        "setting": "from the header, before Pillow allocates"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_pixel_bomb"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 13.0.0.",
+        "specific": "Read the declared size from the header and refuse before the decoder allocates; sillybos does."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-5xm2-6676-qcp9"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": null,
+      "key": "CVE-2026-112393",
+      "aliases": [
+        "GHSA-332p-7hrc-92wf"
+      ],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Saving a TIFF to memory overruns a heap buffer",
+      "summary": "Heap buffer overflow in _tiffWriteProc when saving TIFF to BytesIO.",
+      "published": "2026-10-21",
+      "severity": 9.2,
+      "affected": ">= 2.0.0, < 13.0.0",
+      "fixed": "13.0.0",
+      "reached_by": "save",
+      "trigger": "Saving any image as TIFF to an in-memory destination (io.BytesIO) rather than a file; the data written past the buffer is attacker-chosen when the image came from outside.",
+      "bucket": "N",
+      "finding": "A save-path flaw. Nothing read from the incoming file's header decides it, so a check before decoding cannot reach it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 13.0.0. Until then, save TIFFs to a file on disk, not to memory.",
+        "specific": "Not something a pre-decode check can prevent; listed so that nobody expects it to."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-332p-7hrc-92wf"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": null,
+      "key": "CVE-2026-112391",
+      "aliases": [
+        "GHSA-254f-3936-288h"
+      ],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Pillow's PDF parser recurses without limit when appending",
+      "summary": "PdfParser can recurse without limit in get_value() and linearize_page_tree().",
+      "published": "2026-10-21",
+      "severity": 6.3,
+      "affected": ">= 5.1.0, < 13.0.0",
+      "fixed": "13.0.0",
+      "reached_by": "save",
+      "trigger": "Image.save(..., format=\"PDF\", append=True) onto an attacker-controlled existing PDF.",
+      "bucket": "N",
+      "finding": "Reached only through Pillow's PDF append path, which Image.open never runs.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 13.0.0. Do not append to PDFs you did not make.",
+        "specific": "Not a pre-decode matter."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-254f-3936-288h"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": null,
+      "key": "CVE-2026-112390",
+      "aliases": [
+        "GHSA-22hg-r758-rrw9"
+      ],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A MIC file makes counting its frames loop for ever",
+      "summary": "Infinite loop in MIC n_frames when the embedded TIFF has three or more directories; needs the optional olefile package.",
+      "published": "2026-10-21",
+      "severity": 8.2,
+      "affected": ">= 7.2.0, < 13.0.0",
+      "fixed": "13.0.0",
+      "reached_by": "open",
+      "trigger": "Opening a crafted MIC (Microsoft Image Composer) file, an OLE container, and reading n_frames.",
+      "bucket": "A",
+      "finding": "OLE is refused by name from the first bytes.",
+      "refusal": {
+        "check": "formats",
+        "default": true,
+        "setting": "OLE is refused whatever the policy says"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_renamed_ole_file"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 13.0.0. Do not install olefile where it is not needed.",
+        "specific": "formats=[...] on Image.open, or sillybos in front of it."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-22hg-r758-rrw9"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": null,
+      "key": "CVE-2026-112404",
+      "aliases": [
+        "GHSA-c6hw-5grf-ff96"
+      ],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A malformed compressed TIFF leaks heap memory into its pixels",
+      "summary": "Out-of-bounds read in TiffDecode.c tile and RGBA paths copies heap memory into the returned image.",
+      "published": "2026-10-20",
+      "severity": 8.8,
+      "affected": ">= 8.1.0, < 13.0.0",
+      "fixed": "13.0.0",
+      "reached_by": "open",
+      "trigger": "Opening and loading a malformed compressed TIFF; the returned pixels carry fragments of the process's memory, which a service that returns thumbnails hands back.",
+      "bucket": "B",
+      "finding": "The tiled path is refused under the strict preset; the RGBA path is not something the header distinguishes, so this is only partly within reach.",
+      "refusal": {
+        "check": "allow_tiled_tiff",
+        "default": false,
+        "setting": "STRICT, or Policy(allow_tiled_tiff=False); the RGBA path is not covered"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_tiled_tiff_passes_by_default_and_not_under_strict"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 13.0.0. Never return pixels decoded from an untrusted file without re-encoding them first.",
+        "specific": "Refuse tiled TIFFs where scans are striped; keep the decoder current for the rest."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-c6hw-5grf-ff96"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": null,
+      "key": "CVE-2026-112403",
+      "aliases": [
+        "GHSA-8g5g-8vmr-9782"
+      ],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A lossless JPEG overruns the decode buffer when scaled",
+      "summary": "Heap buffer overflow in ImagingJpegDecode: a lossless (SOF3) frame ignores the requested scaling and writes full-width rows into a buffer sized for the scaled width.",
+      "published": "2026-10-20",
+      "severity": 9.2,
+      "affected": "<= 12.3.0",
+      "fixed": "13.0.0",
+      "reached_by": "open",
+      "trigger": "A standards-compliant lossless JPEG, opened and then drafted or thumbnailed (Image.thumbnail() does this on its own). The advisory notes that formats=[\"JPEG\"] does not prevent it.",
+      "bucket": "B",
+      "finding": "The frame coding is read from the JPEG's frame header. The default policy allows baseline, extended and progressive frames only; a lossless frame is refused with the coding named.",
+      "refusal": {
+        "check": "jpeg_frames",
+        "default": true,
+        "setting": "jpeg_frames excludes lossless by default"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_lossless_jpeg"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 13.0.0. Call load() before thumbnail(), or pass reducing_gap=None, until then.",
+        "specific": "Refuse frame codings a scanner never writes: lossless, hierarchical, arithmetic. sillybos does this by default."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-8g5g-8vmr-9782"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": null,
+      "key": "CVE-2026-112395",
+      "aliases": [
+        "GHSA-462x-pgg6-55fp"
+      ],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A tiled TIFF makes the decoder read past its tile buffer",
+      "summary": "The tiled-TIFF decoder reads past the tile buffer in copy4 when libtiff returns a tile smaller than the worst case.",
+      "published": "2026-10-20",
+      "severity": 6.5,
+      "affected": ">= 8.2.0, < 13.0.0",
+      "fixed": "13.0.0",
+      "reached_by": "open",
+      "trigger": "Opening and loading a malformed tiled TIFF.",
+      "bucket": "B",
+      "finding": "Whether a TIFF is tiled is in its directory. The default policy allows tiles (digitisation and mapping software write them) and holds each tile to max_pixels; the strict preset refuses tiled TIFFs outright.",
+      "refusal": {
+        "check": "allow_tiled_tiff",
+        "default": false,
+        "setting": "STRICT, or Policy(allow_tiled_tiff=False)"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_tiled_tiff_passes_by_default_and_not_under_strict",
+        "tests/test_check.py::TestHostileFiles::test_a_tile_bigger_than_the_pixel_limit"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 13.0.0.",
+        "specific": "If your scans are striped, not tiled, refuse tiled TIFFs: sillybos --no-tiled-tiff, or the strict preset."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-462x-pgg6-55fp"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": null,
+      "key": "CVE-2026-12912",
+      "aliases": [
+        "GHSA-cg4c-j43f-qcg7"
+      ],
+      "library": "libtiff",
+      "package": "tiff",
+      "ecosystem": "Debian",
+      "title": "A PixarLog-compressed TIFF overflows a libtiff heap buffer",
+      "summary": "Decoding a PixarLog image with the 8-bit ABGR output format and a specific stride leads to a heap-based buffer overflow.",
+      "published": "2026-06-29",
+      "severity": 7.3,
+      "affected": "libtiff, as packaged; see the upstream record",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Opening a TIFF compressed with PixarLog.",
+      "bucket": "B",
+      "finding": "The compression scheme is a directory tag. The default policy allows none, CCITT, LZW, JPEG, Deflate and PackBits; PixarLog and the other codecs a scan never uses are refused by name.",
+      "refusal": {
+        "check": "tiff_compressions",
+        "default": true,
+        "setting": "tiff_compressions excludes PixarLog by default"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_pixarlog_tiff"
+      ],
+      "protect": {
+        "general": "Keep libtiff current.",
+        "specific": "Allow only the compression schemes your files use; sillybos --tiff-compressions."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-cg4c-j43f-qcg7"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": "Cited from the policy's own notes (policy.py), written from the advisory at the time; the OSV record was unreachable when this entry was made and its fields should be filled in.",
+      "key": "CVE-2026-33636",
+      "aliases": [
+        "GHSA-wjr5-c57x-95m2"
+      ],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "A palette PNG reaches a flaw in libpng's palette handling",
+      "summary": "One of three libpng flaws in the paths that handle palette (indexed-colour) PNGs. The upstream record was not re-fetched when this entry was written; see notes.",
+      "published": "2026-03-26",
+      "severity": 7.6,
+      "affected": ">= 1.6.36, <= 1.6.55",
+      "fixed": "1.6.56",
+      "reached_by": "open",
+      "trigger": "Opening a palette-type PNG.",
+      "bucket": "B",
+      "finding": "The colour type is in the PNG's IHDR. The default allows all five colour types; a policy for scans alone can keep to greyscale and RGB, which keeps palette PNGs from the decoder.",
+      "refusal": {
+        "check": "png_colour_types",
+        "default": false,
+        "setting": "Policy(png_colour_types={\"greyscale\", \"rgb\"})"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_palette_png_under_a_scans_only_policy"
+      ],
+      "protect": {
+        "general": "Keep libpng current.",
+        "specific": "If nothing you handle is a palette PNG, say so in the policy: sillybos --png-colour-types greyscale,rgb."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-wjr5-c57x-95m2",
+        "https://osv.dev/vulnerability/CVE-2026-33636"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": null,
+      "key": "CVE-2026-4775",
+      "aliases": [
+        "GHSA-cm99-m826-vgg7"
+      ],
+      "library": "libtiff",
+      "package": "tiff",
+      "ecosystem": "Debian",
+      "title": "A YCbCr TIFF subsampled four to one overflows a libtiff buffer",
+      "summary": "Signed integer overflow in putcontig8bitYCbCr44tile leads to an out-of-bounds heap write.",
+      "published": "2026-03-24",
+      "severity": 7.8,
+      "affected": "libtiff, as packaged; see the upstream record",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Opening a YCbCr TIFF whose chroma subsampling is 4x4, through the RGBA reading path.",
+      "bucket": "B",
+      "finding": "A YCbCr TIFF's subsampling is a directory tag. The default policy allows 1x1, 2x1, 1x2 and 2x2, which is what scanners and cameras write; 4x4 and the other factor-of-four values are refused.",
+      "refusal": {
+        "check": "tiff_subsamplings",
+        "default": true,
+        "setting": "tiff_subsamplings excludes factor-of-four by default"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_ycbcr_tiff_subsampled_four_by_four"
+      ],
+      "protect": {
+        "general": "Keep libtiff current.",
+        "specific": "Allow only the subsamplings your files use; sillybos --tiff-subsamplings."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-cm99-m826-vgg7"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": "Cited from the policy's own notes (policy.py); the OSV record was unreachable when this entry was made and its fields should be filled in.",
+      "key": "CVE-2026-22695",
+      "aliases": [
+        "GHSA-mmq5-27w3-rxpp"
+      ],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "An interlaced 16-bit PNG overflows a libpng buffer",
+      "summary": "One of two libpng overflows on the Adam7-interlaced 16-bit path. The upstream record was not re-fetched when this entry was written; see notes.",
+      "published": "2026-01-12",
+      "severity": 6.1,
+      "affected": ">= 1.6.51, <= 1.6.53",
+      "fixed": "1.6.54",
+      "reached_by": "open",
+      "trigger": "Opening an Adam7-interlaced PNG with 16-bit samples.",
+      "bucket": "B",
+      "finding": "Interlacing is in the IHDR. No scanner writes an interlaced PNG, so the default refuses one.",
+      "refusal": {
+        "check": "allow_interlaced_png",
+        "default": true,
+        "setting": "allow_interlaced_png is off by default"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_an_interlaced_png"
+      ],
+      "protect": {
+        "general": "Keep libpng current.",
+        "specific": "Refuse interlaced PNGs; nothing that scans a page writes one. sillybos does by default."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-mmq5-27w3-rxpp",
+        "https://osv.dev/vulnerability/CVE-2026-22695"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": "Cited from the policy's own notes (policy.py), written from the advisory at the time; the OSV record was unreachable when this entry was made and its fields should be filled in.",
+      "key": "CVE-2025-66293",
+      "aliases": [
+        "GHSA-9mpm-9pxh-mg4f"
+      ],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "A palette PNG reaches a flaw in libpng's palette handling",
+      "summary": "One of three libpng flaws in the paths that handle palette (indexed-colour) PNGs. The upstream record was not re-fetched when this entry was written; see notes.",
+      "published": "2025-12-03",
+      "severity": 7.1,
+      "affected": "< 1.6.52",
+      "fixed": "1.6.52",
+      "reached_by": "open",
+      "trigger": "Opening a palette-type PNG.",
+      "bucket": "B",
+      "finding": "The colour type is in the PNG's IHDR. The default allows all five colour types; a policy for scans alone can keep to greyscale and RGB, which keeps palette PNGs from the decoder.",
+      "refusal": {
+        "check": "png_colour_types",
+        "default": false,
+        "setting": "Policy(png_colour_types={\"greyscale\", \"rgb\"})"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_palette_png_under_a_scans_only_policy"
+      ],
+      "protect": {
+        "general": "Keep libpng current.",
+        "specific": "If nothing you handle is a palette PNG, say so in the policy: sillybos --png-colour-types greyscale,rgb."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-9mpm-9pxh-mg4f",
+        "https://osv.dev/vulnerability/CVE-2025-66293"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": "Cited from the policy's own notes (policy.py); the OSV record was unreachable when this entry was made and its fields should be filled in.",
+      "key": "CVE-2025-65018",
+      "aliases": [
+        "GHSA-7wv6-48j4-hj3g"
+      ],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "An interlaced 16-bit PNG overflows a libpng buffer",
+      "summary": "One of two libpng overflows on the Adam7-interlaced 16-bit path. The upstream record was not re-fetched when this entry was written; see notes.",
+      "published": "2025-11-24",
+      "severity": 7.1,
+      "affected": ">= 1.6.0, < 1.6.51",
+      "fixed": "1.6.51",
+      "reached_by": "open",
+      "trigger": "Opening an Adam7-interlaced PNG with 16-bit samples.",
+      "bucket": "B",
+      "finding": "Interlacing is in the IHDR. No scanner writes an interlaced PNG, so the default refuses one.",
+      "refusal": {
+        "check": "allow_interlaced_png",
+        "default": true,
+        "setting": "allow_interlaced_png is off by default"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_an_interlaced_png"
+      ],
+      "protect": {
+        "general": "Keep libpng current.",
+        "specific": "Refuse interlaced PNGs; nothing that scans a page writes one. sillybos does by default."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-7wv6-48j4-hj3g",
+        "https://osv.dev/vulnerability/CVE-2025-65018"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": "Cited from the policy's own notes (policy.py), written from the advisory at the time; the OSV record was unreachable when this entry was made and its fields should be filled in.",
+      "key": "CVE-2025-64720",
+      "aliases": [
+        "GHSA-hfc7-ph9c-wcww"
+      ],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "A palette PNG reaches a flaw in libpng's palette handling",
+      "summary": "One of three libpng flaws in the paths that handle palette (indexed-colour) PNGs. The upstream record was not re-fetched when this entry was written; see notes.",
+      "published": "2025-11-24",
+      "severity": 7.1,
+      "affected": ">= 1.6.0, < 1.6.51",
+      "fixed": "1.6.51",
+      "reached_by": "open",
+      "trigger": "Opening a palette-type PNG.",
+      "bucket": "B",
+      "finding": "The colour type is in the PNG's IHDR. The default allows all five colour types; a policy for scans alone can keep to greyscale and RGB, which keeps palette PNGs from the decoder.",
+      "refusal": {
+        "check": "png_colour_types",
+        "default": false,
+        "setting": "Policy(png_colour_types={\"greyscale\", \"rgb\"})"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_palette_png_under_a_scans_only_policy"
+      ],
+      "protect": {
+        "general": "Keep libpng current.",
+        "specific": "If nothing you handle is a palette PNG, say so in the policy: sillybos --png-colour-types greyscale,rgb."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-hfc7-ph9c-wcww",
+        "https://osv.dev/vulnerability/CVE-2025-64720"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": null,
+      "key": "CVE-2023-6277",
+      "aliases": [
+        "GHSA-fq8g-55cp-756j"
+      ],
+      "library": "libtiff",
+      "package": "tiff",
+      "ecosystem": "Debian",
+      "title": "A TIFF tag that points past the file makes libtiff allocate for nothing",
+      "summary": "An out-of-memory flaw in libtiff: a crafted file passed to TIFFOpen() makes it allocate from a tag's declared size.",
+      "published": "2023-11-24",
+      "severity": 7.5,
+      "affected": "libtiff before 4.6.0 (as packaged)",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Opening a TIFF whose directory declares a tag with a count that puts its data beyond the end of the file.",
+      "bucket": "B",
+      "finding": "Every tag's out-of-line data is checked to lie inside the file before anything decodes, and the largest block is held to max_metadata_bytes.",
+      "refusal": {
+        "check": "max_metadata_bytes",
+        "default": true,
+        "setting": "and the tag-inside-the-file check, which has no setting"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_tiff_tag_over_the_limit"
+      ],
+      "protect": {
+        "general": "Keep libtiff current; it is the TIFF reader under Pillow, poppler and most of the rest.",
+        "specific": "Check tag offsets and sizes against the file size before opening; sillybos does."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-fq8g-55cp-756j"
+      ]
+    }
+  ]
+}
