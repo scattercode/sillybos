@@ -29,12 +29,14 @@ same as here, stated for an agent.
 
 ```bash
 uv venv .venv && source .venv/bin/activate
-uv pip install -e '.[dev]'
+uv pip install -e '.[dev,docs]'
 ```
 
 (`python -m venv` and `pip` work too.) The PDF tests need `pdfinfo` from
 poppler (`brew install poppler`, `apt install poppler-utils`) and skip
-without it. Then activate the git hooks, one of:
+without it. The `docs` extra is Sphinx and its theme, for the reference
+site; leave it out if you are not touching the docs. Then activate the git
+hooks, one of:
 
 ```bash
 lefthook install                          # if you have lefthook (brew install lefthook gitleaks zizmor)
@@ -55,6 +57,7 @@ ruff format --check .
 mypy
 pytest --cov
 uv lock --check                           # the lockfile matches pyproject.toml
+sphinx-build -W -b html docs docs/_build/html   # the docs, with the docs extra
 gitleaks git --no-banner --redact .       # secrets in the history
 uvx zizmor --min-severity medium .github/workflows
 ```
@@ -63,6 +66,19 @@ All of these must pass before a pull request can merge. The Ruff rule set
 is declared explicitly in `pyproject.toml` and includes the `S` (bandit)
 rules; an ignore needs a dated reason beside it. Coverage must stay at or
 above the floor in `pyproject.toml`.
+
+## The docs
+
+The reference site at <https://scattercode.github.io/sillybos/> is built by
+Sphinx from `docs/` and published by `docs.yml` on every push to `main`. It
+is the README (included, not copied, between the two `docs:` comment
+markers) followed by the API and the command line, generated from the
+docstrings and the parser. There is nothing to write by hand when the API
+changes: the docstrings are the reference, in Google style with
+reStructuredText cross-references (`:class:`, `:func:`, `:data:`), and a
+docstring that does not render is a build failure, since the build runs
+with warnings as errors on every pull request. Build it locally with the
+command above and open `docs/_build/html/index.html`.
 
 ## Dependencies and the lockfile
 

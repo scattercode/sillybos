@@ -1,5 +1,8 @@
 # sillybos
 
+**📖 [Documentation and API reference](https://scattercode.github.io/sillybos/)**
+
+<!-- docs: include from here -->
 <img src="https://raw.githubusercontent.com/scattercode/sillybos/main/docs/logo.png" alt="A rolled scroll with a small parchment tag hanging from it, reading: metadata, caps and format vetted" width="280" align="right">
 
 **Decide before decoding.** A σίλλυβος (*sillybos*; Latin *sittybus*) was
@@ -206,6 +209,8 @@ Say this plainly, because a security library carries an implied promise.
 - **It does not read formats beyond the four.** WebP, JPEG 2000, HEIC and
   the rest are refused by name until someone shows a scan in one. Each
   format added is attack surface added.
+
+<!-- docs: include to here -->
 
 ## Development
 
