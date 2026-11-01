@@ -363,10 +363,17 @@ def pdf_with(feature: str, pages: int = 1) -> bytes:
 
     ``javascript`` and ``launch`` are open-document actions; ``escaped-javascript``
     is the same JavaScript action with its name written in ``#xx`` escapes;
-    ``escaped-launch`` likewise; ``forms`` is an AcroForm with one text field;
-    ``attachments`` is one embedded file.
+    ``escaped-launch`` likewise; ``document-javascript`` is a script in the
+    document's name tree, which is what every poppler reports; ``forms`` is an
+    AcroForm with one text field; ``attachments`` is one embedded file.
     """
     first = pages + 3
+    if feature == "document-javascript":
+        return pdf(
+            pages,
+            catalog=f"/Names << /JavaScript << /Names [(init) {first} 0 R] >> >>",
+            objects=[b"<< /S /JavaScript /JS (app.alert('hello');) >>"],
+        )
     if feature == "javascript":
         return pdf(
             pages,

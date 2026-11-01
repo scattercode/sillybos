@@ -321,6 +321,7 @@ class TestPdf:
         ("feature", "found", "words"),
         [
             ("javascript", "javascript", "JavaScript"),
+            ("document-javascript", "javascript", "JavaScript"),
             ("escaped-javascript", "javascript", "JavaScript"),
             ("forms", "forms", "a form"),
             ("attachments", "attachments", "attached files"),
@@ -350,7 +351,7 @@ class TestPdf:
 
     def test_a_long_pdf_still_reports_what_the_summary_shows(self, tmp_path: Path) -> None:
         """Over the page limit nothing more is asked of the file, but what pdfinfo already said is kept."""
-        path = corpus.write(tmp_path / "long.pdf", corpus.pdf_with("javascript", pages=3))
+        path = corpus.write(tmp_path / "long.pdf", corpus.pdf_with("document-javascript", pages=3))
         verdict = check(path, Policy(max_pages=2))
         assert verdict.reasons == (
             "3 pages; the limit is 2",

@@ -13,7 +13,9 @@ The same report says whether the file carries JavaScript or a form, and
 A launch action, which tells the viewer to run a program, is reported by no
 poppler tool, so it is found by its name in the file, the way `pdfid` finds
 it: a bounded scan for the bytes, with the `#xx` escapes a name may be
-written with undone, and no parsing.
+written with undone, and no parsing. JavaScript is looked for both ways,
+because poppler before 26 reports only document-level scripts and not one
+attached to an open-document action.
 
 `pdfinfo` and `pdfdetach` come with poppler (`brew install poppler`, `apt
 install poppler-utils`), which anything that renders PDFs in Python already
@@ -56,6 +58,7 @@ def _name_pattern(name: str) -> re.Pattern[bytes]:
 
 
 _LAUNCH = _name_pattern("Launch")
+_JAVASCRIPT_NAMES = (_name_pattern("JavaScript"), _name_pattern("JS"))
 _SCAN_CHUNK = 1024 * 1024
 _SCAN_OVERLAP = 32  # longer than the longest escaped spelling of the name
 
@@ -124,19 +127,29 @@ def _tool(tool: str, args: list[str], path: Path, timeout: float) -> str:
     return done.stdout
 
 
-def _has_launch_action(path: Path) -> bool:
-    """Whether the bytes of the file spell the name `/Launch` anywhere.
+def _names_in(path: Path, *patterns: re.Pattern[bytes]) -> list[bool]:
+    """Whether the bytes of the file spell each name anywhere, one answer per pattern.
 
     Read a chunk at a time with a short overlap, so a name across a chunk
     boundary is still seen and the memory used does not grow with the file.
     """
+    found = [False] * len(patterns)
     tail = b""
     with path.open("rb") as f:
         while chunk := f.read(_SCAN_CHUNK):
-            if _LAUNCH.search(tail + chunk):
-                return True
+            window = tail + chunk
+            for i, pattern in enumerate(patterns):
+                if not found[i] and pattern.search(window):
+                    found[i] = True
+            if all(found):
+                break
             tail = chunk[-_SCAN_OVERLAP:]
-    return False
+    return found
+
+
+def _has_launch_action(path: Path) -> bool:
+    """Whether the bytes of the file spell the name `/Launch` anywhere."""
+    return _names_in(path, _LAUNCH)[0]
 
 
 def _features(summary: str, path: Path, policy: Policy, *, within_limit: bool) -> tuple[str, ...]:
@@ -151,7 +164,10 @@ def _features(summary: str, path: Path, policy: Policy, *, within_limit: bool) -
         count = _ATTACHMENTS.search(listing)
         if count is not None and int(count.group(1)) > 0:
             found.append("attachments")
-        if _has_launch_action(path):
+        scripted, script, launch = _names_in(path, *_JAVASCRIPT_NAMES, _LAUNCH)
+        if (scripted or script) and "javascript" not in found:
+            found.insert(0, "javascript")
+        if launch:
             found.append("launch")
     return tuple(found)
 

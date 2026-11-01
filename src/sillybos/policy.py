@@ -169,12 +169,13 @@ class Policy:
         pdf_features: Which of [PDF_FEATURES][sillybos.PDF_FEATURES] a PDF may carry:
             JavaScript, a form, attached files, a launch action. Each is a
             way for a document to make the viewer act rather than draw, and
-            a scanned book has none, so the default allows none. JavaScript
-            and forms are read from `pdfinfo`'s report and attached files
-            from `pdfdetach`'s, both of which see inside compressed object
+            a scanned book has none, so the default allows none. Forms are
+            read from `pdfinfo`'s report and attached files from
+            `pdfdetach`'s, both of which see inside compressed object
             streams; a launch action is found by its name in the file,
             since no poppler tool reports one, so an action hidden in a
-            compressed stream is not seen.
+            compressed stream is not seen; JavaScript is looked for both
+            ways.
         pdfinfo_timeout: Seconds to give `pdfinfo` before giving up on a
             PDF, which is then refused. A crafted file can make a parser
             loop; a limit turns that into one file's failure.

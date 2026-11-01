@@ -125,3 +125,20 @@ def test_the_launch_scan_sees_a_name_across_a_chunk_boundary(
     path = tmp_path / "a.pdf"
     path.write_bytes(b"%PDF-1.4\n<< /S /Launch /F (x) >>")  # "/Launch" straddles byte 16
     assert pdf_module._has_launch_action(path)
+
+
+@needs_pdfinfo
+def test_javascript_is_found_by_name_when_pdfinfo_does_not_report_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """poppler before 26 says `JavaScript: no` for a script on an open action; the name scan still sees it."""
+    real = pdf_module._pdfinfo
+
+    def older(args: list[str], path: Path, timeout: float) -> str:
+        return re.sub(
+            r"^JavaScript:\s+yes", "JavaScript:     no", real(args, path, timeout), flags=re.M
+        )
+
+    monkeypatch.setattr(pdf_module, "_pdfinfo", older)
+    verdict = check(corpus.write(tmp_path / "scripted.pdf", corpus.pdf_with("javascript")))
+    assert verdict.facts is not None and verdict.facts.features == ("javascript",)

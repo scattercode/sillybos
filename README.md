@@ -109,7 +109,7 @@ check(path, Policy(formats={"tiff", "pdf"}, max_pages=50))
 | `tiff_compressions` | none, ccitt, lzw, jpeg, deflate, packbits | the same | How a TIFF may be compressed, by name. The other codecs in libtiff are where most of its flaws have been found (PixarLog most recently, CVE-2026-12912), and a scan never needs them. A code the library does not know is refused whatever the policy says, and every frame must use the same scheme |
 | `jpeg_frames` | baseline, extended, progressive | the same | How a JPEG's frame may be coded. Lossless, hierarchical and arithmetic frames are legal JPEG that no scanner writes and the decoder's least-exercised code; a lossless frame was the way into a heap overflow in Pillow's JPEG decoder (CVE-2026-112403) |
 | `allow_encrypted_pdf` | no | no | A scanned book is never encrypted |
-| `pdf_features` | none | none | Which of JavaScript, forms, attached files and launch actions a PDF may carry. Each makes a viewer do something other than draw the page, and a scanned book has none. JavaScript and forms are read from `pdfinfo`'s report and attached files from `pdfdetach`'s; a launch action is found by its name in the file, since no poppler tool reports one |
+| `pdf_features` | none | none | Which of JavaScript, forms, attached files and launch actions a PDF may carry. Each makes a viewer do something other than draw the page, and a scanned book has none. Forms are read from `pdfinfo`'s report and attached files from `pdfdetach`'s; a launch action is found by its name in the file, since no poppler tool reports one; JavaScript is looked for both ways |
 | `pdfinfo_timeout` | 30 s | 30 s | How long `pdfinfo` may take before the file is refused |
 
 The defaults were set from a real corpus of archival scans (largest page 39
@@ -186,9 +186,9 @@ prints one object per line for a pipeline; `-q` prints only refusals.
    `pdfinfo` reports the page count, whether it is encrypted, whether it
    carries JavaScript or a form and, if the count is within the limit,
    every page's size; `pdfdetach` reports attached files; and a bounded
-   scan of the bytes finds the name of a launch action, with the `#xx`
-   escapes a name may hide behind undone, since no poppler tool reports
-   one.
+   scan of the bytes finds the name of a launch action, and of JavaScript
+   that an older poppler does not report, with the `#xx` escapes a name
+   may hide behind undone.
 5. **The limits**, against what the header said.
 
 ## What it does not do
