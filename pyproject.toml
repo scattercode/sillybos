@@ -83,6 +83,10 @@ version-file = "src/sillybos/_version.py"
 [tool.hatch.build.targets.wheel]
 packages = ["src/sillybos"]
 
+[tool.hatch.build.targets.sdist]
+# The pointer packages are published on their own; keep them out of the sdist.
+exclude = ["pointers"]
+
 [tool.ruff]
 line-length = 100
 
