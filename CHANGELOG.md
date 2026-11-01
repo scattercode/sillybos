@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-11-01
+
+### Changed
+
+- Three tutorials, each a complete programme we ran
+- Format the tutorials' code blocks as ruff does
+- Refuse the PDF features a scanned book never has
+
+### Fixed
+
+- Look for JavaScript by name too, since poppler before 26 does not report an open action's script
+
 ## [2.1.0] - 2026-11-01
 
 ### Changed
