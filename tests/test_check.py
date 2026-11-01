@@ -86,7 +86,10 @@ class TestHostileFiles:
 
     def test_a_pixel_bomb(self, tmp_path: Path) -> None:
         verdict = check(corpus.write(tmp_path / "bomb.png", corpus.png(100_000, 100_000)))
-        assert verdict.reasons == ("a page of 10,000,000,000 pixels; the limit is 89,478,485",)
+        assert verdict.reasons == (
+            "a page of 10,000,000,000 pixels; the limit is 89,478,485",
+            "a page 100,000 pixels on its longest side; the limit is 30,000",
+        )
         assert verdict.facts is not None and verdict.facts.max_pixels == 10_000_000_000
 
     def test_a_lossless_jpeg(self, tmp_path: Path) -> None:
@@ -105,7 +108,10 @@ class TestHostileFiles:
     def test_a_multi_picture_jpeg_whose_second_picture_is_a_bomb(self, tmp_path: Path) -> None:
         path = corpus.write(tmp_path / "scan.jpg", corpus.mpo([(10, 10), (65_535, 65_535)]))
         verdict = check(path)
-        assert verdict.reasons == ("a page of 4,294,836,225 pixels; the limit is 89,478,485",)
+        assert verdict.reasons == (
+            "a page of 4,294,836,225 pixels; the limit is 89,478,485",
+            "a page 65,535 pixels on its longest side; the limit is 30,000",
+        )
         assert verdict.facts is not None and verdict.facts.pages == 2
 
     def test_a_multi_picture_jpeg_that_changes_mode(self, tmp_path: Path) -> None:
@@ -166,7 +172,32 @@ class TestHostileFiles:
 
     def test_a_tile_bigger_than_the_pixel_limit(self, tmp_path: Path) -> None:
         path = corpus.write(tmp_path / "scan.tif", corpus.tiff([(10, 10)], tile=(65_535, 65_535)))
-        assert check(path).reasons == ("a tile of 4,294,836,225 pixels; the limit is 89,478,485",)
+        assert check(path).reasons == (
+            "a tile of 4,294,836,225 pixels; the limit is 89,478,485",
+            "a tile 65,535 pixels on its longest side; the limit is 30,000",
+        )
+
+    def test_a_tall_narrow_tiff(self, tmp_path: Path) -> None:
+        """Within the pixel budget, but 40,000 pixels tall: what CVE-2025-9900 needs."""
+        path = corpus.write(tmp_path / "tall.tif", corpus.tiff([(2_000, 40_000)], long_dims=True))
+        verdict = check(path)
+        assert verdict.reasons == ("a page 40,000 pixels on its longest side; the limit is 30,000",)
+        assert verdict.facts is not None and verdict.facts.max_side == 40_000
+        assert verdict.facts.max_pixels == 80_000_000
+        assert check(path, Policy(max_side=40_000)).ok
+
+    def test_a_tall_frame_among_many(self, tmp_path: Path) -> None:
+        frames = [(10, 10), (5, 35_000), (10, 10)]
+        path = corpus.write(tmp_path / "scan.tif", corpus.tiff(frames, long_dims=True))
+        assert check(path).reasons == (
+            "a page 35,000 pixels on its longest side; the limit is 30,000",
+        )
+
+    def test_a_long_thin_tile(self, tmp_path: Path) -> None:
+        path = corpus.write(tmp_path / "scan.tif", corpus.tiff([(10, 10)], tile=(40_000, 10)))
+        assert check(path).reasons == (
+            "a tile 40,000 pixels on its longest side; the limit is 30,000",
+        )
 
     def test_a_tiff_that_changes_mode_between_frames(self, tmp_path: Path) -> None:
         path = corpus.write(
@@ -303,7 +334,17 @@ class TestPdf:
         """One A4 page and one of 200 x 300 inches: the large one is found wherever it is."""
         sizes = [(595.0, 842.0), (14400.0, 21600.0)]
         verdict = check(corpus.write(tmp_path / "wall.pdf", corpus.pdf(2, sizes=sizes)))
-        assert verdict.reasons == ("a page of 2,400,000,000 pixels; the limit is 89,478,485",)
+        assert verdict.reasons == (
+            "a page of 2,400,000,000 pixels; the limit is 89,478,485",
+            "a page 60,000 pixels on its longest side; the limit is 30,000",
+        )
+
+    def test_a_tall_narrow_page(self, tmp_path: Path) -> None:
+        """5 x 200 inches: 40 million pixels at 200 dpi, within the budget, but 40,000 tall."""
+        sizes = [(595.0, 842.0), (360.0, 14400.0)]
+        verdict = check(corpus.write(tmp_path / "tall.pdf", corpus.pdf(2, sizes=sizes)))
+        assert verdict.reasons == ("a page 40,000 pixels on its longest side; the limit is 30,000",)
+        assert verdict.facts is not None and verdict.facts.max_side == 40_000
 
     def test_a_file_that_is_not_a_pdf_inside(self, tmp_path: Path) -> None:
         verdict = check(corpus.write(tmp_path / "broken.pdf", b"%PDF-1.4\ngarbage"))
@@ -365,6 +406,7 @@ class TestPdf:
 class TestPolicy:
     def test_presets(self) -> None:
         assert DEFAULT.max_pages == 500 and STRICT.max_pages == 100
+        assert DEFAULT.max_side == 30_000 and STRICT.max_side == 15_000
         assert STRICT.max_bytes < DEFAULT.max_bytes
 
     @pytest.mark.parametrize(
@@ -381,6 +423,7 @@ class TestPolicy:
             ({"tiff_subsamplings": frozenset({"3x3"})}, "unknown TIFF subsampling"),
             ({"tiff_subsamplings": frozenset()}, "at least one TIFF subsampling"),
             ({"max_pages": 0}, "max_pages must be at least 1"),
+            ({"max_side": 0}, "max_side must be at least 1"),
             ({"max_metadata_bytes": 0}, "max_metadata_bytes must be at least 1"),
             ({"png_colour_types": frozenset({"cmyk"})}, "unknown PNG colour type"),
             ({"png_colour_types": frozenset()}, "at least one PNG colour type"),

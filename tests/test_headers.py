@@ -29,7 +29,7 @@ def read(fmt: str, data: bytes, limit: int = 500) -> headers.Header:
 class TestJpeg:
     def test_reads_the_dimensions_from_the_frame_header(self) -> None:
         assert read("jpeg", corpus.jpeg(4000, 6000)) == headers.Header(
-            4000, 6000, 1, 24_000_000, coding="baseline"
+            4000, 6000, 1, 24_000_000, 6000, coding="baseline"
         )
 
     def test_skips_segments_before_the_frame(self) -> None:
@@ -38,7 +38,7 @@ class TestJpeg:
 
     def test_a_progressive_frame_counts_too(self) -> None:
         data = corpus.jpeg(30, 20).replace(b"\xff\xc0", b"\xff\xc2")
-        assert read("jpeg", data) == headers.Header(30, 20, 1, 600, coding="progressive")
+        assert read("jpeg", data) == headers.Header(30, 20, 1, 600, 30, coding="progressive")
 
     @pytest.mark.parametrize(
         ("marker", "coding"),
@@ -62,7 +62,7 @@ class TestJpeg:
 
     def test_reads_every_picture_of_a_multi_picture_file(self) -> None:
         data = corpus.mpo([(30, 20), (40, 50), (10, 10)])
-        assert read("jpeg", data) == headers.Header(30, 20, 3, 2000, coding="baseline")
+        assert read("jpeg", data) == headers.Header(30, 20, 3, 2000, 50, coding="baseline")
 
     def test_an_index_naming_one_picture_is_an_ordinary_jpeg(self) -> None:
         assert read("jpeg", corpus.mpo([(30, 20)])).pages == 1
@@ -147,7 +147,7 @@ class TestJpeg:
 class TestPng:
     def test_reads_the_dimensions_from_ihdr(self) -> None:
         assert read("png", corpus.png(640, 480)) == headers.Header(
-            640, 480, 1, 307_200, colour="rgb", depth=8
+            640, 480, 1, 307_200, 640, colour="rgb", depth=8
         )
 
     def test_counts_the_frames_of_an_animated_png(self) -> None:
@@ -179,7 +179,7 @@ class TestTiff:
     def test_reads_every_frame_in_either_byte_order(self, endian: str) -> None:
         data = corpus.tiff([(200, 300), (400, 600), (50, 50)], endian=endian)
         assert read("tiff", data) == headers.Header(
-            200, 300, 3, 240_000, compression="none", colour="greyscale", depth=1
+            200, 300, 3, 240_000, 600, compression="none", colour="greyscale", depth=1
         )
 
     def test_reads_long_dimensions(self) -> None:
@@ -235,7 +235,7 @@ class TestTiffCompression:
     def test_names_the_scheme(self, code: int, name: str) -> None:
         header = read("tiff", corpus.tiff([(10, 10), (10, 10)], compression=code))
         assert header == headers.Header(
-            10, 10, 2, 100, compression=name, colour="greyscale", depth=1
+            10, 10, 2, 100, 10, compression=name, colour="greyscale", depth=1
         )
 
     def test_every_scheme_name_is_one_the_policy_knows(self) -> None:
@@ -545,7 +545,7 @@ class TestAgainstPillow:
         buffer = io.BytesIO()
         Image.new(mode, (123, 45)).save(buffer, format=fmt)
         data = buffer.getvalue()
-        expected = headers.Header(123, 45, 1, 123 * 45)
+        expected = headers.Header(123, 45, 1, 123 * 45, 123)
         if fmt == "JPEG":
             expected = dataclasses.replace(expected, coding="baseline")
         elif fmt == "PNG":
@@ -665,7 +665,7 @@ class TestAgainstPillow:
         exif[0x0110] = "a camera"
         image.save(buffer, format="JPEG", progressive=True, exif=exif)
         assert read("jpeg", buffer.getvalue()) == headers.Header(
-            64, 32, 1, 2048, coding="progressive"
+            64, 32, 1, 2048, 64, coding="progressive"
         )
 
     def test_a_multi_picture_jpeg(self) -> None:

@@ -42,6 +42,9 @@ def test_options_adjust_the_policy(tmp_path: Path) -> None:
     png = corpus.write(tmp_path / "scan.png", corpus.png(10, 10))
     jpeg_called_png = corpus.write(tmp_path / "lie.png", corpus.jpeg(10, 10))
     assert main(["--max-pixels", "50", str(png)]) == 1
+    tall = corpus.write(tmp_path / "tall.tif", corpus.tiff([(2_000, 40_000)], long_dims=True))
+    assert main([str(tall)]) == 1
+    assert main(["--max-side", "40000", str(tall)]) == 0
     assert main(["--formats", "jpeg,tiff", str(png)]) == 1
     lossless = corpus.write(tmp_path / "lossless.jpg", corpus.jpeg(10, 10, marker=0xC3))
     assert main([str(lossless)]) == 1

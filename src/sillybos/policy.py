@@ -106,6 +106,14 @@ class Policy:
             The default is the threshold at which Pillow warns of a
             decompression bomb, enforced here rather than left to a global
             that another library may have raised.
+        max_side: The most pixels along either side of any one page, frame
+            or tile. A pixel budget alone lets through a page a few pixels
+            wide and a million tall, and an abnormally tall image is what
+            drove libtiff's RGBA reader to write colour data to an
+            arbitrary address (CVE-2025-9900). No scanner writes a side
+            longer than a few tens of thousands of pixels: the default is
+            three times the longest side in the corpus (9,933 pixels, A3 at
+            600 dpi).
         max_pages: The most pages in a PDF, or frames in a multi-frame TIFF
             or animated PNG. Bounds the time and the memory a run takes,
             and stops the header walk itself on a file with a million
@@ -184,6 +192,7 @@ class Policy:
     formats: frozenset[str] = field(default_factory=lambda: frozenset(FORMATS))
     max_bytes: int = 512 * MIB
     max_pixels: int = 89_478_485
+    max_side: int = 30_000
     max_pages: int = 500
     max_metadata_bytes: int = 4 * MIB
     render_dpi: int = 200
@@ -252,7 +261,14 @@ class Policy:
             raise ValueError(
                 f"unknown PDF feature(s) {sorted(unknown)}; the features are {', '.join(PDF_FEATURES)}"
             )
-        for name in ("max_bytes", "max_pixels", "max_pages", "max_metadata_bytes", "render_dpi"):
+        for name in (
+            "max_bytes",
+            "max_pixels",
+            "max_side",
+            "max_pages",
+            "max_metadata_bytes",
+            "render_dpi",
+        ):
             if getattr(self, name) < 1:
                 raise ValueError(f"{name} must be at least 1")
         if self.pdfinfo_timeout <= 0:
@@ -269,6 +285,7 @@ DEFAULT = Policy()
 STRICT = Policy(
     max_bytes=128 * MIB,
     max_pixels=50_000_000,
+    max_side=15_000,
     max_pages=100,
     max_metadata_bytes=1 * MIB,
     max_png_bit_depth=8,

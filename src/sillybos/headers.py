@@ -52,8 +52,11 @@ class Header:
         pages: Frames in the file (1 for an ordinary image). For a TIFF with
             more frames than `limit`, `limit + 1`: the walk stopped.
         max_pixels: The most pixels in any one frame the reader looked at.
-        complete: `False` if the walk stopped at the limit, so `pages`
-            and `max_pixels` describe only the frames it reached.
+        max_side: The longest side, in pixels, of any frame the reader
+            looked at.
+        complete: `False` if the walk stopped at the limit, so `pages`,
+            `max_pixels` and `max_side` describe only the frames it
+            reached.
         coding: For a JPEG, how its frame is coded, by a name from
             [sillybos.JPEG_FRAMES][] (`"baseline"`, `"progressive"`,
             `"lossless"`, ...). `None` for the other formats.
@@ -82,6 +85,7 @@ class Header:
     height: int
     pages: int
     max_pixels: int
+    max_side: int
     complete: bool = True
     coding: str | None = None
     compression: str | None = None
@@ -162,10 +166,18 @@ def jpeg(f: Reader, size: int, limit: int) -> Header:
     metadata = ("JPEG colour profile", profile) if profile else None
     pages = 1
     max_pixels = first.width * first.height
+    max_side = max(first.width, first.height)
     for number, offset in enumerate(pictures, start=2):
         if pages > limit:
             return Header(
-                first.width, first.height, pages, max_pixels, False, first.coding, metadata=metadata
+                first.width,
+                first.height,
+                pages,
+                max_pixels,
+                max_side,
+                False,
+                first.coding,
+                metadata=metadata,
             )
         if not 2 <= offset < size:
             raise HeaderError(f"picture {number} lies outside the file")
@@ -181,8 +193,15 @@ def jpeg(f: Reader, size: int, limit: int) -> Header:
             )
         pages += 1
         max_pixels = max(max_pixels, picture.width * picture.height)
+        max_side = max(max_side, picture.width, picture.height)
     return Header(
-        first.width, first.height, pages, max_pixels, coding=first.coding, metadata=metadata
+        first.width,
+        first.height,
+        pages,
+        max_pixels,
+        max_side,
+        coding=first.coding,
+        metadata=metadata,
     )
 
 
@@ -373,6 +392,7 @@ def png(f: Reader, size: int, limit: int) -> Header:
         height,
         pages,
         width * height,
+        max(width, height),
         metadata=metadata,
         colour=colour,
         depth=depth,
@@ -518,6 +538,7 @@ def tiff(f: Reader, size: int, limit: int) -> Header:
     tile: tuple[int, int] | None = None
     subsampling: str | None = None
     max_pixels = 0
+    max_side = 0
     pages = 0
     while offset != 0:
         if pages > limit:
@@ -529,6 +550,7 @@ def tiff(f: Reader, size: int, limit: int) -> Header:
                 first[1],
                 pages,
                 max_pixels,
+                max_side,
                 False,
                 compression=compression,
                 metadata=metadata,
@@ -662,6 +684,7 @@ def tiff(f: Reader, size: int, limit: int) -> Header:
             )
         pages += 1
         max_pixels = max(max_pixels, width * height)
+        max_side = max(max_side, width, height)
         if first is None:
             first = (width, height)
         offset = next_offset
@@ -673,6 +696,7 @@ def tiff(f: Reader, size: int, limit: int) -> Header:
         first[1],
         pages,
         max_pixels,
+        max_side,
         compression=compression,
         metadata=metadata,
         tile=tile,
