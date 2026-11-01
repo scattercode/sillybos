@@ -14,6 +14,19 @@ which fetches it at build time. It is generated, never edited::
     python scripts/advisory_record.py export     # write record.json
     python scripts/advisory_record.py export --check   # fail if record.json is stale
 
+``docs/advisories/proposed/`` holds records that have been drafted but not
+yet confirmed by a person: the same shape, written from the advisory's text
+by whoever (or whatever) read it, waiting for a maintainer to agree with the
+bucket and the finding. Nothing reads them but these two commands; the
+export never includes them, so the watch on tetrak.dev shows only what a
+person has confirmed::
+
+    python scripts/advisory_record.py proposals        # what is waiting, by bucket
+    python scripts/advisory_record.py promote KEY...   # confirm: move into record/, dated today
+
+A proposal in bucket A, B or B2 cannot be promoted until the test it names
+exists; a B finding is a policy field and a corpus case first.
+
 Standard library only, like the rest of the repository.
 """
 
@@ -30,6 +43,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent.parent
 RECORD_DIR = ROOT / "docs" / "advisories" / "record"
 RECORD_FILE = ROOT / "docs" / "advisories" / "record.json"
+PROPOSED_DIR = ROOT / "docs" / "advisories" / "proposed"
 TESTS_DIR = ROOT / "tests"
 
 #: The buckets of docs/advisories/README.md, in its words.
@@ -239,13 +253,83 @@ def is_current(record_file: Path = RECORD_FILE, record_dir: Path = RECORD_DIR) -
     return bool(current == fresh)
 
 
+def proposals(proposed_dir: Path = PROPOSED_DIR, tests_dir: Path = TESTS_DIR) -> list[str]:
+    """One line per proposal, grouped by bucket, with what still stands in its way."""
+    lines: list[str] = []
+    by_bucket: dict[str, list[tuple[str, str, list[str]]]] = {}
+    for path in sorted(proposed_dir.glob("*.json")):
+        record = load(path)
+        found = problems(record, path, tests_dir)
+        by_bucket.setdefault(str(record.get("bucket")), []).append(
+            (str(record.get("key")), str(record.get("title", "")), found)
+        )
+    for bucket in sorted(by_bucket, key=lambda b: list(BUCKETS).index(b) if b in BUCKETS else 99):
+        entries = by_bucket[bucket]
+        lines.append(f"{bucket} ({len(entries)}): {BUCKETS.get(bucket, 'unknown bucket')}")
+        for key, title, found in entries:
+            flag = f"  [{'; '.join(found)}]" if found else ""
+            lines.append(f"  {key}  {title}{flag}")
+    if not lines:
+        lines.append("nothing proposed")
+    return lines
+
+
+def promote(
+    keys: list[str],
+    today: str,
+    proposed_dir: Path = PROPOSED_DIR,
+    record_dir: Path = RECORD_DIR,
+    tests_dir: Path = TESTS_DIR,
+) -> list[str]:
+    """Confirm proposals: validate each strictly, date it today, move it into the record.
+
+    Returns the problems that stopped any of them; empty when all moved.
+    """
+    stopped: list[str] = []
+    for key in keys:
+        source = proposed_dir / f"{key}.json"
+        if not source.is_file():
+            stopped.append(f"{key}: no proposal")
+            continue
+        record = load(source)
+        record["triaged"] = today
+        record["checked"] = today
+        target = record_dir / source.name
+        found = problems(record, target, tests_dir)
+        if target.exists():
+            found.append("already in the record")
+        if found:
+            stopped.append(f"{key}: " + "; ".join(found))
+            continue
+        target.write_text(json.dumps(record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        source.unlink()
+    return stopped
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("command", choices=("validate", "export"))
+    parser.add_argument("command", choices=("validate", "export", "proposals", "promote"))
+    parser.add_argument("keys", nargs="*", help="for promote: the proposals to confirm")
     parser.add_argument("--check", action="store_true", help="export: fail if record.json is stale")
     args = parser.parse_args(argv)
+
+    if args.command == "proposals":
+        print("\n".join(proposals()))
+        return 0
+    if args.command == "promote":
+        if not args.keys:
+            print("promote: name the proposals to confirm", file=sys.stderr)
+            return 2
+        stopped = promote(args.keys, date.today().isoformat())
+        for line in stopped:
+            print(f"not promoted: {line}", file=sys.stderr)
+        moved = len(args.keys) - len(stopped)
+        if moved:
+            RECORD_FILE.write_text(render(), encoding="utf-8")
+            print(f"promoted {moved}; wrote {RECORD_FILE.relative_to(ROOT)}")
+        return 1 if stopped else 0
 
     found = validate()
     for path, lines in found.items():
