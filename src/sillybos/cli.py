@@ -1,11 +1,13 @@
-"""The ``sillybos`` command: check files, print verdicts, exit non-zero on a refusal.
+"""The `sillybos` command: check files, print verdicts, exit non-zero on a refusal.
 
-For a shell pipeline or a Dockerfile::
+For a shell pipeline or a Dockerfile:
 
-    sillybos scans/*.tif && run-the-ocr scans/
+```bash
+sillybos scans/*.tif && run-the-ocr scans/
+```
 
 Exit status 0 when every file passed, 1 when any was refused, 2 when the
-command could not do its job (a missing file, no ``pdfinfo`` for a PDF).
+command could not do its job (a missing file, no `pdfinfo` for a PDF).
 """
 
 from __future__ import annotations

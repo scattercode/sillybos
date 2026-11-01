@@ -15,8 +15,8 @@ htmlcov/
 # Written at build time by hatch-vcs; the version lives in the git tag.
 src/sillybos/_version.py
 
-# Sphinx output (docs/)
-/docs/_build/
+# Zensical output (zensical.toml)
+/site/
 
 # OS
 .DS_Store

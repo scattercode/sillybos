@@ -1,14 +1,17 @@
 # Command line reference
 
-Every flag of the `sillybos` command, generated from its parser. The
-[README](index.md#the-command) shows what a run looks like.
+Every flag of the `sillybos` command, as its own `--help` prints them,
+generated from the parser at build time. The [README](index.md#the-command)
+shows what a run looks like.
 
-```{eval-rst}
-.. automodule:: sillybos.cli
-```
+::: sillybos.cli
+    options:
+      members: false
+      show_root_heading: false
+      show_root_toc_entry: false
 
-```{argparse}
-:module: sillybos.cli
-:func: build_parser
-:prog: sillybos
+```python exec="true" result="text"
+from sillybos.cli import build_parser
+
+print(build_parser().format_help())
 ```
