@@ -31,6 +31,7 @@ def _policy(args: argparse.Namespace) -> Policy:
         for name, value in (
             ("max_bytes", args.max_bytes),
             ("max_pixels", args.max_pixels),
+            ("max_side", args.max_side),
             ("max_pages", args.max_pages),
             ("max_metadata_bytes", args.max_metadata_bytes),
             ("max_png_bit_depth", args.max_png_bit_depth),
@@ -81,6 +82,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-bytes", type=int, metavar="N", help="largest file, in bytes")
     parser.add_argument(
         "--max-pixels", type=int, metavar="N", help="most pixels in any one page or frame"
+    )
+    parser.add_argument(
+        "--max-side",
+        type=int,
+        metavar="N",
+        help="most pixels along either side of any one page, frame or tile",
     )
     parser.add_argument("--max-pages", type=int, metavar="N", help="most pages or frames")
     parser.add_argument(

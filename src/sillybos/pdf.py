@@ -85,6 +85,8 @@ class PdfHeader:
         max_pixels: The most pixels any page would render to. `None` when
             the page count was over the limit and the sizes were not asked
             for.
+        max_side: The longest side, in pixels at the render dpi, of any
+            page. `None` in the same case.
         features: Which of [sillybos.PDF_FEATURES][] the file carries, in
             that order. Attached files and launch actions are only looked
             for when the page count is within the limit.
@@ -95,6 +97,7 @@ class PdfHeader:
     width: int
     height: int
     max_pixels: int | None
+    max_side: int | None
     features: tuple[str, ...] = ()
 
 
@@ -203,13 +206,15 @@ def pdf(path: Path, policy: Policy) -> PdfHeader:
     height = round(_pixels(first.group(3), policy.render_dpi))
     if pages > policy.max_pages:
         features = _features(summary, path, policy, within_limit=False)
-        return PdfHeader(pages, encrypted, width, height, None, features)
+        return PdfHeader(pages, encrypted, width, height, None, None, features)
     listing = _pdfinfo(["-f", "1", "-l", str(pages)], path, policy.pdfinfo_timeout)
-    sizes = [
-        _pixels(w, policy.render_dpi) * _pixels(h, policy.render_dpi)
+    sides = [
+        (_pixels(w, policy.render_dpi), _pixels(h, policy.render_dpi))
         for _page, w, h in _PAGE_SIZE.findall(listing)
     ]
-    if not sizes:
+    if not sides:
         raise HeaderError("pdfinfo reported no page sizes")
     features = _features(summary, path, policy, within_limit=True)
-    return PdfHeader(pages, encrypted, width, height, round(max(sizes)), features)
+    max_pixels = round(max(w * h for w, h in sides))
+    max_side = round(max(max(w, h) for w, h in sides))
+    return PdfHeader(pages, encrypted, width, height, max_pixels, max_side, features)

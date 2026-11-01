@@ -96,6 +96,7 @@ check(path, Policy(formats={"tiff", "pdf"}, max_pages=50))
 | `formats` | jpeg, png, tiff, pdf | the same | What may pass at all. Nothing else is ever allowed, whatever the policy says |
 | `max_bytes` | 512 MiB | 128 MiB | The file. Checked before anything reads it |
 | `max_pixels` | 89,478,485 | 50,000,000 | Any one page or frame, decoded. For a PDF page, at `render_dpi`. The default is Pillow's own decompression-bomb threshold, enforced here rather than left to a global |
+| `max_side` | 30,000 | 15,000 | Either side of any one page, frame or tile. A pixel budget alone lets through a page a few pixels wide and a million tall, and an abnormally tall image is what drove libtiff's RGBA reader to write colour data to an arbitrary address (CVE-2025-9900). No scanner writes a side longer than a few tens of thousands of pixels; the default is three times the longest side in the corpus (9,933, A3 at 600 dpi) |
 | `max_pages` | 500 | 100 | Pages of a PDF, frames of a TIFF or animated PNG, pictures of a multi-picture JPEG. Also bounds the header walk itself |
 | `max_metadata_bytes` | 4 MiB | 1 MiB | The largest block of metadata in an image: a PNG chunk other than image data, a TIFF tag's out-of-line data, a JPEG colour profile across its segments. A scan carries kilobytes; a block the size of the file is where parsers' quadratic paths and allocation flaws live (CVE-2026-96643, CVE-2023-6277) |
 | `render_dpi` | 200 | 200 | What you will render PDF pages at, so a page's pixels are known before the renderer allocates them |

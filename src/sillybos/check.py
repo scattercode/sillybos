@@ -54,6 +54,8 @@ class Facts:
         max_pixels: The most pixels any one page or frame would decode to,
             or `None` if the page count was over the limit and the sizes
             were not read.
+        max_side: The longest side, in pixels, of any one page or frame;
+            `None` in the same case.
         encrypted: Whether a PDF is encrypted. Always `False` for an image.
         pages_exact: `False` when the frame walk stopped at the limit, so
             `pages` is a floor, not a count.
@@ -85,6 +87,7 @@ class Facts:
     height: int
     pages: int
     max_pixels: int | None
+    max_side: int | None
     encrypted: bool = False
     pages_exact: bool = True
     coding: str | None = None
@@ -227,6 +230,7 @@ def _facts(path: Path, fmt: str, f: headers.Reader, size: int, policy: Policy) -
             info.height,
             info.pages,
             info.max_pixels,
+            info.max_side,
             info.encrypted,
             features=info.features,
         )
@@ -237,6 +241,7 @@ def _facts(path: Path, fmt: str, f: headers.Reader, size: int, policy: Policy) -
         header.height,
         header.pages,
         header.max_pixels if header.complete else None,
+        header.max_side if header.complete else None,
         pages_exact=header.complete,
         coding=header.coding,
         compression=header.compression,
@@ -258,6 +263,10 @@ def _against_limits(facts: Facts, policy: Policy, fmt: str) -> list[str]:
             reasons.append(f"more than {policy.max_pages:,} pages, which is the limit")
     if facts.max_pixels is not None and facts.max_pixels > policy.max_pixels:
         reasons.append(f"a page of {facts.max_pixels:,} pixels; the limit is {policy.max_pixels:,}")
+    if facts.max_side is not None and facts.max_side > policy.max_side:
+        reasons.append(
+            f"a page {facts.max_side:,} pixels on its longest side; the limit is {policy.max_side:,}"
+        )
     if facts.metadata is not None and facts.metadata[1] > policy.max_metadata_bytes:
         what, size = facts.metadata
         reasons.append(f"a {what} of {size:,} bytes; the limit is {policy.max_metadata_bytes:,}")
@@ -296,6 +305,11 @@ def _against_limits(facts: Facts, policy: Policy, fmt: str) -> list[str]:
         tile_pixels = facts.tile[0] * facts.tile[1]
         if tile_pixels > policy.max_pixels:
             reasons.append(f"a tile of {tile_pixels:,} pixels; the limit is {policy.max_pixels:,}")
+        tile_side = max(facts.tile)
+        if tile_side > policy.max_side:
+            reasons.append(
+                f"a tile {tile_side:,} pixels on its longest side; the limit is {policy.max_side:,}"
+            )
     if facts.compression is not None and facts.compression not in policy.tiff_compressions:
         allowed = [name for name in TIFF_COMPRESSIONS if name in policy.tiff_compressions]
         reasons.append(
