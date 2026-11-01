@@ -159,3 +159,80 @@ class TestExport:
         _write(tmp_path, {**SOUND, "key": "CVE-2026-1002", "aliases": []})
         assert not ar.is_current(out, tmp_path)
         assert not ar.is_current(tmp_path / "missing.json", tmp_path)
+
+
+class TestTheProposals:
+    def test_every_proposal_has_the_record_shape(self) -> None:
+        """A proposal is a record awaiting a person; only the refusal's test may be missing."""
+        recorded = {ar.load(p)["key"] for p in ar.RECORD_DIR.glob("*.json")}
+        for path in sorted(ar.PROPOSED_DIR.glob("*.json")):
+            record = ar.load(path)
+            found = [
+                line
+                for line in ar.problems(record, path)
+                if "claims a refusal but refusal is null" not in line
+                and "needs at least one test" not in line
+            ]
+            assert not found, f"{path.name}: {found}"
+            assert record["key"] not in recorded, f"{path.name} is already in the record"
+            assert record["notes"], f"{path.name} must say it is a proposal"
+
+    def test_listing_groups_by_bucket_and_flags_what_is_in_the_way(self, tmp_path: Path) -> None:
+        _write(tmp_path, SOUND)
+        _write(
+            tmp_path,
+            {
+                **SOUND,
+                "key": "CVE-2026-1002",
+                "aliases": [],
+                "bucket": "B2",
+                "refusal": None,
+                "verified_by": [],
+            },
+        )
+        lines = ar.proposals(tmp_path)
+        assert lines[0].startswith("A (1)") and "CVE-2026-1001" in lines[1]
+        assert lines[2].startswith("B2 (1)") and "needs at least one test" in lines[3]
+
+    def test_an_empty_folder_says_so(self, tmp_path: Path) -> None:
+        assert ar.proposals(tmp_path) == ["nothing proposed"]
+
+    def test_promote_moves_a_sound_proposal_and_dates_it(self, tmp_path: Path) -> None:
+        proposed, record = tmp_path / "proposed", tmp_path / "record"
+        proposed.mkdir()
+        record.mkdir()
+        _write(proposed, {**SOUND, "triaged": "2026-01-01", "checked": "2026-01-01"})
+
+        assert ar.promote(["CVE-2026-1001"], "2026-11-02", proposed, record) == []
+
+        moved = ar.load(record / "CVE-2026-1001.json")
+        assert (moved["triaged"], moved["checked"]) == ("2026-11-02", "2026-11-02")
+        assert not (proposed / "CVE-2026-1001.json").exists()
+
+    def test_promote_refuses_what_is_not_ready(self, tmp_path: Path) -> None:
+        proposed, record = tmp_path / "proposed", tmp_path / "record"
+        proposed.mkdir()
+        record.mkdir()
+        _write(
+            proposed,
+            {
+                **SOUND,
+                "key": "CVE-2026-1002",
+                "aliases": [],
+                "bucket": "B",
+                "refusal": None,
+                "verified_by": [],
+            },
+        )
+        _write(record, SOUND)
+        _write(proposed, SOUND)
+
+        stopped = ar.promote(
+            ["CVE-2026-1002", "CVE-2026-1001", "CVE-2026-9999"], "2026-11-02", proposed, record
+        )
+
+        assert len(stopped) == 3
+        assert "needs at least one test" in stopped[0]
+        assert "already in the record" in stopped[1]
+        assert stopped[2] == "CVE-2026-9999: no proposal"
+        assert (proposed / "CVE-2026-1002.json").exists()
