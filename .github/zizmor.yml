@@ -1,0 +1,10 @@
+# zizmor: static analysis of the workflows themselves. Runs before push
+# (lefthook) and in CI; `uvx zizmor .github/workflows` by hand.
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        # Every action must be pinned to at least a tag. Pinning to a commit
+        # hash (which Dependabot keeps current) is the next step; raise this
+        # to hash-pin then.
+        "*": ref-pin

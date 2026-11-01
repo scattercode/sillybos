@@ -1,0 +1,7 @@
+# gitleaks: secret scanning. Runs on staged files at commit (lefthook), on
+# the full history in CI and weekly (security.yml). `gitleaks git .` scans
+# the history by hand.
+#
+# Extends the built-in rules. No allow-list yet; add paths here, never rules.
+[extend]
+useDefault = true

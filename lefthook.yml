@@ -1,0 +1,47 @@
+# Lefthook: git hooks manager. Install once with `lefthook install`; the
+# tools are `brew install lefthook gitleaks zizmor` plus the project's own
+# virtualenv (Ruff, mypy and pytest come with the dev extra). Without
+# lefthook, `git config core.hooksPath .githooks` still activates the
+# Conventional Commits check on its own.
+#
+# Security checks:
+#   ruff      includes the `S` (bandit) rules, so `ruff check` is the SAST
+#   gitleaks  secrets in the staged files, at commit
+#   zizmor    the workflows themselves, at push
+#
+# The same checks run in CI, so a missing tool here only moves the failure
+# from your commit to your pull request.
+
+pre-commit:
+  parallel: true
+  commands:
+    ruff-lint:
+      glob: "*.py"
+      run: ruff check {staged_files}
+    ruff-format:
+      glob: "*.py"
+      run: ruff format --check {staged_files}
+    # Dependency changes must land with a regenerated lockfile; CI rejects
+    # a stale one. Regenerate with `uv lock`.
+    uv-lock:
+      glob: "{pyproject.toml,uv.lock}"
+      run: uv lock --check
+    # A secret caught here never reaches the history; one caught in CI
+    # already has, and must be revoked (SECURITY.md).
+    gitleaks:
+      run: gitleaks git --pre-commit --staged --redact --no-banner .
+
+pre-push:
+  commands:
+    workflows:
+      run: zizmor --min-severity medium .github/workflows
+    tests:
+      # The project's own interpreter, not whichever `pytest` is on PATH.
+      run: if [ -x .venv/bin/python ]; then .venv/bin/python -m pytest; else pytest; fi
+    types:
+      run: if [ -x .venv/bin/python ]; then .venv/bin/python -m mypy; else mypy; fi
+
+commit-msg:
+  commands:
+    conventional:
+      run: .githooks/commit-msg {1}

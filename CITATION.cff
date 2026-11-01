@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "sillybos: decide before decoding"
+type: software
+authors:
+  - family-names: Masters
+    given-names: Stephen
+  - family-names: Mankerian
+    given-names: Yvette
+repository-code: "https://github.com/scattercode/sillybos"
+license: MIT
+keywords:
+  - security
+  - image formats
+  - PDF
+  - OCR
+  - archives
+  - decompression bomb

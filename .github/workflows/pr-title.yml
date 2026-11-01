@@ -1,0 +1,52 @@
+# The pull request title must be a Conventional Commit.
+#
+# Why this exists as its own workflow, and not as a job in ci.yml.
+#
+# Pull requests here are squash-merged, so the PR *title* becomes the commit
+# message on main -- and that message is what git-cliff reads to compute the
+# next version. A prose title is not a Conventional Commit, so it parses as
+# nothing releasable: Release runs, finds no feat or fix since the last tag,
+# exits successfully in ten seconds, and cuts nothing. Nothing fails. The
+# first visible symptom is unrelated -- the published Sphinx docs reporting a
+# dev version, because main is sitting untagged.
+#
+# That is exactly how #79 shipped ten conventional commits behind the title
+# "Close brief 012, measure the vision-language backends, and stop
+# transcribing benchmark tables", and released none of them.
+#
+# The check reuses .githooks/commit-msg, the same script the local hook runs,
+# rather than a second definition of "conventional" that would drift from it
+# -- the reason that script is shared from scattercode/release-pipelines in
+# the first place. The hook's own comment names this gap: it "runs on local
+# commits only -- dependabot and GitHub web-UI commits bypass it", and a
+# squash-merge is a web-UI commit.
+#
+# Separate from ci.yml so it reports in seconds, whatever the pull request
+# touches, and fails on its own line rather than inside a test run.
+name: PR title
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  conventional:
+    name: PR title is a Conventional Commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # Through the environment, never interpolated into the shell. A pull
+      # request title is attacker-controlled text, and `run: ... ${{ ... }}`
+      # would substitute it into the script before bash ever sees it.
+      - name: Check the title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          printf '%s\n' "$TITLE" > "$RUNNER_TEMP/pr-title"
+          ./.githooks/commit-msg "$RUNNER_TEMP/pr-title"

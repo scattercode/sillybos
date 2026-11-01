@@ -1,0 +1,247 @@
+# Automated release: the workspace pattern, shared with the sibling repositories.
+#
+# On every push/merge to main, the shared next-version action computes the next
+# semantic version from the Conventional Commit history since the last tag,
+# git-cliff prepends that version's section to CHANGELOG.md, the commit is
+# tagged, and a GitHub Release is published whose notes are that section.
+# The wheel is then built from the tag and published to PyPI with a Trusted
+# Publisher.
+#
+# The release commit is pushed by the `scattercode-release` App, the only
+# actor the main ruleset lets bypass it. That token is a real identity, so
+# unlike GITHUB_TOKEN its pushes *do* trigger workflows -- the `chore(release):`
+# guard on the job below is what stops this looping, not the token. If there
+# are no releasable commits since the last tag, the job is a no-op.
+#
+# A re-run by hand, for a tag whose build or publish failed after the tag
+# and GitHub Release already existed:
+#
+#   gh workflow run release.yml --ref main -f tag=0.2.0
+#
+# The release job is skipped and the rest runs for that tag.
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: An existing release tag to build and publish (for example 0.2.0)
+        required: true
+        type: string
+
+# Granted per job below, not here: a workflow-level grant reaches every job,
+# and only the release job pushes.
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    # Belt and braces: never react to our own release commit. A dispatch
+    # names a tag that already exists, so there is nothing to compute.
+    if: ${{ github.event_name == 'push' && !startsWith(github.event.head_commit.message, 'chore(release):') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      released: ${{ steps.version.outputs.release }}
+      version: ${{ steps.version.outputs.next }}
+    steps:
+      # A token for the `scattercode-release` GitHub App, which is the only
+      # actor allowed to bypass main's ruleset. GITHUB_TOKEN cannot be given
+      # that permission -- GitHub Actions is not an installable app, so it has
+      # no identity a ruleset can name. The App holds Contents: write and
+      # nothing else, so the worst it can do is commit and tag.
+      - name: Mint a release token
+        id: app_token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.RELEASE_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          # Scoped to what the job uses, even though the installation grants
+          # no more: a token minted without this inherits whatever the App
+          # is later given.
+          permission-contents: write
+
+      # The committer line needs the App's bot *user* id, which is not any of
+      # the ids the token action returns -- `installation-id` is a different
+      # number, and a commit carrying it is attributed to nobody.
+      - name: Identify the App's bot user
+        id: bot
+        env:
+          GH_TOKEN: ${{ steps.app_token.outputs.token }}
+          SLUG: ${{ steps.app_token.outputs.app-slug }}
+        run: |
+          set -euo pipefail
+          echo "id=$(gh api "/users/${SLUG}[bot]" --jq .id)" >> "$GITHUB_OUTPUT"
+
+      - name: Check out full history
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          # Persisted so the push below goes out as the App rather than as
+          # GITHUB_TOKEN, which the ruleset would refuse.
+          token: ${{ steps.app_token.outputs.token }}
+
+      - name: Install git-cliff
+        uses: taiki-e/install-action@v2
+        with:
+          tool: git-cliff
+
+      # Shared with every other repository whose releases are automated.
+      - name: Compute next version
+        id: version
+        uses: scattercode/release-pipelines/actions/next-version@v1
+
+      - name: Guard against a silently skipped release
+        if: steps.version.outputs.release != 'true'
+        run: |
+          latest="$(git describe --tags --abbrev=0 2>/dev/null || echo '')"
+          echo "No releasable change since ${latest:-repo start}."
+          # A merge to main carrying a feat or fix must produce a release. If
+          # one does not, that is the failure this job exists to catch.
+          if git log --no-merges --format='%s' "${latest:+$latest..}HEAD" \
+               | grep -qE '^(feat|fix|perf|revert)(\([^)]*\))?!?:'; then
+            echo "::error::Releasable commits are present but no version was computed."
+            exit 1
+          fi
+
+      - name: Update changelog, tag and release
+        if: steps.version.outputs.release == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.next }}
+          GH_TOKEN: ${{ github.token }}
+          # Passed through the environment rather than expanded into the
+          # script: an expression inside `run:` is pasted into the shell
+          # before it runs, which is how workflow injection happens.
+          BRANCH: ${{ github.ref_name }}
+          APP_SLUG: ${{ steps.app_token.outputs.app-slug }}
+          BOT_ID: ${{ steps.bot.outputs.id }}
+        run: |
+          set -euo pipefail
+
+          # The very first release predates the changelog: git-cliff's
+          # --prepend errors on a missing file but handles an empty one
+          # correctly (header, then the new section).
+          touch CHANGELOG.md
+
+          # --prepend, not --output: regenerating the whole changelog re-runs
+          # git-cliff's release bucketing over the entire history, which is
+          # exactly what is unreliable on merge topology.
+          git cliff --tag "$VERSION" --unreleased --prepend CHANGELOG.md
+          git cliff --tag "$VERSION" --unreleased --strip all --output RELEASE_NOTES.md
+
+          git config user.name  "${APP_SLUG}[bot]"
+          git config user.email "${BOT_ID}+${APP_SLUG}[bot]@users.noreply.github.com"
+
+          git add CHANGELOG.md
+          git commit -m "chore(release): ${VERSION#v}"
+          git tag -a "$VERSION" -m "$VERSION"
+
+          # One atomic push, so the branch and the tag land together. A pull
+          # request merged into main while this job is running makes this
+          # push non-fast-forward and the job fails here; because nothing
+          # after it has run, re-running the job is a clean redo.
+          git push --atomic origin "HEAD:${BRANCH}" "$VERSION"
+
+          gh release create "$VERSION" --title "$VERSION" --notes-file RELEASE_NOTES.md
+
+  # One place that says which tag, if any, the rest of the workflow ships:
+  # the tag the release job just pushed, or the one a dispatch named.
+  tag:
+    needs: release
+    if: ${{ always() && !cancelled() }}
+    runs-on: ubuntu-latest
+    outputs:
+      released: ${{ steps.pick.outputs.released }}
+      version: ${{ steps.pick.outputs.version }}
+    steps:
+      - id: pick
+        env:
+          DISPATCHED_TAG: ${{ inputs.tag }}
+          RELEASED: ${{ needs.release.outputs.released }}
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          if [ -n "$DISPATCHED_TAG" ]; then
+            echo "released=true" >> "$GITHUB_OUTPUT"
+            echo "version=$DISPATCHED_TAG" >> "$GITHUB_OUTPUT"
+          else
+            echo "released=${RELEASED:-false}" >> "$GITHUB_OUTPUT"
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Build the sdist and wheel from the exact tag. A fresh checkout at the
+  # tag is what makes hatch-vcs produce a clean X.Y.Z. `!cancelled()` on
+  # this and the next gate, not a bare output check: a job whose `if` names
+  # no status function gets an implicit success(), which is false when the
+  # release job was skipped, as it is on every dispatch.
+  build:
+    needs: tag
+    if: ${{ !cancelled() && needs.tag.outputs.released == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.tag.outputs.version }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      # A dispatched tag could be a branch name or a typo, and
+      # actions/checkout would check either out without complaint.
+      - name: Check the ref is a tag
+        run: git describe --exact-match --tags HEAD
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Build sdist and wheel
+        run: |
+          python -m pip install --upgrade build twine
+          python -m build
+
+      # Fails on a README that will not render on PyPI, or missing metadata.
+      - name: Check distribution metadata
+        run: twine check --strict dist/*
+
+      # Install the *wheel* into a clean interpreter and run it. This catches
+      # files that work from `pip install -e .` but were left out of the wheel.
+      - name: Smoke-test the wheel
+        env:
+          VERSION: ${{ needs.tag.outputs.version }}
+        run: |
+          python -m venv /tmp/smoke
+          /tmp/smoke/bin/pip install --quiet dist/*.whl
+          /tmp/smoke/bin/python -c "import os, sillybos; v = os.environ['VERSION'].removeprefix('v'); assert sillybos.__version__ == v, (sillybos.__version__, v); print(sillybos.__version__)"
+          printf '%%!PS-Adobe-3.0 EPSF-3.0\n' > /tmp/page.png
+          if /tmp/smoke/bin/sillybos /tmp/page.png; then echo "::error::a PostScript file passed"; exit 1; fi
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+
+  # Upload with a Trusted Publisher. No token is stored anywhere: the job
+  # proves its identity to PyPI with a short-lived OIDC token, which is why
+  # id-token: write is the only permission it needs. Attestations (PEP 740)
+  # are generated and uploaded by the action automatically.
+  publish:
+    needs: [tag, build]
+    if: ${{ !cancelled() && needs.tag.outputs.released == 'true' && needs.build.result == 'success' }}
+    runs-on: ubuntu-latest
+    environment: pypi          # must match the name registered on PyPI
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1

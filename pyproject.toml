@@ -1,0 +1,127 @@
+[build-system]
+requires = ["hatchling>=1.27", "hatch-vcs"]   # 1.27+ understands PEP 639
+build-backend = "hatchling.build"
+
+[project]
+name = "sillybos"
+# Derived from the git tag via hatch-vcs: release.yml computes each version
+# from the commit history and tags it, so a literal here would be a second
+# source of truth that nothing updates.
+dynamic = ["version"]
+description = "Decide before decoding: check that a file is a JPEG, PNG, TIFF or PDF within your limits before any image library or PDF renderer opens it"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Stephen Masters" },
+    { name = "Yvette Mankerian" },
+]
+keywords = [
+    "security",
+    "image",
+    "pdf",
+    "ocr",
+    "scans",
+    "pillow",
+    "poppler",
+    "decompression-bomb",
+    "file-validation",
+    "archives",
+    "libraries",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Security",
+    "Typing :: Typed",
+]
+# None. The check runs no decoder, so it needs none; the image headers are
+# read with code of its own, and a PDF is asked about through poppler's
+# pdfinfo in a separate process. A security library that pulled in the
+# libraries it exists to guard would defeat itself.
+dependencies = []
+
+[project.optional-dependencies]
+# open_checked: the check followed by Image.open with only the allowed readers.
+pillow = ["pillow>=13.0"]
+dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.5", "mypy>=1.10", "pillow>=13.0"]
+
+[project.scripts]
+sillybos = "sillybos.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/scattercode/sillybos"
+Source = "https://github.com/scattercode/sillybos"
+Changelog = "https://github.com/scattercode/sillybos/blob/main/CHANGELOG.md"
+Issues = "https://github.com/scattercode/sillybos/issues"
+Tetrak = "https://tetrak.dev/"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+# Writes the resolved version into the package at build time, so an installed
+# copy can report it without git present. Generated, therefore gitignored.
+version-file = "src/sillybos/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sillybos"]
+
+[tool.ruff]
+line-length = 100
+
+# Declared explicitly rather than left to ruff's defaults, which differ
+# between ruff versions. Same arrangement as the sibling repositories, plus
+# the S (bandit) rules: this is a security library, so its own code is held
+# to them.
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # import sorting
+    "UP",  # pyupgrade
+    "B",   # bugbear
+    "RUF", # ruff's own: stale noqa, unsorted __all__, mutable class defaults
+    "S",   # bandit: subprocess, asserts, unsafe parsers
+]
+ignore = [
+    # Line length is enforced by `ruff format`.
+    "E501",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert, and build hostile files by hand.
+"tests/**" = ["S101"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["sillybos"]
+
+[tool.mypy]
+strict = true
+files = ["src/sillybos", "tests"]
+mypy_path = "src"
+
+[[tool.mypy.overrides]]
+module = ["PIL", "PIL.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["sillybos"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true

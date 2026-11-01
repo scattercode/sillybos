@@ -1,0 +1,65 @@
+# Weekly security scans -- the same checks CI runs on every push, repeated
+# on a schedule so that CVEs disclosed *between* pushes are caught while
+# the repository is quiet:
+#
+#   Trivy       fixed HIGH/CRITICAL vulnerabilities in what uv.lock resolves
+#   zizmor      the workflows themselves
+#   gitleaks    secrets anywhere in the history
+name: Security
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trivy:
+    name: Trivy scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Scan for vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: library
+          severity: HIGH,CRITICAL
+
+  security:
+    name: Workflows and secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Workflows
+        run: uvx zizmor --min-severity medium .github/workflows
+
+      # The gitleaks binary rather than gitleaks/gitleaks-action, which
+      # needs a licence key (GITLEAKS_LICENSE) in a repository owned by an
+      # organisation. Pinned to a release and its checksum.
+      - name: Secrets in the history
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          set -euo pipefail
+          tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSLO "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${tarball}"
+          echo "${GITLEAKS_SHA256}  ${tarball}" | sha256sum --check -
+          tar -xzf "$tarball" gitleaks
+          ./gitleaks git --no-banner --redact --verbose .
