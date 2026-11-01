@@ -34,9 +34,13 @@ code touches it. So:
   bounded code. Never replace a reader with a call into Pillow, `imageio`
   or anything else that decodes; never import Pillow outside
   `sillybos/pillow.py`, which is the optional extra.
-- A PDF is asked about through `pdfinfo` in a subprocess with a timeout.
-  Never add a PDF parser as a dependency, and never read a PDF's objects
-  with code here.
+- A PDF is asked about through `pdfinfo` and `pdfdetach` in a subprocess
+  with a timeout. Never add a PDF parser as a dependency, and never read a
+  PDF's objects with code here. The one thing this code does read from a
+  PDF's bytes is the *name* of a launch action, by a bounded search for
+  its spelling (`pdf.py`, `_has_launch_action`), because no poppler tool
+  reports one; a search for bytes is not a parser, and it must stay that
+  way.
 - The library has **no runtime dependencies**, and `[project] dependencies`
   stays `[]`. Everything else goes in an extra.
 - Every read of a file is bounded by a constant or by the policy, and every

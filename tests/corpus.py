@@ -317,15 +317,26 @@ def pdf(
     height_pts: float = 842,
     *,
     sizes: list[tuple[float, float]] | None = None,
+    catalog: str = "",
+    objects: list[bytes] | None = None,
 ) -> bytes:
-    """A minimal but well-formed PDF: ``pages`` empty pages of the given size, with an xref."""
+    """A minimal but well-formed PDF: ``pages`` empty pages of the given size, with an xref.
+
+    ``catalog`` is appended inside the catalogue dictionary and ``objects``
+    are added after the pages, numbered from ``pages + 3``, so a test can
+    give the document a feature a scan never has (see :func:`pdf_with`).
+    """
     per_page = sizes or [(width_pts, height_pts)] * pages
-    objects: list[bytes] = []
+    extra = objects or []
     kids = " ".join(f"{3 + i} 0 R" for i in range(pages))
-    objects.append(b"<< /Type /Catalog /Pages 2 0 R >>")
-    objects.append(f"<< /Type /Pages /Kids [{kids}] /Count {pages} >>".encode())
+    parts: list[bytes] = [
+        f"<< /Type /Catalog /Pages 2 0 R {catalog} >>".encode(),
+        f"<< /Type /Pages /Kids [{kids}] /Count {pages} >>".encode(),
+    ]
     for w, h in per_page:
-        objects.append(f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {w:g} {h:g}] >>".encode())
+        parts.append(f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {w:g} {h:g}] >>".encode())
+    parts.extend(extra)
+    objects = parts
     out = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
     offsets = []
     for number, body in enumerate(objects, start=1):
@@ -345,3 +356,64 @@ def pdf(
 def write(path: Path, data: bytes) -> Path:
     path.write_bytes(data)
     return path
+
+
+def pdf_with(feature: str, pages: int = 1) -> bytes:
+    """A one-page PDF carrying one of the features a scanned book never has.
+
+    ``javascript`` and ``launch`` are open-document actions; ``escaped-javascript``
+    is the same JavaScript action with its name written in ``#xx`` escapes;
+    ``escaped-launch`` likewise; ``forms`` is an AcroForm with one text field;
+    ``attachments`` is one embedded file.
+    """
+    first = pages + 3
+    if feature == "javascript":
+        return pdf(
+            pages,
+            catalog=f"/OpenAction {first} 0 R",
+            objects=[
+                b"<< /Type /Action /S /JavaScript /JS (app.alert('hello');) >>",
+            ],
+        )
+    if feature == "escaped-javascript":
+        return pdf(
+            pages,
+            catalog=f"/OpenAction {first} 0 R",
+            objects=[
+                b"<< /Type /Action /S /#4Aava#53cript /JS (app.alert('hello');) >>",
+            ],
+        )
+    if feature == "launch":
+        return pdf(
+            pages,
+            catalog=f"/OpenAction {first} 0 R",
+            objects=[
+                b"<< /Type /Action /S /Launch /F (cmd.exe) >>",
+            ],
+        )
+    if feature == "escaped-launch":
+        return pdf(
+            pages,
+            catalog=f"/OpenAction {first} 0 R",
+            objects=[
+                b"<< /Type /Action /S /L#61unc#68 /F (cmd.exe) >>",
+            ],
+        )
+    if feature == "forms":
+        return pdf(
+            pages,
+            catalog=f"/AcroForm << /Fields [{first} 0 R] >>",
+            objects=[
+                b"<< /FT /Tx /T (name) /Rect [0 0 10 10] /Subtype /Widget /Type /Annot >>",
+            ],
+        )
+    if feature == "attachments":
+        return pdf(
+            pages,
+            catalog=f"/Names << /EmbeddedFiles << /Names [(payload.exe) {first} 0 R] >> >>",
+            objects=[
+                f"<< /Type /Filespec /F (payload.exe) /EF << /F {first + 1} 0 R >> >>".encode(),
+                b"<< /Type /EmbeddedFile /Length 5 >>\nstream\nhello\nendstream",
+            ],
+        )
+    raise ValueError(feature)

@@ -313,6 +313,50 @@ class TestPdf:
         verdict = check(corpus.write(tmp_path / "long.pdf", corpus.pdf(150)), STRICT)
         assert verdict.reasons == ("150 pages; the limit is 100",)
 
+    def test_a_plain_pdf_carries_no_features(self, tmp_path: Path) -> None:
+        verdict = check(corpus.write(tmp_path / "plain.pdf", corpus.pdf(1)))
+        assert verdict.ok and verdict.facts is not None and verdict.facts.features == ()
+
+    @pytest.mark.parametrize(
+        ("feature", "found", "words"),
+        [
+            ("javascript", "javascript", "JavaScript"),
+            ("escaped-javascript", "javascript", "JavaScript"),
+            ("forms", "forms", "a form"),
+            ("attachments", "attachments", "attached files"),
+            ("launch", "launch", "a launch action"),
+            ("escaped-launch", "launch", "a launch action"),
+        ],
+    )
+    def test_a_pdf_with_a_feature_a_scan_never_has(
+        self, tmp_path: Path, feature: str, found: str, words: str
+    ) -> None:
+        path = corpus.write(tmp_path / "doc.pdf", corpus.pdf_with(feature))
+
+        verdict = check(path)
+
+        assert verdict.reasons == (
+            f"a PDF with {words}; the policy allows none of the features a PDF can carry",
+        )
+        assert verdict.facts is not None and verdict.facts.features == (found,)
+        assert check(path, Policy(pdf_features=frozenset({found}))).ok
+
+    def test_the_policy_names_what_it_allows(self, tmp_path: Path) -> None:
+        path = corpus.write(tmp_path / "form.pdf", corpus.pdf_with("forms"))
+        verdict = check(path, Policy(pdf_features=frozenset({"javascript", "attachments"})))
+        assert verdict.reasons == (
+            "a PDF with a form; the policy allows JavaScript and attached files",
+        )
+
+    def test_a_long_pdf_still_reports_what_the_summary_shows(self, tmp_path: Path) -> None:
+        """Over the page limit nothing more is asked of the file, but what pdfinfo already said is kept."""
+        path = corpus.write(tmp_path / "long.pdf", corpus.pdf_with("javascript", pages=3))
+        verdict = check(path, Policy(max_pages=2))
+        assert verdict.reasons == (
+            "3 pages; the limit is 2",
+            "a PDF with JavaScript; the policy allows none of the features a PDF can carry",
+        )
+
 
 class TestPolicy:
     def test_presets(self) -> None:
@@ -338,6 +382,7 @@ class TestPolicy:
             ({"png_colour_types": frozenset()}, "at least one PNG colour type"),
             ({"max_png_bit_depth": 12}, "must be 1, 2, 4, 8 or 16"),
             ({"pdfinfo_timeout": 0}, "must be positive"),
+            ({"pdf_features": frozenset({"macros"})}, "unknown PDF feature"),
         ],
     )
     def test_refuses_an_impossible_policy(self, changes: dict[str, object], reason: str) -> None:
