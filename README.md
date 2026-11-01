@@ -17,9 +17,10 @@ opens a file: *is this one of the formats I mean to read, within the limits
 I expect, and if not, why?* It names the format from the file's first bytes,
 whatever the file is called; reads the header of a JPEG, PNG or TIFF with a
 few dozen lines of its own, never a decoder's; asks poppler's `pdfinfo`, in
-a separate process with a time limit, how many pages a PDF has and how large
-they are; and refuses, in a plain sentence, anything outside the policy you
-give it.
+a separate process with a time limit, how many pages a PDF has, how large
+they are and whether it carries JavaScript, a form, attached files or a
+launch action; and refuses, in a plain sentence, anything outside the
+policy you give it.
 
 > **Status: alpha.** The API is small and may still move. It is in use in
 > [Tetrak OCR](https://tetrak.dev/), which is where it came from.
@@ -108,6 +109,7 @@ check(path, Policy(formats={"tiff", "pdf"}, max_pages=50))
 | `tiff_compressions` | none, ccitt, lzw, jpeg, deflate, packbits | the same | How a TIFF may be compressed, by name. The other codecs in libtiff are where most of its flaws have been found (PixarLog most recently, CVE-2026-12912), and a scan never needs them. A code the library does not know is refused whatever the policy says, and every frame must use the same scheme |
 | `jpeg_frames` | baseline, extended, progressive | the same | How a JPEG's frame may be coded. Lossless, hierarchical and arithmetic frames are legal JPEG that no scanner writes and the decoder's least-exercised code; a lossless frame was the way into a heap overflow in Pillow's JPEG decoder (CVE-2026-112403) |
 | `allow_encrypted_pdf` | no | no | A scanned book is never encrypted |
+| `pdf_features` | none | none | Which of JavaScript, forms, attached files and launch actions a PDF may carry. Each makes a viewer do something other than draw the page, and a scanned book has none. Forms are read from `pdfinfo`'s report and attached files from `pdfdetach`'s; a launch action is found by its name in the file, since no poppler tool reports one; JavaScript is looked for both ways |
 | `pdfinfo_timeout` | 30 s | 30 s | How long `pdfinfo` may take before the file is refused |
 
 The defaults were set from a real corpus of archival scans (largest page 39
@@ -143,6 +145,7 @@ ok       scans/page-001.tif  (TIFF, 4960x7016, 1 page, 1.6 MB)
 refused  scans/page-002.png  says PNG, is PostScript
 refused  scans/poster.jpg    a page of 1,200,000,000 pixels; the limit is 89,478,485
 refused  scans/report.pdf    1,412 pages; the limit is 500
+refused  scans/form.pdf      a PDF with JavaScript and a form; the policy allows none of the features a PDF can carry
 ```
 
 Exit status 0 when every file passed, 1 when any was refused, 2 when the
@@ -150,7 +153,7 @@ command could not do its job. `--strict`, `--formats`, `--max-pages`,
 `--max-pixels`, `--max-bytes`, `--max-metadata-bytes`, `--jpeg-frames`,
 `--tiff-compressions`, `--tiff-photometrics`, `--tiff-subsamplings`,
 `--no-tiled-tiff`, `--png-colour-types`, `--max-png-bit-depth`,
-`--interlaced-png` and `--any-name` adjust the policy; `--json`
+`--interlaced-png`, `--pdf-features` and `--any-name` adjust the policy; `--json`
 prints one object per line for a pipeline; `-q` prints only refusals.
 
 ## What it does, exactly
@@ -180,8 +183,12 @@ prints one object per line for a pipeline; `-q` prints only refusals.
    been, so that one that loops or points off the end of the file is a
    refusal, not a hang. Every read is bounded and
    every offset is checked against the file's size. For a PDF,
-   `pdfinfo` reports the page count, whether it is encrypted and, if the
-   count is within the limit, every page's size.
+   `pdfinfo` reports the page count, whether it is encrypted, whether it
+   carries JavaScript or a form and, if the count is within the limit,
+   every page's size; `pdfdetach` reports attached files; and a bounded
+   scan of the bytes finds the name of a launch action, and of JavaScript
+   that an older poppler does not report, with the `#xx` escapes a name
+   may hide behind undone.
 5. **The limits**, against what the header said.
 
 ## What it does not do

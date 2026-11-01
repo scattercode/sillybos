@@ -30,6 +30,7 @@ from sillybos.policy import (
     DEFAULT,
     FORMATS,
     JPEG_FRAMES,
+    PDF_FEATURES,
     PNG_COLOUR_TYPES,
     TIFF_COMPRESSIONS,
     TIFF_PHOTOMETRICS,
@@ -74,6 +75,9 @@ class Facts:
             a TIFF in strips and for the other formats.
         subsampling: A YCbCr TIFF's chroma subsampling, horizontal by
             vertical, as `"2x2"`; `None` otherwise.
+        features: Which of [sillybos.PDF_FEATURES][] a PDF carries:
+            JavaScript, a form, attached files, a launch action. Empty for
+            an image and for a PDF with none.
     """
 
     bytes: int
@@ -91,6 +95,7 @@ class Facts:
     interlaced: bool = False
     tile: tuple[int, int] | None = None
     subsampling: str | None = None
+    features: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -216,7 +221,15 @@ def _wrong_format(fmt: str | None, claimed: str | None, policy: Policy) -> str:
 def _facts(path: Path, fmt: str, f: headers.Reader, size: int, policy: Policy) -> Facts:
     if fmt == "pdf":
         info = read_pdf(path, policy)
-        return Facts(size, info.width, info.height, info.pages, info.max_pixels, info.encrypted)
+        return Facts(
+            size,
+            info.width,
+            info.height,
+            info.pages,
+            info.max_pixels,
+            info.encrypted,
+            features=info.features,
+        )
     header = headers.READERS[fmt](f, size, policy.max_pages)
     return Facts(
         size,
@@ -250,6 +263,12 @@ def _against_limits(facts: Facts, policy: Policy, fmt: str) -> list[str]:
         reasons.append(f"a {what} of {size:,} bytes; the limit is {policy.max_metadata_bytes:,}")
     if facts.encrypted and not policy.allow_encrypted_pdf:
         reasons.append("the PDF is encrypted")
+    refused_features = [name for name in facts.features if name not in policy.pdf_features]
+    if refused_features:
+        found = _listed([_FEATURE_WORDS[name] for name in refused_features])
+        allowed = [_FEATURE_WORDS[name] for name in PDF_FEATURES if name in policy.pdf_features]
+        permits = _listed(allowed) if allowed else "none of the features a PDF can carry"
+        reasons.append(f"a PDF with {found}; the policy allows {permits}")
     if facts.coding is not None and facts.coding not in policy.jpeg_frames:
         allowed = [name for name in JPEG_FRAMES if name in policy.jpeg_frames]
         article = "an" if facts.coding[0] in "aeiou" else "a"
@@ -283,6 +302,14 @@ def _against_limits(facts: Facts, policy: Policy, fmt: str) -> list[str]:
             f"a {facts.compression}-compressed TIFF; the policy allows {_listed(allowed)}"
         )
     return reasons
+
+
+_FEATURE_WORDS = {
+    "javascript": "JavaScript",
+    "forms": "a form",
+    "attachments": "attached files",
+    "launch": "a launch action",
+}
 
 
 def _listed(names: list[str]) -> str:

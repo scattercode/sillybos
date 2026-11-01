@@ -84,3 +84,61 @@ def test_no_page_sizes_in_the_listing(tmp_path: Path, monkeypatch: pytest.Monkey
     )
     with pytest.raises(HeaderError, match="no page sizes"):
         pdf_module.pdf(tmp_path / "a.pdf", Policy())
+
+
+def test_a_missing_pdfdetach_is_a_configuration_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    real_which = shutil.which
+    monkeypatch.setattr(
+        shutil, "which", lambda name: None if name == "pdfdetach" else real_which(name)
+    )
+    if real_which("pdfinfo") is None:
+        pytest.skip("pdfinfo (poppler)")
+    with pytest.raises(PdfInfoMissing, match="pdfdetach"):
+        check(corpus.write(tmp_path / "a.pdf", corpus.pdf(1)))
+
+
+@pytest.mark.parametrize(
+    ("escaped", "spelling"),
+    [
+        (b"/Launch", True),
+        (b"/L#61unch", True),
+        (b"/#4c#61#75#6e#63#68", True),
+        (b"/Launcher", False),
+        (b"/Launch2", False),
+        (b"Launch", False),
+    ],
+)
+def test_the_launch_scan_reads_names_however_they_are_escaped(
+    tmp_path: Path, escaped: bytes, spelling: bool
+) -> None:
+    path = tmp_path / "a.pdf"
+    path.write_bytes(b"%PDF-1.4\n1 0 obj << /S " + escaped + b" >> endobj\n")
+    assert pdf_module._has_launch_action(path) is spelling
+
+
+def test_the_launch_scan_sees_a_name_across_a_chunk_boundary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(pdf_module, "_SCAN_CHUNK", 16)
+    path = tmp_path / "a.pdf"
+    path.write_bytes(b"%PDF-1.4\n<< /S /Launch /F (x) >>")  # "/Launch" straddles byte 16
+    assert pdf_module._has_launch_action(path)
+
+
+@needs_pdfinfo
+def test_javascript_is_found_by_name_when_pdfinfo_does_not_report_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """poppler before 26 says `JavaScript: no` for a script on an open action; the name scan still sees it."""
+    real = pdf_module._pdfinfo
+
+    def older(args: list[str], path: Path, timeout: float) -> str:
+        return re.sub(
+            r"^JavaScript:\s+yes", "JavaScript:     no", real(args, path, timeout), flags=re.M
+        )
+
+    monkeypatch.setattr(pdf_module, "_pdfinfo", older)
+    verdict = check(corpus.write(tmp_path / "scripted.pdf", corpus.pdf_with("javascript")))
+    assert verdict.facts is not None and verdict.facts.features == ("javascript",)

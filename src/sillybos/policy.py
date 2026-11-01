@@ -83,6 +83,12 @@ PNG_COLOUR_TYPES: tuple[str, ...] = ("greyscale", "rgb", "palette", "greyscale-a
 """Every colour type a PNG can have, by name. A scanner writes greyscale or
 RGB; the palette paths are where several of libpng's recent flaws were."""
 
+PDF_FEATURES: tuple[str, ...] = ("javascript", "forms", "attachments", "launch")
+"""Everything a PDF can carry that makes a viewer do something other than
+draw the page: JavaScript, an interactive form, attached (embedded) files, and
+a launch action that runs a program. A scanned book has none of them, so the
+default policy refuses them all; a policy names the ones it will pass."""
+
 MIB = 1024 * 1024
 
 
@@ -160,6 +166,16 @@ class Policy:
             file must use the same scheme.
         allow_encrypted_pdf: Pass a PDF that `pdfinfo` reports as
             encrypted. A scanned book never is, so the default refuses.
+        pdf_features: Which of [PDF_FEATURES][sillybos.PDF_FEATURES] a PDF may carry:
+            JavaScript, a form, attached files, a launch action. Each is a
+            way for a document to make the viewer act rather than draw, and
+            a scanned book has none, so the default allows none. Forms are
+            read from `pdfinfo`'s report and attached files from
+            `pdfdetach`'s, both of which see inside compressed object
+            streams; a launch action is found by its name in the file,
+            since no poppler tool reports one, so an action hidden in a
+            compressed stream is not seen; JavaScript is looked for both
+            ways.
         pdfinfo_timeout: Seconds to give `pdfinfo` before giving up on a
             PDF, which is then refused. A crafted file can make a parser
             loop; a limit turns that into one file's failure.
@@ -189,6 +205,7 @@ class Policy:
         default_factory=lambda: frozenset({"none", "ccitt", "lzw", "jpeg", "deflate", "packbits"})
     )
     allow_encrypted_pdf: bool = False
+    pdf_features: frozenset[str] = frozenset()
     pdfinfo_timeout: float = 30.0
 
     def __post_init__(self) -> None:
@@ -230,6 +247,11 @@ class Policy:
                 )
             if not chosen:
                 raise ValueError(f"a policy must allow at least one {what}")
+        unknown = set(self.pdf_features) - set(PDF_FEATURES)
+        if unknown:
+            raise ValueError(
+                f"unknown PDF feature(s) {sorted(unknown)}; the features are {', '.join(PDF_FEATURES)}"
+            )
         for name in ("max_bytes", "max_pixels", "max_pages", "max_metadata_bytes", "render_dpi"):
             if getattr(self, name) < 1:
                 raise ValueError(f"{name} must be at least 1")

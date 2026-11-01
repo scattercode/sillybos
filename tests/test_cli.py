@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -93,3 +94,11 @@ def test_version() -> None:
     with pytest.raises(SystemExit) as stop:
         main(["--version"])
     assert stop.value.code == 0
+
+
+@pytest.mark.skipif(shutil.which("pdfinfo") is None, reason="pdfinfo (poppler)")
+def test_pdf_features_can_be_allowed(tmp_path: Path) -> None:
+    scripted = corpus.write(tmp_path / "scripted.pdf", corpus.pdf_with("javascript"))
+    assert main([str(scripted)]) == 1
+    assert main(["--pdf-features", "javascript", str(scripted)]) == 0
+    assert main(["--pdf-features", "forms", str(scripted)]) == 1

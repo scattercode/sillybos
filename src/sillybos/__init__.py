@@ -10,9 +10,10 @@ expect, and if not, why?*
 
 It reads the first bytes to learn what the file really is, whatever its name
 says; reads the header of a JPEG, PNG or TIFF with code of its own, never a
-decoder's; asks poppler's `pdfinfo`, in a separate process, how many pages
-a PDF has and how large they are; and refuses, with a reason in plain words,
-anything outside a [Policy][sillybos.Policy].
+decoder's; asks poppler's `pdfinfo` and `pdfdetach`, in a separate process,
+how many pages a PDF has, how large they are and whether it carries
+JavaScript, a form or attached files; and refuses, with a reason in plain
+words, anything outside a [Policy][sillybos.Policy].
 
 ```python
 from sillybos import check
@@ -34,6 +35,7 @@ from sillybos.policy import (
     DEFAULT,
     FORMATS,
     JPEG_FRAMES,
+    PDF_FEATURES,
     PNG_COLOUR_TYPES,
     STRICT,
     TIFF_COMPRESSIONS,
@@ -51,6 +53,7 @@ __all__ = [
     "DEFAULT",
     "FORMATS",
     "JPEG_FRAMES",
+    "PDF_FEATURES",
     "PNG_COLOUR_TYPES",
     "STRICT",
     "TIFF_COMPRESSIONS",

@@ -44,6 +44,8 @@ chooses from it.
 
 ::: sillybos.JPEG_FRAMES
 
+::: sillybos.PDF_FEATURES
+
 ::: sillybos.PNG_COLOUR_TYPES
 
 ::: sillybos.TIFF_COMPRESSIONS

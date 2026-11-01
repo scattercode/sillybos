@@ -53,6 +53,8 @@ def _policy(args: argparse.Namespace) -> Policy:
         changes["tiff_photometrics"] = frozenset(args.tiff_photometrics.split(","))
     if args.tiff_subsamplings:
         changes["tiff_subsamplings"] = frozenset(args.tiff_subsamplings.split(","))
+    if args.pdf_features:
+        changes["pdf_features"] = frozenset(args.pdf_features.split(","))
     if args.any_name:
         changes["name_must_match"] = False
     return dataclasses.replace(base, **changes) if changes else base
@@ -132,6 +134,14 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "comma-separated TIFF compression schemes to allow, by name "
             "(default: none,ccitt,lzw,jpeg,deflate,packbits)"
+        ),
+    )
+    parser.add_argument(
+        "--pdf-features",
+        metavar="LIST",
+        help=(
+            "comma-separated PDF features to allow, from "
+            "javascript,forms,attachments,launch (default: none)"
         ),
     )
     parser.add_argument(
