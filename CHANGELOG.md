@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] - 2026-11-01
+
+### Changed
+
+- Hold sittybos, sittybus and sillybus on PyPI as pointers at sillybos
+- Tidy the pointer packages before their one-off upload
+- The recipe for decoding in a box
+- Propose records for the 101 advisories since 2025, for a person to confirm
+- Allow the advisory record's key field through gitleaks
+- Hold every page, frame and tile to max_side on its longest side
+
+### Fixed
+
+- Fuzz the header readers, briefly on every pull request and for ten minutes a week
+
 ## [3.0.0] - 2026-11-01
 
 ### Changed
