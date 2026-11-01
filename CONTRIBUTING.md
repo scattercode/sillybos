@@ -58,6 +58,7 @@ mypy
 pytest --cov
 uv lock --check                           # the lockfile matches pyproject.toml
 zensical build --clean --strict           # the docs, with the docs extra
+python scripts/fuzz_headers.py --seconds 60   # the header readers against damaged files
 gitleaks git --no-banner --redact .       # secrets in the history
 uvx zizmor --min-severity medium .github/workflows
 ```

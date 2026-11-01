@@ -21,5 +21,9 @@ src/sillybos/_version.py
 # OS
 .DS_Store
 
+# Inputs the fuzzer found a reader could not handle (scripts/fuzz_headers.py):
+# turn each into a test, never commit the bytes.
+/fuzz-findings/
+
 # Local secrets (the PyPI token for the one-off pointer uploads)
 .env
