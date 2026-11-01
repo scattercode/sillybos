@@ -586,6 +586,44 @@
     {
       "triaged": "2026-11-01",
       "checked": "2026-11-01",
+      "notes": "Cited from the policy's own notes (policy.py), written from the advisory at the time; the OSV record was unreachable when this entry was made and its fields should be filled in.",
+      "key": "CVE-2026-33636",
+      "aliases": [
+        "GHSA-wjr5-c57x-95m2"
+      ],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "A palette PNG reaches a flaw in libpng's palette handling",
+      "summary": "One of three libpng flaws in the paths that handle palette (indexed-colour) PNGs. The upstream record was not re-fetched when this entry was written; see notes.",
+      "published": "2026-03-26",
+      "severity": 7.6,
+      "affected": ">= 1.6.36, <= 1.6.55",
+      "fixed": "1.6.56",
+      "reached_by": "open",
+      "trigger": "Opening a palette-type PNG.",
+      "bucket": "B",
+      "finding": "The colour type is in the PNG's IHDR. The default allows all five colour types; a policy for scans alone can keep to greyscale and RGB, which keeps palette PNGs from the decoder.",
+      "refusal": {
+        "check": "png_colour_types",
+        "default": false,
+        "setting": "Policy(png_colour_types={\"greyscale\", \"rgb\"})"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_palette_png_under_a_scans_only_policy"
+      ],
+      "protect": {
+        "general": "Keep libpng current.",
+        "specific": "If nothing you handle is a palette PNG, say so in the policy: sillybos --png-colour-types greyscale,rgb."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-wjr5-c57x-95m2",
+        "https://osv.dev/vulnerability/CVE-2026-33636"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
       "notes": null,
       "key": "CVE-2026-4775",
       "aliases": [
@@ -623,6 +661,158 @@
     {
       "triaged": "2026-11-01",
       "checked": "2026-11-01",
+      "notes": "Cited from the policy's own notes (policy.py); the OSV record was unreachable when this entry was made and its fields should be filled in.",
+      "key": "CVE-2026-22695",
+      "aliases": [
+        "GHSA-mmq5-27w3-rxpp"
+      ],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "An interlaced 16-bit PNG overflows a libpng buffer",
+      "summary": "One of two libpng overflows on the Adam7-interlaced 16-bit path. The upstream record was not re-fetched when this entry was written; see notes.",
+      "published": "2026-01-12",
+      "severity": 6.1,
+      "affected": ">= 1.6.51, <= 1.6.53",
+      "fixed": "1.6.54",
+      "reached_by": "open",
+      "trigger": "Opening an Adam7-interlaced PNG with 16-bit samples.",
+      "bucket": "B",
+      "finding": "Interlacing is in the IHDR. No scanner writes an interlaced PNG, so the default refuses one.",
+      "refusal": {
+        "check": "allow_interlaced_png",
+        "default": true,
+        "setting": "allow_interlaced_png is off by default"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_an_interlaced_png"
+      ],
+      "protect": {
+        "general": "Keep libpng current.",
+        "specific": "Refuse interlaced PNGs; nothing that scans a page writes one. sillybos does by default."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-mmq5-27w3-rxpp",
+        "https://osv.dev/vulnerability/CVE-2026-22695"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": "Cited from the policy's own notes (policy.py), written from the advisory at the time; the OSV record was unreachable when this entry was made and its fields should be filled in.",
+      "key": "CVE-2025-66293",
+      "aliases": [
+        "GHSA-9mpm-9pxh-mg4f"
+      ],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "A palette PNG reaches a flaw in libpng's palette handling",
+      "summary": "One of three libpng flaws in the paths that handle palette (indexed-colour) PNGs. The upstream record was not re-fetched when this entry was written; see notes.",
+      "published": "2025-12-03",
+      "severity": 7.1,
+      "affected": "< 1.6.52",
+      "fixed": "1.6.52",
+      "reached_by": "open",
+      "trigger": "Opening a palette-type PNG.",
+      "bucket": "B",
+      "finding": "The colour type is in the PNG's IHDR. The default allows all five colour types; a policy for scans alone can keep to greyscale and RGB, which keeps palette PNGs from the decoder.",
+      "refusal": {
+        "check": "png_colour_types",
+        "default": false,
+        "setting": "Policy(png_colour_types={\"greyscale\", \"rgb\"})"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_palette_png_under_a_scans_only_policy"
+      ],
+      "protect": {
+        "general": "Keep libpng current.",
+        "specific": "If nothing you handle is a palette PNG, say so in the policy: sillybos --png-colour-types greyscale,rgb."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-9mpm-9pxh-mg4f",
+        "https://osv.dev/vulnerability/CVE-2025-66293"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": "Cited from the policy's own notes (policy.py); the OSV record was unreachable when this entry was made and its fields should be filled in.",
+      "key": "CVE-2025-65018",
+      "aliases": [
+        "GHSA-7wv6-48j4-hj3g"
+      ],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "An interlaced 16-bit PNG overflows a libpng buffer",
+      "summary": "One of two libpng overflows on the Adam7-interlaced 16-bit path. The upstream record was not re-fetched when this entry was written; see notes.",
+      "published": "2025-11-24",
+      "severity": 7.1,
+      "affected": ">= 1.6.0, < 1.6.51",
+      "fixed": "1.6.51",
+      "reached_by": "open",
+      "trigger": "Opening an Adam7-interlaced PNG with 16-bit samples.",
+      "bucket": "B",
+      "finding": "Interlacing is in the IHDR. No scanner writes an interlaced PNG, so the default refuses one.",
+      "refusal": {
+        "check": "allow_interlaced_png",
+        "default": true,
+        "setting": "allow_interlaced_png is off by default"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_an_interlaced_png"
+      ],
+      "protect": {
+        "general": "Keep libpng current.",
+        "specific": "Refuse interlaced PNGs; nothing that scans a page writes one. sillybos does by default."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-7wv6-48j4-hj3g",
+        "https://osv.dev/vulnerability/CVE-2025-65018"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
+      "notes": "Cited from the policy's own notes (policy.py), written from the advisory at the time; the OSV record was unreachable when this entry was made and its fields should be filled in.",
+      "key": "CVE-2025-64720",
+      "aliases": [
+        "GHSA-hfc7-ph9c-wcww"
+      ],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "A palette PNG reaches a flaw in libpng's palette handling",
+      "summary": "One of three libpng flaws in the paths that handle palette (indexed-colour) PNGs. The upstream record was not re-fetched when this entry was written; see notes.",
+      "published": "2025-11-24",
+      "severity": 7.1,
+      "affected": ">= 1.6.0, < 1.6.51",
+      "fixed": "1.6.51",
+      "reached_by": "open",
+      "trigger": "Opening a palette-type PNG.",
+      "bucket": "B",
+      "finding": "The colour type is in the PNG's IHDR. The default allows all five colour types; a policy for scans alone can keep to greyscale and RGB, which keeps palette PNGs from the decoder.",
+      "refusal": {
+        "check": "png_colour_types",
+        "default": false,
+        "setting": "Policy(png_colour_types={\"greyscale\", \"rgb\"})"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_palette_png_under_a_scans_only_policy"
+      ],
+      "protect": {
+        "general": "Keep libpng current.",
+        "specific": "If nothing you handle is a palette PNG, say so in the policy: sillybos --png-colour-types greyscale,rgb."
+      },
+      "sources": [
+        "https://github.com/advisories/GHSA-hfc7-ph9c-wcww",
+        "https://osv.dev/vulnerability/CVE-2025-64720"
+      ]
+    },
+    {
+      "triaged": "2026-11-01",
+      "checked": "2026-11-01",
       "notes": null,
       "key": "CVE-2023-6277",
       "aliases": [
@@ -655,181 +845,6 @@
       },
       "sources": [
         "https://github.com/advisories/GHSA-fq8g-55cp-756j"
-      ]
-    },
-    {
-      "triaged": "2026-11-01",
-      "checked": "2026-11-01",
-      "notes": "Cited from the policy's own notes (policy.py), written from the advisory at the time; the OSV record was unreachable when this entry was made and its fields should be filled in.",
-      "key": "CVE-2026-33636",
-      "aliases": [],
-      "library": "libpng",
-      "package": "libpng1.6",
-      "ecosystem": "Debian",
-      "title": "A palette PNG reaches a flaw in libpng's palette handling",
-      "summary": "One of three libpng flaws in the paths that handle palette (indexed-colour) PNGs. The upstream record was not re-fetched when this entry was written; see notes.",
-      "published": null,
-      "severity": null,
-      "affected": "libpng 1.6 series, as packaged; see the upstream record",
-      "fixed": null,
-      "reached_by": "open",
-      "trigger": "Opening a palette-type PNG.",
-      "bucket": "B",
-      "finding": "The colour type is in the PNG's IHDR. The default allows all five colour types; a policy for scans alone can keep to greyscale and RGB, which keeps palette PNGs from the decoder.",
-      "refusal": {
-        "check": "png_colour_types",
-        "default": false,
-        "setting": "Policy(png_colour_types={\"greyscale\", \"rgb\"})"
-      },
-      "verified_by": [
-        "tests/test_check.py::TestHostileFiles::test_a_palette_png_under_a_scans_only_policy"
-      ],
-      "protect": {
-        "general": "Keep libpng current.",
-        "specific": "If nothing you handle is a palette PNG, say so in the policy: sillybos --png-colour-types greyscale,rgb."
-      },
-      "sources": [
-        "https://osv.dev/vulnerability/CVE-2026-33636"
-      ]
-    },
-    {
-      "triaged": "2026-11-01",
-      "checked": "2026-11-01",
-      "notes": "Cited from the policy's own notes (policy.py); the OSV record was unreachable when this entry was made and its fields should be filled in.",
-      "key": "CVE-2026-22695",
-      "aliases": [],
-      "library": "libpng",
-      "package": "libpng1.6",
-      "ecosystem": "Debian",
-      "title": "An interlaced 16-bit PNG overflows a libpng buffer",
-      "summary": "One of two libpng overflows on the Adam7-interlaced 16-bit path. The upstream record was not re-fetched when this entry was written; see notes.",
-      "published": null,
-      "severity": null,
-      "affected": "libpng 1.6 series, as packaged; see the upstream record",
-      "fixed": null,
-      "reached_by": "open",
-      "trigger": "Opening an Adam7-interlaced PNG with 16-bit samples.",
-      "bucket": "B",
-      "finding": "Interlacing is in the IHDR. No scanner writes an interlaced PNG, so the default refuses one.",
-      "refusal": {
-        "check": "allow_interlaced_png",
-        "default": true,
-        "setting": "allow_interlaced_png is off by default"
-      },
-      "verified_by": [
-        "tests/test_check.py::TestHostileFiles::test_an_interlaced_png"
-      ],
-      "protect": {
-        "general": "Keep libpng current.",
-        "specific": "Refuse interlaced PNGs; nothing that scans a page writes one. sillybos does by default."
-      },
-      "sources": [
-        "https://osv.dev/vulnerability/CVE-2026-22695"
-      ]
-    },
-    {
-      "triaged": "2026-11-01",
-      "checked": "2026-11-01",
-      "notes": "Cited from the policy's own notes (policy.py), written from the advisory at the time; the OSV record was unreachable when this entry was made and its fields should be filled in.",
-      "key": "CVE-2025-66293",
-      "aliases": [],
-      "library": "libpng",
-      "package": "libpng1.6",
-      "ecosystem": "Debian",
-      "title": "A palette PNG reaches a flaw in libpng's palette handling",
-      "summary": "One of three libpng flaws in the paths that handle palette (indexed-colour) PNGs. The upstream record was not re-fetched when this entry was written; see notes.",
-      "published": null,
-      "severity": null,
-      "affected": "libpng 1.6 series, as packaged; see the upstream record",
-      "fixed": null,
-      "reached_by": "open",
-      "trigger": "Opening a palette-type PNG.",
-      "bucket": "B",
-      "finding": "The colour type is in the PNG's IHDR. The default allows all five colour types; a policy for scans alone can keep to greyscale and RGB, which keeps palette PNGs from the decoder.",
-      "refusal": {
-        "check": "png_colour_types",
-        "default": false,
-        "setting": "Policy(png_colour_types={\"greyscale\", \"rgb\"})"
-      },
-      "verified_by": [
-        "tests/test_check.py::TestHostileFiles::test_a_palette_png_under_a_scans_only_policy"
-      ],
-      "protect": {
-        "general": "Keep libpng current.",
-        "specific": "If nothing you handle is a palette PNG, say so in the policy: sillybos --png-colour-types greyscale,rgb."
-      },
-      "sources": [
-        "https://osv.dev/vulnerability/CVE-2025-66293"
-      ]
-    },
-    {
-      "triaged": "2026-11-01",
-      "checked": "2026-11-01",
-      "notes": "Cited from the policy's own notes (policy.py); the OSV record was unreachable when this entry was made and its fields should be filled in.",
-      "key": "CVE-2025-65018",
-      "aliases": [],
-      "library": "libpng",
-      "package": "libpng1.6",
-      "ecosystem": "Debian",
-      "title": "An interlaced 16-bit PNG overflows a libpng buffer",
-      "summary": "One of two libpng overflows on the Adam7-interlaced 16-bit path. The upstream record was not re-fetched when this entry was written; see notes.",
-      "published": null,
-      "severity": null,
-      "affected": "libpng 1.6 series, as packaged; see the upstream record",
-      "fixed": null,
-      "reached_by": "open",
-      "trigger": "Opening an Adam7-interlaced PNG with 16-bit samples.",
-      "bucket": "B",
-      "finding": "Interlacing is in the IHDR. No scanner writes an interlaced PNG, so the default refuses one.",
-      "refusal": {
-        "check": "allow_interlaced_png",
-        "default": true,
-        "setting": "allow_interlaced_png is off by default"
-      },
-      "verified_by": [
-        "tests/test_check.py::TestHostileFiles::test_an_interlaced_png"
-      ],
-      "protect": {
-        "general": "Keep libpng current.",
-        "specific": "Refuse interlaced PNGs; nothing that scans a page writes one. sillybos does by default."
-      },
-      "sources": [
-        "https://osv.dev/vulnerability/CVE-2025-65018"
-      ]
-    },
-    {
-      "triaged": "2026-11-01",
-      "checked": "2026-11-01",
-      "notes": "Cited from the policy's own notes (policy.py), written from the advisory at the time; the OSV record was unreachable when this entry was made and its fields should be filled in.",
-      "key": "CVE-2025-64720",
-      "aliases": [],
-      "library": "libpng",
-      "package": "libpng1.6",
-      "ecosystem": "Debian",
-      "title": "A palette PNG reaches a flaw in libpng's palette handling",
-      "summary": "One of three libpng flaws in the paths that handle palette (indexed-colour) PNGs. The upstream record was not re-fetched when this entry was written; see notes.",
-      "published": null,
-      "severity": null,
-      "affected": "libpng 1.6 series, as packaged; see the upstream record",
-      "fixed": null,
-      "reached_by": "open",
-      "trigger": "Opening a palette-type PNG.",
-      "bucket": "B",
-      "finding": "The colour type is in the PNG's IHDR. The default allows all five colour types; a policy for scans alone can keep to greyscale and RGB, which keeps palette PNGs from the decoder.",
-      "refusal": {
-        "check": "png_colour_types",
-        "default": false,
-        "setting": "Policy(png_colour_types={\"greyscale\", \"rgb\"})"
-      },
-      "verified_by": [
-        "tests/test_check.py::TestHostileFiles::test_a_palette_png_under_a_scans_only_policy"
-      ],
-      "protect": {
-        "general": "Keep libpng current.",
-        "specific": "If nothing you handle is a palette PNG, say so in the policy: sillybos --png-colour-types greyscale,rgb."
-      },
-      "sources": [
-        "https://osv.dev/vulnerability/CVE-2025-64720"
       ]
     }
   ]
