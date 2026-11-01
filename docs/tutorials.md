@@ -34,7 +34,7 @@ pip install 'sillybos[pillow]'
 from sillybos.pillow import open_checked
 
 with open_checked("scans/page-001.png") as image:
-    print(image.format, image.size, image.mode)   # PNG (2480, 3508) L
+    print(image.format, image.size, image.mode)  # PNG (2480, 3508) L
 ```
 
 A refusal is an exception with the verdict on it. The verdict says what the
@@ -47,10 +47,10 @@ from sillybos.pillow import open_checked
 try:
     open_checked("inbox/page.png")
 except Refused as refusal:
-    print(refusal)                      # page.png: refused. says PNG, is PostScript.
+    print(refusal)  # page.png: refused. says PNG, is PostScript.
     verdict = refusal.verdict
-    verdict.format, verdict.claimed     # ('postscript', 'png')
-    verdict.reasons                     # ('says PNG, is PostScript',)
+    verdict.format, verdict.claimed  # ('postscript', 'png')
+    verdict.reasons  # ('says PNG, is PostScript',)
 ```
 
 Two things to know about the edges. A PDF passes the default policy, since
@@ -88,8 +88,8 @@ from sillybos.pillow import open_checked
 
 def thumbnail(path: Path, out: Path, policy: Policy = DEFAULT) -> None:
     """Make a 300-pixel thumbnail, but only of a file the policy passes."""
-    with open_checked(path, policy) as image:   # the check, then Image.open(formats=...)
-        image.thumbnail((300, 300))              # the first time any pixel is decoded
+    with open_checked(path, policy) as image:  # the check, then Image.open(formats=...)
+        image.thumbnail((300, 300))  # the first time any pixel is decoded
         image.save(out)
 ```
 
@@ -155,13 +155,13 @@ from sillybos import Policy, check
 BOOKS = Policy(formats={"pdf"}, max_pages=200, render_dpi=200)
 
 verdict = check("scans/book.pdf", BOOKS)
-print(verdict)                  # book.pdf: ok (PDF, 1653x2339, 4 pages, 0.1 MB)
+print(verdict)  # book.pdf: ok (PDF, 1653x2339, 4 pages, 0.1 MB)
 
 facts = verdict.facts
 facts.pages, facts.pages_exact  # (4, True)
-facts.width, facts.height       # (1653, 2339): the largest page, at 200 dpi
-facts.max_pixels                # 3866596
-facts.encrypted                 # False
+facts.width, facts.height  # (1653, 2339): the largest page, at 200 dpi
+facts.max_pixels  # 3866596
+facts.encrypted  # False
 ```
 
 The renderer then runs at the dpi the check was made at, so what it
@@ -180,12 +180,20 @@ BOOKS = Policy(formats={"pdf"}, max_pages=200, render_dpi=200)
 
 def render(pdf: Path, out_dir: Path, policy: Policy = BOOKS) -> list[Path]:
     """Render every page with pdftoppm, at the dpi the policy was checked at."""
-    facts = require(pdf, policy).facts     # Refused if too long, too large, encrypted, or not a PDF
+    facts = require(pdf, policy).facts  # Refused if too long, too large, encrypted, or not a PDF
     out_dir.mkdir(exist_ok=True)
     subprocess.run(
-        ["pdftoppm", "-r", str(policy.render_dpi), "-gray", "-png", str(pdf), str(out_dir / "page")],
+        [
+            "pdftoppm",
+            "-r",
+            str(policy.render_dpi),
+            "-gray",
+            "-png",
+            str(pdf),
+            str(out_dir / "page"),
+        ],
         check=True,
-        timeout=60 * facts.pages,          # a minute a page, now that the count is known
+        timeout=60 * facts.pages,  # a minute a page, now that the count is known
     )
     return sorted(out_dir.glob("page-*.png"))
 ```
@@ -220,9 +228,9 @@ from sillybos import Policy, check
 
 UPLOADS = Policy(
     formats={"jpeg", "png", "tiff", "pdf"},
-    max_bytes=64 * 2**20,                   # 64 MiB: our largest real scan is 21 MiB
-    max_pixels=40_000_000,                  # our largest real page is 17 million pixels
-    max_pages=120,                          # our longest book is 58 pages
+    max_bytes=64 * 2**20,  # 64 MiB: our largest real scan is 21 MiB
+    max_pixels=40_000_000,  # our largest real page is 17 million pixels
+    max_pages=120,  # our longest book is 58 pages
     png_colour_types={"greyscale", "rgb"},  # a scan is never a palette image
 )
 
