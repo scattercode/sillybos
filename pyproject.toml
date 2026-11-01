@@ -108,7 +108,7 @@ known-first-party = ["sillybos"]
 
 [tool.mypy]
 strict = true
-files = ["src/sillybos", "tests"]
+files = ["src/sillybos", "tests", "scripts"]
 mypy_path = "src"
 
 [[tool.mypy.overrides]]

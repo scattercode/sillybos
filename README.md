@@ -205,6 +205,11 @@ inches wide. Nothing hostile is
 checked in. The readers are also checked against Pillow's reading of real
 files, so that they agree with the decoder they stand in front of.
 
+A weekly job fetches the security advisories for the decoders this library
+stands in front of and opens an issue for each new one;
+[docs/advisories/README.md](docs/advisories/README.md) says how we triage
+them.
+
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the checks and the commit style,
 and [SECURITY.md](SECURITY.md) for how to report a flaw privately.
 
