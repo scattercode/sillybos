@@ -1,11 +1,11 @@
 # sittybos
 
 You probably meant **[sillybos](https://pypi.org/project/sillybos/)**, and
-this package installs it: `sittybos` is the Latin spelling (*sittybus*, and the
-form used in English scholarship) of the Greek σίλλυβος. There is nothing else
-in here,
-and there never will be; it exists so that the name points at the right
-place rather than at whatever someone else might put under it.
+this package installs it: `sittybos` is the Greek σίλλυβος with the Latin
+stem *sittyb-* and the Greek ending, the half-way form a reader is likely to
+type. There is nothing else in here, and there never will be; it exists so
+that the name points at the right place rather than at whatever someone else
+might put under it.
 
 ```bash
 pip install sillybos

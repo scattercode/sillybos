@@ -2,9 +2,9 @@
 
 You probably meant **[sillybos](https://pypi.org/project/sillybos/)**, and
 this package installs it: `sillybus` is the misspelling of sillybos that is
-easiest to make. There is nothing else in here,
-and there never will be; it exists so that the name points at the right
-place rather than at whatever someone else might put under it.
+easiest to make. There is nothing else in here, and there never will be; it
+exists so that the name points at the right place rather than at whatever
+someone else might put under it.
 
 ```bash
 pip install sillybos

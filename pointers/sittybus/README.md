@@ -1,9 +1,9 @@
 # sittybus
 
 You probably meant **[sillybos](https://pypi.org/project/sillybos/)**, and
-this package installs it: `sittybus` is a spelling of the Latin *sittybus* that
-is easy to arrive at. There is nothing else in here,
-and there never will be; it exists so that the name points at the right
+this package installs it: `sittybus` is the Latin spelling of the Greek
+σίλλυβος, and the form used in English scholarship. There is nothing else in
+here, and there never will be; it exists so that the name points at the right
 place rather than at whatever someone else might put under it.
 
 ```bash

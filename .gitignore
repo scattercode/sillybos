@@ -20,3 +20,6 @@ src/sillybos/_version.py
 
 # OS
 .DS_Store
+
+# Local secrets (the PyPI token for the one-off pointer uploads)
+.env
