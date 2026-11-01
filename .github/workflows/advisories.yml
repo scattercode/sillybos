@@ -1,0 +1,59 @@
+# Weekly advisory fetch for the libraries sillybos stands in front of.
+#
+# Every Monday, an hour after the Security workflow, scripts/advisories.py
+# asks OSV.dev for the advisories on the watchlist (Pillow on PyPI; tiff,
+# libpng1.6, libjpeg-turbo, zlib, poppler, openjpeg2 and freetype on
+# Debian), drops what docs/advisories/seen.json and the existing `advisory`
+# issues already know, and opens one issue per new advisory for a
+# maintainer to triage. docs/advisories/README.md says how.
+#
+# Nothing is committed. The issues are the record of what has been seen,
+# so the job needs no write access to the repository's contents and no
+# bot commit on main (which the ruleset would refuse anyway); seen.json is
+# the baseline a maintainer refreshes by hand with
+# `python scripts/advisories.py record`.
+#
+# A dispatch with "dry run" ticked lists what would be opened and opens
+# nothing.
+name: Advisories
+
+on:
+  schedule:
+    - cron: "0 7 * * 1" # Mondays 07:00 UTC
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: List the new advisories without opening issues
+        type: boolean
+        default: false
+
+permissions: {}
+
+# Two runs at once could open the same issue twice.
+concurrency:
+  group: advisories
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    name: New advisories on the watchlist
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      # Standard library only; nothing to install. The token reaches the
+      # script through the environment, never the command line.
+      - name: Fetch, compare and open issues
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          COMMAND: ${{ inputs.dry_run == true && 'fetch' || 'run' }}
+        run: python scripts/advisories.py "$COMMAND" --repository "$GITHUB_REPOSITORY" --summary "$GITHUB_STEP_SUMMARY"
