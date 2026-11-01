@@ -5,7 +5,8 @@
 # pyproject.toml, and a wheel smoke test on one of them. poppler is
 # installed so the PDF tests run rather than skip.
 #
-#   Test (Python X)              ruff, mypy, pytest with coverage, the wheel
+#   Test (Python X)              ruff, mypy, pytest with coverage, the wheel,
+#                                and 30 seconds of the header fuzzer on one Python
 #   Lockfile is current          uv.lock matches pyproject.toml
 #   Trivy scan                   HIGH/CRITICAL fixed vulnerabilities in what
 #                                uv.lock resolves
@@ -61,6 +62,17 @@ jobs:
 
       - name: Test
         run: pytest --cov --cov-report=term-missing
+
+      # A short run of the header fuzzer on one Python: well-formed files
+      # damaged at random, every outcome a verdict. The weekly run in
+      # security.yml is the long one. The run id seeds it, so a failure
+      # can be repeated with `--seed <run id>`; the id goes through the
+      # environment, never into the script text.
+      - name: Fuzz the header readers for 30 seconds
+        if: matrix.python == '3.12'
+        env:
+          FUZZ_SEED: ${{ github.run_id }}
+        run: python scripts/fuzz_headers.py --seconds 30 --seed "$FUZZ_SEED"
 
       # The wheel, not the editable install: catches files that work from
       # `pip install -e .` but were left out of the wheel.

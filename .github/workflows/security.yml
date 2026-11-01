@@ -5,6 +5,8 @@
 #   Trivy       fixed HIGH/CRITICAL vulnerabilities in what uv.lock resolves
 #   zizmor      the workflows themselves
 #   gitleaks    secrets anywhere in the history
+#   fuzz        ten minutes of the header fuzzer (scripts/fuzz_headers.py),
+#               which CI runs for only thirty seconds on each pull request
 name: Security
 
 on:
@@ -63,3 +65,36 @@ jobs:
           echo "${GITLEAKS_SHA256}  ${tarball}" | sha256sum --check -
           tar -xzf "$tarball" gitleaks
           ./gitleaks git --no-banner --redact --verbose .
+
+  fuzz:
+    name: Fuzz the header readers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install the package with the development extra
+        run: pip install -e '.[dev]'
+
+      # Ten minutes, seeded by the run id so that a finding can be
+      # repeated by hand with `--seed <run id>`. The id reaches the script
+      # through the environment, never by interpolation into the command.
+      - name: Fuzz for ten minutes
+        env:
+          FUZZ_SEED: ${{ github.run_id }}
+        run: python scripts/fuzz_headers.py --seconds 600 --seed "$FUZZ_SEED"
+
+      # Only when the fuzzer found something: the inputs and the traceback
+      # beside each, for turning into a test.
+      - name: Keep the findings
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fuzz-findings
+          path: fuzz-findings/
+          if-no-files-found: ignore

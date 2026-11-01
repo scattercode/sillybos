@@ -72,7 +72,12 @@ commit a binary test fixture, and never collect a sample from the internet:
 a real malicious file in a public repository is a problem of its own. A new
 refusal arrives with the case that triggers it; the readers are also tested
 against Pillow's reading of real files, so they agree with the decoder they
-stand in front of.
+stand in front of. `scripts/fuzz_headers.py` damages the corpus's
+well-formed files at random and runs the readers on the results: every
+outcome must be a header or a `HeaderError`, in bounded time. CI runs it
+briefly on each pull request and for ten minutes each week; a finding
+is written to `fuzz-findings/` (ignored by git) and becomes a test, never
+a committed file.
 
 ### What the README promises
 
