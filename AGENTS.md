@@ -84,14 +84,14 @@ in `SECURITY.md`.
   project.
 - The checks: `ruff check .`, `ruff format --check .`, `mypy`, `pytest --cov`
   (floor in `pyproject.toml`), `uv lock --check`, and
-  `sphinx-build -W -b html docs docs/_build/html` with the `docs` extra.
-  The Ruff set includes the `S` (bandit) rules; an ignore needs a reason
-  beside it.
-- The reference site (`docs/`, published to GitHub Pages on merge) is the
-  README, included between its two `docs:` comment markers, plus the API
-  and command line generated from the docstrings. Document the API in the
-  docstrings, Google style with reStructuredText cross-references; never
-  copy it into a page by hand.
+  `zensical build --clean --strict` with the `docs` extra. The Ruff set
+  includes the `S` (bandit) rules; an ignore needs a reason beside it.
+- The reference site (`docs/` and `zensical.toml`, published to GitHub
+  Pages on merge) is the README, included between its two `--8<--` snippet
+  markers, plus the API and command line generated from the docstrings.
+  Document the API in the docstrings, Google style with Markdown
+  cross-references (`[Policy][sillybos.Policy]`); never copy it into a
+  page by hand.
 - Conventional Commits, enforced by `.githooks/commit-msg` (shared from
   `scattercode/release-pipelines`; do not edit the copy). `fix` → patch,
   `feat` → minor, `!` → major. Releases are automatic on merge to `main`:

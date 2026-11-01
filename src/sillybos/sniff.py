@@ -2,7 +2,7 @@
 
 An image library decides a file's format from its contents and then runs the
 reader for that format, so a file's extension protects nothing: a PostScript
-file named ``page.png`` reaches the PostScript reader. This module looks at
+file named `page.png` reaches the PostScript reader. This module looks at
 the same bytes first, and names the format, so that the check can refuse by
 name before any reader runs.
 
@@ -14,7 +14,7 @@ more than "says PNG, is something else".
 from __future__ import annotations
 
 HEAD_BYTES = 1024
-"""How much of a file :func:`sniff` needs. The longest signature here is
+"""How much of a file `sniff` needs. The longest signature here is
 twelve bytes; the rest is slack for formats that put their mark later."""
 
 # (name, offset, signature); checked in order, first match wins.
@@ -77,15 +77,15 @@ _CLAIMS: dict[str, str] = {
 
 
 def sniff(head: bytes) -> str | None:
-    """Name the format of a file from its first bytes, or ``None`` if unknown.
+    """Name the format of a file from its first bytes, or `None` if unknown.
 
     Args:
-        head: The first :data:`HEAD_BYTES` of the file (fewer, if the file is
+        head: The first `HEAD_BYTES` of the file (fewer, if the file is
             shorter).
 
     Returns:
-        A lower-case name: one of :data:`sillybos.FORMATS`, one of the other
-        names the library knows only to refuse, or ``None``.
+        A lower-case name: one of [sillybos.FORMATS][], one of the other
+            names the library knows only to refuse, or `None`.
     """
     for name, offset, signature in _SIGNATURES:
         if head[offset : offset + len(signature)] == signature:
@@ -101,16 +101,16 @@ def sniff(head: bytes) -> str | None:
 
 
 def describe(name: str | None) -> str:
-    """The format's name for a reason sentence: ``"PostScript"``, ``"a zip archive"``."""
+    """The format's name for a reason sentence: `"PostScript"`, `"a zip archive"`."""
     if name is None:
         return "an unknown format"
     return _DESCRIPTIONS.get(name, name)
 
 
 def claimed_by(suffix: str) -> str | None:
-    """What a file's extension says it is, as a name from :data:`sillybos.FORMATS`.
+    """What a file's extension says it is, as a name from [sillybos.FORMATS][].
 
-    ``None`` for an extension the library does not map, including no
+    `None` for an extension the library does not map, including no
     extension at all: such a file makes no claim, so it cannot lie.
     """
     return _CLAIMS.get(suffix.lower())

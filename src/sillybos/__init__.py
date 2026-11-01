@@ -10,19 +10,21 @@ expect, and if not, why?*
 
 It reads the first bytes to learn what the file really is, whatever its name
 says; reads the header of a JPEG, PNG or TIFF with code of its own, never a
-decoder's; asks poppler's ``pdfinfo``, in a separate process, how many pages
+decoder's; asks poppler's `pdfinfo`, in a separate process, how many pages
 a PDF has and how large they are; and refuses, with a reason in plain words,
-anything outside a :class:`Policy`.
+anything outside a [Policy][sillybos.Policy].
 
->>> from sillybos import check
->>> verdict = check("scan.png")          # doctest: +SKIP
->>> verdict.ok, verdict.reasons          # doctest: +SKIP
-(False, ('says PNG, is PostScript',))
+```python
+from sillybos import check
 
-The whole surface is :func:`check`, which returns a :class:`Verdict`;
-:func:`require`, which raises :class:`Refused` instead; :class:`Policy`,
-with the presets :data:`DEFAULT` and :data:`STRICT`; and, with the
-``[pillow]`` extra, :func:`sillybos.pillow.open_checked`.
+verdict = check("scan.png")
+verdict.ok, verdict.reasons  # (False, ('says PNG, is PostScript',))
+```
+
+The whole surface is [check][sillybos.check.check], which returns a [Verdict][sillybos.Verdict];
+[require][sillybos.require], which raises [Refused][sillybos.Refused] instead; [Policy][sillybos.Policy],
+with the presets [DEFAULT][sillybos.DEFAULT] and [STRICT][sillybos.STRICT]; and, with the
+`[pillow]` extra, [sillybos.pillow.open_checked][].
 """
 
 from __future__ import annotations

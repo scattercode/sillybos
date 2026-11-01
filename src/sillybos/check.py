@@ -1,6 +1,6 @@
 """The check itself: one function, one verdict.
 
-:func:`check` runs the steps in the order that keeps the cheapest and safest
+[check][sillybos.check.check] runs the steps in the order that keeps the cheapest and safest
 first, and stops handing the file to anything further once it has a reason
 to refuse it:
 
@@ -10,7 +10,7 @@ to refuse it:
    does not allow is refused by name, and no reader of ours runs on it.
 3. Whether its name agrees with its contents.
 4. Its header, with the reader for its format (ours for JPEG, PNG and TIFF;
-   ``pdfinfo`` in a separate process for PDF): dimensions, frames, pages,
+   `pdfinfo` in a separate process for PDF): dimensions, frames, pages,
    how a JPEG is coded, how a TIFF is compressed, what kind of PNG it is.
 5. The policy's ceilings against what the header said.
 
@@ -51,29 +51,29 @@ class Facts:
             For a file with more than the policy allows, the walk may have
             stopped early: the number is then "more than" the limit.
         max_pixels: The most pixels any one page or frame would decode to,
-            or ``None`` if the page count was over the limit and the sizes
+            or `None` if the page count was over the limit and the sizes
             were not read.
-        encrypted: Whether a PDF is encrypted. Always ``False`` for an image.
-        pages_exact: ``False`` when the frame walk stopped at the limit, so
-            ``pages`` is a floor, not a count.
+        encrypted: Whether a PDF is encrypted. Always `False` for an image.
+        pages_exact: `False` when the frame walk stopped at the limit, so
+            `pages` is a floor, not a count.
         coding: How a JPEG's frame is coded, by a name from
-            :data:`sillybos.JPEG_FRAMES`; ``None`` for the other formats.
+            [sillybos.JPEG_FRAMES][]; `None` for the other formats.
         compression: How a TIFF's frames are compressed, by a name from
-            :data:`sillybos.TIFF_COMPRESSIONS`; ``None`` for the other
+            [sillybos.TIFF_COMPRESSIONS][]; `None` for the other
             formats.
         metadata: The largest block of metadata in an image, as (what it
             is, bytes): a PNG chunk, a TIFF tag's data, a JPEG colour
-            profile. ``None`` for a PDF or an image with none.
+            profile. `None` for a PDF or an image with none.
         colour: A PNG's colour type, by a name from
-            :data:`sillybos.PNG_COLOUR_TYPES`, or a TIFF's photometric
-            interpretation, from :data:`sillybos.TIFF_PHOTOMETRICS`;
-            ``None`` for a JPEG or a PDF.
-        depth: A PNG's or TIFF's bits per sample; ``None`` otherwise.
+            [sillybos.PNG_COLOUR_TYPES][], or a TIFF's photometric
+            interpretation, from [sillybos.TIFF_PHOTOMETRICS][];
+            `None` for a JPEG or a PDF.
+        depth: A PNG's or TIFF's bits per sample; `None` otherwise.
         interlaced: Whether a PNG is Adam7 interlaced.
-        tile: A tiled TIFF's largest tile as (width, height); ``None`` for
+        tile: A tiled TIFF's largest tile as (width, height); `None` for
             a TIFF in strips and for the other formats.
         subsampling: A YCbCr TIFF's chroma subsampling, horizontal by
-            vertical, as ``"2x2"``; ``None`` otherwise.
+            vertical, as `"2x2"`; `None` otherwise.
     """
 
     bytes: int
@@ -99,15 +99,15 @@ class Verdict:
 
     Attributes:
         path: The file.
-        ok: ``True`` if nothing was found against it.
+        ok: `True` if nothing was found against it.
         format: What the file really is, from its contents: a name from
-            :data:`sillybos.FORMATS`, another name the library knows only
-            to refuse (``"postscript"``), or ``None`` for an unknown format.
-        claimed: What its extension says it is, or ``None`` if the extension
+            [sillybos.FORMATS][], another name the library knows only
+            to refuse (`"postscript"`), or `None` for an unknown format.
+        claimed: What its extension says it is, or `None` if the extension
             is not one the library maps.
-        facts: What the header said, or ``None`` if it was never read.
+        facts: What the header said, or `None` if it was never read.
         reasons: Why the file was refused, one sentence each. Empty when
-            ``ok``.
+            `ok`.
     """
 
     path: Path
@@ -123,7 +123,7 @@ class Verdict:
         return f"{self.path.name}: refused. " + " ".join(r + "." for r in self.reasons)
 
     def summary(self) -> str:
-        """One line of facts: ``"JPEG, 4000x6000, 1 page, 2.1 MB"``."""
+        """One line of facts: `"JPEG, 4000x6000, 1 page, 2.1 MB"`."""
         parts = [sniff.describe(self.format)]
         if self.facts is not None:
             parts.append(f"{self.facts.width}x{self.facts.height}")
@@ -133,7 +133,7 @@ class Verdict:
 
 
 class Refused(Exception):
-    """A file did not pass. Raised by :func:`require`; carries the :class:`Verdict`."""
+    """A file did not pass. Raised by [require][sillybos.require]; carries the [Verdict][sillybos.Verdict]."""
 
     def __init__(self, verdict: Verdict) -> None:
         self.verdict = verdict
@@ -141,21 +141,21 @@ class Refused(Exception):
 
 
 def check(path: str | os.PathLike[str], policy: Policy = DEFAULT) -> Verdict:
-    """Decide whether a decoder may open ``path``, without opening it with one.
+    """Decide whether a decoder may open `path`, without opening it with one.
 
     Args:
         path: The file to check. It must exist; a missing file is the
-            caller's error, not a verdict, and raises :class:`FileNotFoundError`.
-        policy: The limits to apply. :data:`sillybos.DEFAULT` if not given.
+            caller's error, not a verdict, and raises `FileNotFoundError`.
+        policy: The limits to apply. [sillybos.DEFAULT][] if not given.
 
     Returns:
-        A :class:`Verdict`. Never raises for anything found *in* the file;
-        a malformed header, a lying name and a page too large are all
-        reasons, not exceptions.
+        A [Verdict][sillybos.Verdict]. Never raises for anything found *in*
+            the file; a malformed header, a lying name and a page too large
+            are all reasons, not exceptions.
 
     Raises:
         FileNotFoundError: If the file does not exist.
-        sillybos.pdf.PdfInfoMissing: If the file is a PDF and ``pdfinfo``
+        sillybos.pdf.PdfInfoMissing: If the file is a PDF and `pdfinfo`
             is not installed.
     """
     path = Path(path)
@@ -196,7 +196,7 @@ def check(path: str | os.PathLike[str], policy: Policy = DEFAULT) -> Verdict:
 
 
 def require(path: str | os.PathLike[str], policy: Policy = DEFAULT) -> Verdict:
-    """As :func:`check`, but raise :class:`Refused` instead of returning a refusal."""
+    """As [check][sillybos.check.check], but raise [Refused][sillybos.Refused] instead of returning a refusal."""
     verdict = check(path, policy)
     if not verdict.ok:
         raise Refused(verdict)

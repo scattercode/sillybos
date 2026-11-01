@@ -1,0 +1,93 @@
+# Zensical configuration for the sillybos reference, published to GitHub
+# Pages at https://scattercode.github.io/sillybos/ by .github/workflows/docs.yml
+# on every push to main. The site is the README (what the library is, how to
+# install and use it, the policy table, what it does and does not do),
+# included rather than copied, followed by the API and command line
+# reference generated from the code. The docstrings are the one place the
+# API is described; this file only arranges them.
+
+[project]
+site_name = "sillybos"
+site_url = "https://scattercode.github.io/sillybos/"
+site_description = "Decide before decoding: check that a file is a JPEG, PNG, TIFF or PDF within your limits before any image library or PDF renderer opens it"
+repo_url = "https://github.com/scattercode/sillybos"
+repo_name = "scattercode/sillybos"
+edit_uri = "edit/main/docs/"
+copyright = "Copyright &copy; 2026 Stephen Masters, Yvette Mankerian. MIT licensed."
+docs_dir = "docs"
+site_dir = "site"
+# Every warning is a failed build, in CI and by hand: a docstring that does
+# not render, or a cross-reference to a name that is not documented, fails
+# the pull request rather than reaching the site.
+strict = true
+
+nav = [
+    { "sillybos" = "index.md" },
+    { "API reference" = "api.md" },
+    { "Command line reference" = "cli.md" },
+    { "Advisories" = "advisories/README.md" },
+]
+
+[project.theme]
+logo = "logo.png"
+favicon = "logo.png"
+features = [
+    "navigation.sections",
+    "navigation.top",
+    "toc.follow",
+    "search.highlight",
+    "content.code.copy",
+    "content.action.view",
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+toggle = { icon = "material/brightness-7", name = "Switch to dark mode" }
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+toggle = { icon = "material/brightness-4", name = "Switch to light mode" }
+
+[project.markdown_extensions]
+admonition = {}
+attr_list = {}
+md_in_html = {}
+tables = {}
+toc = { permalink = true }
+"pymdownx.highlight" = {}
+"pymdownx.superfences" = {}
+# index.md includes the README between its two snippet markers. The base
+# path is the project root, where the README is; Snippets refuses a path
+# that climbs out of it.
+"pymdownx.snippets" = { base_path = ["."], check_paths = true }
+
+[project.plugins]
+search = {}
+# cli.md runs the parser at build time to print the command's help.
+"markdown-exec" = {}
+
+# The API reference, from the docstrings. Google style, with Markdown
+# cross-references ([Policy][sillybos.Policy]); the names are documented
+# under the name a reader imports, sillybos.Policy, not where they are
+# defined.
+[project.plugins.mkdocstrings.handlers.python]
+paths = ["src"]
+
+[project.plugins.mkdocstrings.handlers.python.options]
+docstring_style = "google"
+heading_level = 3
+show_root_heading = true
+# Headings carry the short name; the page's sections say which part of the
+# package each sits in, and `check` is documented from sillybos.check.check,
+# which spelt out would mislead.
+show_root_full_path = false
+show_symbol_type_heading = true
+show_symbol_type_toc = true
+members_order = "source"
+separate_signature = true
+show_signature_annotations = true
+signature_crossrefs = true
+show_source = true
+merge_init_into_class = true

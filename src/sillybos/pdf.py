@@ -1,16 +1,16 @@
-"""Page count and page sizes of a PDF, from poppler's ``pdfinfo``.
+"""Page count and page sizes of a PDF, from poppler's `pdfinfo`.
 
 A PDF's structure cannot be read from a fixed header the way an image's can:
 the page count lives in an object tree that may be compressed, and finding
 it means parsing. Rather than carry a PDF parser (which would be exactly the
 kind of code the library exists to keep away from untrusted files), this
-asks ``pdfinfo``, which parses the structure without rendering a page, in a
-separate process with a time limit. A hang or a crash in ``pdfinfo`` is then
+asks `pdfinfo`, which parses the structure without rendering a page, in a
+separate process with a time limit. A hang or a crash in `pdfinfo` is then
 one file's refusal, not the caller's.
 
-``pdfinfo`` comes with poppler (``brew install poppler``, ``apt install
-poppler-utils``), which anything that renders PDFs in Python already needs.
-Without it, a PDF cannot be checked, and :class:`PdfInfoMissing` says so;
+`pdfinfo` comes with poppler (`brew install poppler`, `apt install
+poppler-utils`), which anything that renders PDFs in Python already needs.
+Without it, a PDF cannot be checked, and [PdfInfoMissing][sillybos.pdf.PdfInfoMissing] says so;
 that is a configuration error, not a verdict on the file.
 """
 
@@ -31,7 +31,7 @@ _PAGE_SIZE = re.compile(r"^Page(?:\s+(\d+))? size:\s+([\d.]+) x ([\d.]+) pts", r
 
 
 class PdfInfoMissing(RuntimeError):
-    """``pdfinfo`` is not on the PATH, so no PDF can be checked."""
+    """`pdfinfo` is not on the PATH, so no PDF can be checked."""
 
     def __init__(self) -> None:
         super().__init__(
@@ -42,14 +42,14 @@ class PdfInfoMissing(RuntimeError):
 
 @dataclass(frozen=True)
 class PdfHeader:
-    """What ``pdfinfo`` reported.
+    """What `pdfinfo` reported.
 
     Attributes:
         pages: The page count.
         encrypted: Whether the file is encrypted.
         width: The first page's width in pixels at the policy's render dpi.
         height: The first page's height, likewise.
-        max_pixels: The most pixels any page would render to. ``None`` when
+        max_pixels: The most pixels any page would render to. `None` when
             the page count was over the limit and the sizes were not asked
             for.
     """
@@ -91,15 +91,15 @@ def _pixels(points: str, dpi: int) -> float:
 
 
 def pdf(path: Path, policy: Policy) -> PdfHeader:
-    """Ask ``pdfinfo`` for the page count, encryption and, within the limit, every page's size.
+    """Ask `pdfinfo` for the page count, encryption and, within the limit, every page's size.
 
-    Page sizes are only asked for when the count is within ``policy.max_pages``:
+    Page sizes are only asked for when the count is within `policy.max_pages`:
     a listing of a hundred thousand pages is work the file should not be able
     to cause.
 
     Raises:
-        HeaderError: If ``pdfinfo`` refuses the file or runs out of time.
-        PdfInfoMissing: If ``pdfinfo`` is not installed.
+        HeaderError: If `pdfinfo` refuses the file or runs out of time.
+        PdfInfoMissing: If `pdfinfo` is not installed.
     """
     summary = _pdfinfo([], path, policy.pdfinfo_timeout)
     pages_match = _PAGES.search(summary)

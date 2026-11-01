@@ -3,39 +3,36 @@
 Everything the package exports, generated from the docstrings. The
 [policy table](index.md#the-policy) says what each limit bounds and why.
 
-```{eval-rst}
-.. automodule:: sillybos
-```
+::: sillybos
+    options:
+      members: false
+      show_root_heading: false
+      show_root_toc_entry: false
 
 ## The check
 
-```{eval-rst}
-.. autofunction:: sillybos.check
+<!-- sillybos.check is both the function and the module it is defined in;
+     griffe keeps the module under that name, so the function is addressed
+     by where it is defined. -->
+::: sillybos.check.check
 
-.. autofunction:: sillybos.require
+::: sillybos.require
 
-.. autoclass:: sillybos.Verdict
-   :members:
+::: sillybos.Verdict
 
-.. autoclass:: sillybos.Facts
+::: sillybos.Facts
 
-.. autoexception:: sillybos.Refused
+::: sillybos.Refused
 
-.. autoexception:: sillybos.pdf.PdfInfoMissing
-```
+::: sillybos.pdf.PdfInfoMissing
 
 ## The policy
 
-```{eval-rst}
-.. autoclass:: sillybos.Policy
-   :members:
+::: sillybos.Policy
 
-.. autodata:: sillybos.DEFAULT
-   :no-value:
+::: sillybos.DEFAULT
 
-.. autodata:: sillybos.STRICT
-   :no-value:
-```
+::: sillybos.STRICT
 
 ## The names
 
@@ -43,23 +40,21 @@ What a policy's fields and a verdict's facts are spelt with. Each tuple is
 every name the library knows, in the order the reasons list them; a policy
 chooses from it.
 
-```{eval-rst}
-.. autodata:: sillybos.FORMATS
+::: sillybos.FORMATS
 
-.. autodata:: sillybos.JPEG_FRAMES
+::: sillybos.JPEG_FRAMES
 
-.. autodata:: sillybos.PNG_COLOUR_TYPES
+::: sillybos.PNG_COLOUR_TYPES
 
-.. autodata:: sillybos.TIFF_COMPRESSIONS
+::: sillybos.TIFF_COMPRESSIONS
 
-.. autodata:: sillybos.TIFF_PHOTOMETRICS
+::: sillybos.TIFF_PHOTOMETRICS
 
-.. autodata:: sillybos.TIFF_SUBSAMPLINGS
-```
+::: sillybos.TIFF_SUBSAMPLINGS
 
 ## With Pillow
 
-```{eval-rst}
-.. automodule:: sillybos.pillow
-   :members:
-```
+::: sillybos.pillow
+    options:
+      show_root_heading: false
+      show_root_toc_entry: false

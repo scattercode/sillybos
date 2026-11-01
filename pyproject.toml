@@ -55,8 +55,10 @@ dependencies = []
 # open_checked: the check followed by Image.open with only the allowed readers.
 pillow = ["pillow>=13.0"]
 # The reference site at https://scattercode.github.io/sillybos/: the README,
-# then the API and the command line from the docstrings (docs/conf.py).
-docs = ["sphinx>=8.0", "sphinx-argparse>=0.6.1", "furo>=2024.8", "myst-parser>=4.0"]
+# then the API and the command line from the docstrings (zensical.toml).
+# mkdocstrings-python renders the docstrings; markdown-exec runs the parser
+# for the command line page.
+docs = ["zensical>=0.0.74", "mkdocstrings-python>=2.0", "markdown-exec>=1.12"]
 dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.5", "mypy>=1.10", "pillow>=13.0"]
 
 [project.scripts]

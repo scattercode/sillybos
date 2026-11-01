@@ -9,7 +9,7 @@ chain of frames is walked with a limit and a memory of where it has been,
 so that a crafted file cannot send the reader round in a circle or off the
 end of the file.
 
-A header the reader cannot make sense of raises :class:`HeaderError` with a
+A header the reader cannot make sense of raises `HeaderError` with a
 reason; the check turns that into a refusal. "Cannot make sense of" is
 deliberately broad: a file that is not shaped the way its format says is not
 one to hand to a decoder, whatever a more forgiving reader would do with it.
@@ -50,31 +50,31 @@ class Header:
         width: Pixels across, for the first frame.
         height: Pixels down, for the first frame.
         pages: Frames in the file (1 for an ordinary image). For a TIFF with
-            more frames than ``limit``, ``limit + 1``: the walk stopped.
+            more frames than `limit`, `limit + 1`: the walk stopped.
         max_pixels: The most pixels in any one frame the reader looked at.
-        complete: ``False`` if the walk stopped at the limit, so ``pages``
-            and ``max_pixels`` describe only the frames it reached.
+        complete: `False` if the walk stopped at the limit, so `pages`
+            and `max_pixels` describe only the frames it reached.
         coding: For a JPEG, how its frame is coded, by a name from
-            :data:`sillybos.JPEG_FRAMES` (``"baseline"``, ``"progressive"``,
-            ``"lossless"``, ...). ``None`` for the other formats.
+            [sillybos.JPEG_FRAMES][] (`"baseline"`, `"progressive"`,
+            `"lossless"`, ...). `None` for the other formats.
         compression: For a TIFF, how its frames are compressed, by a name
-            from :data:`sillybos.TIFF_COMPRESSIONS` (``"none"``, ``"lzw"``,
-            ``"jpeg"``, ...); every frame the reader looked at uses it.
-            ``None`` for the other formats.
+            from [sillybos.TIFF_COMPRESSIONS][] (`"none"`, `"lzw"`,
+            `"jpeg"`, ...); every frame the reader looked at uses it.
+            `None` for the other formats.
         metadata: The largest block of metadata the reader passed over, as
             (what it is, its size in bytes): a PNG chunk other than image
             data, a TIFF tag's out-of-line data, a JPEG colour profile
-            across its segments. ``None`` if there was none.
+            across its segments. `None` if there was none.
         colour: For a PNG, its colour type by a name from
-            :data:`sillybos.PNG_COLOUR_TYPES`; for a TIFF, its photometric
-            interpretation by a name from :data:`sillybos.TIFF_PHOTOMETRICS`.
-            ``None`` for a JPEG.
-        depth: For a PNG or TIFF, its bits per sample. ``None`` for a JPEG.
+            [sillybos.PNG_COLOUR_TYPES][]; for a TIFF, its photometric
+            interpretation by a name from [sillybos.TIFF_PHOTOMETRICS][].
+            `None` for a JPEG.
+        depth: For a PNG or TIFF, its bits per sample. `None` for a JPEG.
         interlaced: For a PNG, whether it is Adam7 interlaced.
         subsampling: For a YCbCr TIFF, its chroma subsampling as
-            ``"2x2"`` (horizontal by vertical). ``None`` otherwise.
+            `"2x2"` (horizontal by vertical). `None` otherwise.
         tile: For a tiled TIFF, the (width, height) of its largest tile,
-            which is what the decoder allocates whole. ``None`` for a TIFF
+            which is what the decoder allocates whole. `None` for a TIFF
             in strips and for the other formats.
     """
 
@@ -113,7 +113,7 @@ def _dimensions(width: int, height: int, what: str) -> None:
 # image. C4 (DHT), C8 (JPG extension) and CC (DAC) share the range but are
 # not frames. A scanner writes baseline or progressive frames; the rest are
 # legal JPEG that no scanner produces and the decoder's rarest paths, and the
-# policy says which may pass. The names are :data:`sillybos.JPEG_FRAMES`.
+# policy says which may pass. The names are [sillybos.JPEG_FRAMES][].
 _FRAME_CODINGS = {
     0xC0: "baseline",
     0xC1: "extended",
@@ -156,7 +156,7 @@ def jpeg(f: Reader, size: int, limit: int) -> Header:
     offset and size. Each is read the same way and counted as a page, and
     each must match the first in coding and components, because the decoder
     that sized its buffers for the first picture is the one that will decode
-    the rest. As with a TIFF, the walk stops after ``limit + 1`` pictures.
+    the rest. As with a TIFF, the walk stops after `limit + 1` pictures.
     """
     first, pictures, profile = _frame(f, size, 0, "frame header", index=True)
     metadata = ("JPEG colour profile", profile) if profile else None
@@ -189,9 +189,9 @@ def jpeg(f: Reader, size: int, limit: int) -> Header:
 def _frame(
     f: Reader, size: int, start: int, what: str, *, index: bool
 ) -> tuple[_Frame, list[int], int]:
-    """Walk one picture's segments from ``start`` to its frame header.
+    """Walk one picture's segments from `start` to its frame header.
 
-    Returns the frame and, when ``index`` is set, the offset in the file of
+    Returns the frame and, when `index` is set, the offset in the file of
     every further picture a Multi-Picture index names and the total bytes
     of colour profile carried in APP2 segments.
     """
@@ -249,8 +249,8 @@ def _frame(
 def _mp_index(data: bytes, base: int) -> list[int]:
     """Read the MP Index IFD of a Multi-Picture Format segment.
 
-    ``data`` is the segment after its ``MPF`` identifier: a small TIFF of
-    its own, whose offsets count from its first byte, which sits at ``base``
+    `data` is the segment after its `MPF` identifier: a small TIFF of
+    its own, whose offsets count from its first byte, which sits at `base`
     in the file. Returns the offset in the file of every picture after the
     first. An index that names one picture, or none, is an ordinary JPEG,
     which is how Pillow reads it too. Each entry also carries the picture's
@@ -298,7 +298,7 @@ def _mp_index(data: bytes, base: int) -> list[int]:
 
 # --- PNG --------------------------------------------------------------------
 
-# Colour types by IHDR value, named as :data:`sillybos.PNG_COLOUR_TYPES` names
+# Colour types by IHDR value, named as [sillybos.PNG_COLOUR_TYPES][] names
 # them, with the bit depths the specification allows each.
 _COLOUR_TYPES = {
     0: ("greyscale", {1, 2, 4, 8, 16}),
@@ -313,10 +313,10 @@ def png(f: Reader, size: int, limit: int) -> Header:
     """Read a PNG's IHDR, count the frames of an animated one, and size every other chunk.
 
     The walk goes to IEND, not just to the first image-data chunk, because
-    a decoder reads the chunks after the image data too (an ``eXIf`` or a
+    a decoder reads the chunks after the image data too (an `eXIf` or a
     text chunk may sit there). Image-data chunks are skipped, not read, and
-    counted against :data:`MAX_IDAT_CHUNKS`; every other chunk counts
-    against :data:`MAX_SEGMENTS`, and the largest is reported so that the
+    counted against `MAX_IDAT_CHUNKS`; every other chunk counts
+    against `MAX_SEGMENTS`, and the largest is reported so that the
     policy can bound it.
     """
     del limit  # the frame count is one field; no walk to bound
@@ -433,7 +433,7 @@ MAX_SAMPLES = 64
 three or four; the bound keeps the out-of-line read small."""
 
 # Photometric interpretations by tag value, named as
-# :data:`sillybos.TIFF_PHOTOMETRICS` names them. White-is-zero and
+# [sillybos.TIFF_PHOTOMETRICS][] names them. White-is-zero and
 # black-is-zero are both greyscale: the same buffer, inverted.
 _PHOTOMETRICS = {
     0: "greyscale",
@@ -453,7 +453,7 @@ _PHOTOMETRICS = {
 }
 _SUBSAMPLING_FACTORS = {1, 2, 4}
 
-# Compression schemes by their tag value, named as :data:`sillybos.TIFF_COMPRESSIONS`
+# Compression schemes by their tag value, named as [sillybos.TIFF_COMPRESSIONS][]
 # names them. A scanner writes the first six. A code not listed here is
 # refused outright: the policy can only name what the library knows.
 _COMPRESSIONS = {
@@ -492,8 +492,8 @@ _COMPRESSIONS = {
 def tiff(f: Reader, size: int, limit: int) -> Header:
     """Walk a classic TIFF's IFD chain: dimensions and compression per frame, frames counted.
 
-    Stops after ``limit + 1`` frames and reports that many, so that a file
-    with a million frames costs the time of ``limit`` reads, not a million.
+    Stops after `limit + 1` frames and reports that many, so that a file
+    with a million frames costs the time of `limit` reads, not a million.
     An IFD that points at itself, at an earlier one, or past the end of the
     file is an error, not a loop. Every frame must share the first frame's
     compression scheme and pixel layout (photometric interpretation, samples
@@ -719,4 +719,4 @@ def _no_frames() -> Header:
 
 
 READERS = {"jpeg": jpeg, "png": png, "tiff": tiff}
-"""The header reader for each raster format in :data:`sillybos.FORMATS`."""
+"""The header reader for each raster format in [sillybos.FORMATS][]."""

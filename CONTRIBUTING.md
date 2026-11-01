@@ -34,9 +34,9 @@ uv pip install -e '.[dev,docs]'
 
 (`python -m venv` and `pip` work too.) The PDF tests need `pdfinfo` from
 poppler (`brew install poppler`, `apt install poppler-utils`) and skip
-without it. The `docs` extra is Sphinx and its theme, for the reference
-site; leave it out if you are not touching the docs. Then activate the git
-hooks, one of:
+without it. The `docs` extra is Zensical and the API documentation
+handler, for the reference site; leave it out if you are not touching the
+docs. Then activate the git hooks, one of:
 
 ```bash
 lefthook install                          # if you have lefthook (brew install lefthook gitleaks zizmor)
@@ -57,7 +57,7 @@ ruff format --check .
 mypy
 pytest --cov
 uv lock --check                           # the lockfile matches pyproject.toml
-sphinx-build -W -b html docs docs/_build/html   # the docs, with the docs extra
+zensical build --clean --strict           # the docs, with the docs extra
 gitleaks git --no-banner --redact .       # secrets in the history
 uvx zizmor --min-severity medium .github/workflows
 ```
@@ -70,15 +70,18 @@ above the floor in `pyproject.toml`.
 ## The docs
 
 The reference site at <https://scattercode.github.io/sillybos/> is built by
-Sphinx from `docs/` and published by `docs.yml` on every push to `main`. It
-is the README (included, not copied, between the two `docs:` comment
-markers) followed by the API and the command line, generated from the
-docstrings and the parser. There is nothing to write by hand when the API
-changes: the docstrings are the reference, in Google style with
-reStructuredText cross-references (`:class:`, `:func:`, `:data:`), and a
-docstring that does not render is a build failure, since the build runs
-with warnings as errors on every pull request. Build it locally with the
-command above and open `docs/_build/html/index.html`.
+[Zensical](https://zensical.org/) from `docs/` and `zensical.toml`, and
+published by `docs.yml` on every push to `main`. It is the README
+(included, not copied, between its two `--8<--` snippet markers) followed
+by the API and the command line, generated from the docstrings and the
+parser. There is nothing to write by hand when the API changes: the
+docstrings are the reference, in Google style with Markdown
+cross-references (`[Policy][sillybos.Policy]`; the function `check` is
+`[check][sillybos.check.check]`, since `sillybos.check` is also the module
+it lives in), and a docstring that does not render, or a reference to a
+name that is not documented, is a build failure, since the build runs in
+strict mode on every pull request. Preview it locally with
+`zensical serve`.
 
 ## Dependencies and the lockfile
 

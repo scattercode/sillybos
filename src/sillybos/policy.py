@@ -1,10 +1,10 @@
 """What a file is allowed to be.
 
-A :class:`Policy` is a plain settings object: which formats may pass, and the
+A [Policy][sillybos.Policy] is a plain settings object: which formats may pass, and the
 ceilings on size, pixels and pages. Two presets cover most uses. The numbers
-in :data:`DEFAULT` come from a real corpus of archival scans (the largest
+in [DEFAULT][sillybos.DEFAULT] come from a real corpus of archival scans (the largest
 page in it is 39 million pixels at 600 dpi; the longest book is 166 pages)
-with room to spare; :data:`STRICT` is for files from further away.
+with room to spare; [STRICT][sillybos.STRICT] is for files from further away.
 """
 
 from __future__ import annotations
@@ -88,15 +88,15 @@ MIB = 1024 * 1024
 
 @dataclass(frozen=True)
 class Policy:
-    """The limits a file must sit inside to pass :func:`sillybos.check`.
+    """The limits a file must sit inside to pass [sillybos.check][sillybos.check.check].
 
     Args:
-        formats: Which of :data:`FORMATS` may pass. A file of any other
+        formats: Which of [FORMATS][sillybos.FORMATS] may pass. A file of any other
             format is refused whatever its name says.
         max_bytes: The largest file, in bytes. Checked before anything is
-            read, so an enormous file is never handed to ``pdfinfo``.
+            read, so an enormous file is never handed to `pdfinfo`.
         max_pixels: The most pixels in any one page or frame once decoded.
-            For a PDF page, the pixels it would render to at ``render_dpi``.
+            For a PDF page, the pixels it would render to at `render_dpi`.
             The default is the threshold at which Pillow warns of a
             decompression bomb, enforced here rather than left to a global
             that another library may have raised.
@@ -117,17 +117,17 @@ class Policy:
             renderer allocates them.
         name_must_match: Refuse a file whose extension says one allowed
             format and whose contents are another (a JPEG called
-            ``.png``). The readers would cope, but a file whose name lies
+            `.png`). The readers would cope, but a file whose name lies
             is not one to trust, and the mismatch is the first thing an
             operator wants to know.
-        jpeg_frames: Which of :data:`JPEG_FRAMES` may pass. The default is
+        jpeg_frames: Which of [JPEG_FRAMES][sillybos.JPEG_FRAMES] may pass. The default is
             what a scanner writes: baseline, extended and progressive. A
             lossless, hierarchical or arithmetic-coded frame goes down a
             path of the decoder that almost no file exercises; a lossless
             frame was the way into a heap overflow in Pillow's JPEG decoder
             (CVE-2026-112403). A multi-picture JPEG's pictures count as
             pages and are each read.
-        png_colour_types: Which of :data:`PNG_COLOUR_TYPES` may pass. The
+        png_colour_types: Which of [PNG_COLOUR_TYPES][sillybos.PNG_COLOUR_TYPES] may pass. The
             default is all five; a policy for scans alone can keep to
             greyscale and RGB, which closes libpng's palette paths
             (CVE-2025-64720, CVE-2025-66293, CVE-2026-33636).
@@ -138,10 +138,10 @@ class Policy:
             writes one, and the interlaced 16-bit path was the way into
             two libpng overflows (CVE-2025-65018, CVE-2026-22695), so the
             default refuses.
-        tiff_photometrics: Which of :data:`TIFF_PHOTOMETRICS` may pass. The
+        tiff_photometrics: Which of [TIFF_PHOTOMETRICS][sillybos.TIFF_PHOTOMETRICS] may pass. The
             default is what a scanner writes: greyscale, RGB, palette, CMYK
             and YCbCr. Every frame of a file must share one.
-        tiff_subsamplings: Which of :data:`TIFF_SUBSAMPLINGS` a YCbCr TIFF
+        tiff_subsamplings: Which of [TIFF_SUBSAMPLINGS][sillybos.TIFF_SUBSAMPLINGS] a YCbCr TIFF
             may declare. The default is the four a scanner writes; the
             factor-of-four paths are where libtiff's most recent heap
             write was found (CVE-2026-4775).
@@ -149,18 +149,18 @@ class Policy:
             A scanner writes strips; digitisation and mapping software
             write tiles, so the default allows them and the strict preset
             does not. A tile is what the decoder allocates whole, so a
-            tile is also held to ``max_pixels`` on its own; the tiled decode
+            tile is also held to `max_pixels` on its own; the tiled decode
             path is where two of Pillow's recent over-reads were
             (CVE-2026-112395, CVE-2026-112404).
-        tiff_compressions: Which of :data:`TIFF_COMPRESSIONS` may pass. The
+        tiff_compressions: Which of [TIFF_COMPRESSIONS][sillybos.TIFF_COMPRESSIONS] may pass. The
             default is what a scanner writes: none, CCITT, LZW, JPEG,
             Deflate and PackBits. The other codecs are where most of
             libtiff's flaws have been found (PixarLog most recently,
             CVE-2026-12912), and a scan never needs them. Every frame of a
             file must use the same scheme.
-        allow_encrypted_pdf: Pass a PDF that ``pdfinfo`` reports as
+        allow_encrypted_pdf: Pass a PDF that `pdfinfo` reports as
             encrypted. A scanned book never is, so the default refuses.
-        pdfinfo_timeout: Seconds to give ``pdfinfo`` before giving up on a
+        pdfinfo_timeout: Seconds to give `pdfinfo` before giving up on a
             PDF, which is then refused. A crafted file can make a parser
             loop; a limit turns that into one file's failure.
     """
@@ -237,7 +237,7 @@ class Policy:
             raise ValueError("pdfinfo_timeout must be positive")
 
     def allows(self, fmt: str) -> bool:
-        """Whether ``fmt`` (a name from :data:`FORMATS`) may pass."""
+        """Whether `fmt` (a name from [FORMATS][sillybos.FORMATS]) may pass."""
         return fmt in self.formats
 
 
