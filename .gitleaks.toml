@@ -2,6 +2,18 @@
 # the full history in CI and weekly (security.yml). `gitleaks git .` scans
 # the history by hand.
 #
-# Extends the built-in rules. No allow-list yet; add paths here, never rules.
+# Extends the built-in rules. The allow-list is ours; add to it, never to
+# the rules.
 [extend]
 useDefault = true
+
+[allowlist]
+description = "Known false positives"
+# The advisory record (docs/advisories/record/ and proposed/) names each
+# advisory in a `key` field. A CVE id with the right spread of digits
+# crosses the generic API-key rule's entropy threshold (CVE-2024-13978 did,
+# 1 November 2026). Only that field, only an advisory id.
+regexTarget = "line"
+regexes = [
+  '''"key": "(CVE-\d{4}-\d{4,}|GHSA-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}|PYSEC-\d{4}-\d+)"''',
+]
