@@ -28,7 +28,7 @@ with the presets :data:`DEFAULT` and :data:`STRICT`; and, with the
 from __future__ import annotations
 
 from sillybos.check import Facts, Refused, Verdict, check, require
-from sillybos.policy import DEFAULT, FORMATS, STRICT, Policy
+from sillybos.policy import DEFAULT, FORMATS, JPEG_FRAMES, STRICT, Policy
 
 try:
     from sillybos._version import __version__
@@ -38,6 +38,7 @@ except ImportError:  # pragma: no cover - only in a checkout that has not been b
 __all__ = [
     "DEFAULT",
     "FORMATS",
+    "JPEG_FRAMES",
     "STRICT",
     "Facts",
     "Policy",

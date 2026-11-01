@@ -44,11 +44,85 @@ def _segment(marker: int, payload: bytes) -> bytes:
     return bytes([0xFF, marker]) + struct.pack(">H", len(payload) + 2) + payload
 
 
-def jpeg(width: int, height: int, *, before_sof: bytes = b"", sof: bool = True) -> bytes:
-    """A JPEG header: SOI, a JFIF APP0, optional padding segments, a baseline SOF0."""
+def jpeg(
+    width: int,
+    height: int,
+    *,
+    before_sof: bytes = b"",
+    sof: bool = True,
+    marker: int = 0xC0,
+    components: int = 1,
+) -> bytes:
+    """A JPEG header: SOI, a JFIF APP0, optional padding segments, a SOF (baseline by default)."""
     app0 = _segment(0xE0, b"JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00")
-    frame = _segment(0xC0, struct.pack(">BHHB", 8, height, width, 1) + b"\x01\x11\x00")
+    layout = b"".join(bytes([n + 1, 0x11, 0]) for n in range(components))
+    frame = _segment(marker, struct.pack(">BHHB", 8, height, width, components) + layout)
     return b"\xff\xd8" + app0 + before_sof + (frame if sof else b"") + b"\xff\xda\x00\x02\xff\xd9"
+
+
+_MP_HEADER_AT = 2 + 18 + 4 + 4
+"""Where the MP header starts in a picture built here: after SOI, APP0, the
+APP2 marker and length, and the ``MPF`` identifier. Its offsets count from here."""
+
+
+def mpo(
+    pictures: list[tuple[int, int]],
+    *,
+    markers: list[int] | None = None,
+    components: list[int] | None = None,
+    declared: int | None = None,
+    stray: bool = False,
+    not_jpeg: bool = False,
+    index: bytes | None = None,
+) -> bytes:
+    """A multi-picture JPEG: the first picture carries an MP index naming the rest.
+
+    Each picture is a :func:`jpeg` header; ``markers`` and ``components``
+    give each its SOF marker and component count. ``declared`` overrides
+    the picture count the index states; ``stray`` points the last picture
+    past the end of the file; ``not_jpeg`` flags the second picture's data
+    format as something other than JPEG; ``index`` replaces the whole MP
+    index (after the ``MPF`` identifier) with the given bytes.
+    """
+    n = len(pictures)
+    markers = markers or [0xC0] * n
+    components = components or [1] * n
+    data_at = 8 + 2 + 3 * 12 + 4  # MP header, then the three-entry index, then the entries
+
+    def build(entries: bytes) -> bytes:
+        return (
+            b"II*\x00"
+            + struct.pack("<I", 8)
+            + struct.pack("<H", 3)
+            + struct.pack("<HHI", 0xB000, 7, 4)
+            + b"0100"
+            + struct.pack("<HHII", 0xB001, 4, 1, n if declared is None else declared)
+            + struct.pack("<HHII", 0xB002, 7, len(entries), data_at)
+            + struct.pack("<I", 0)
+            + entries
+        )
+
+    bodies = [
+        jpeg(w, h, marker=m, components=c)
+        for (w, h), m, c in zip(pictures, markers, components, strict=True)
+    ]
+    # The first picture gains the APP2 segment, which moves everything after it.
+    app2_size = 4 + 4 + len(build(b"\x00" * 16 * n))
+    offsets = []
+    position = 0
+    for k, body in enumerate(bodies):
+        offsets.append(position)
+        position += len(body) + (app2_size if k == 0 else 0)
+    entries = b""
+    for k, body in enumerate(bodies):
+        attribute = 0x01000000 if (not_jpeg and k == 1) else 0
+        offset = 0 if k == 0 else offsets[k] - _MP_HEADER_AT
+        if stray and k == n - 1:
+            offset = 1 << 30
+        entries += struct.pack("<IIIHH", attribute, len(body), offset, 0, 0)
+    app2 = _segment(0xE2, b"MPF\x00" + (build(entries) if index is None else index))
+    first = bodies[0][:20] + app2 + bodies[0][20:]  # after SOI and APP0
+    return first + b"".join(bodies[1:])
 
 
 def jpeg_padding(n: int) -> bytes:

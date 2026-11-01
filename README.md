@@ -92,9 +92,10 @@ check(path, Policy(formats={"tiff", "pdf"}, max_pages=50))
 | `formats` | jpeg, png, tiff, pdf | the same | What may pass at all. Nothing else is ever allowed, whatever the policy says |
 | `max_bytes` | 512 MiB | 128 MiB | The file. Checked before anything reads it |
 | `max_pixels` | 89,478,485 | 50,000,000 | Any one page or frame, decoded. For a PDF page, at `render_dpi`. The default is Pillow's own decompression-bomb threshold, enforced here rather than left to a global |
-| `max_pages` | 500 | 100 | Pages of a PDF, frames of a TIFF or animated PNG. Also bounds the header walk itself |
+| `max_pages` | 500 | 100 | Pages of a PDF, frames of a TIFF or animated PNG, pictures of a multi-picture JPEG. Also bounds the header walk itself |
 | `render_dpi` | 200 | 200 | What you will render PDF pages at, so a page's pixels are known before the renderer allocates them |
 | `name_must_match` | yes | yes | Refuse a JPEG called `.png`. The readers would cope; the lie is what you want to know about |
+| `jpeg_frames` | baseline, extended, progressive | the same | How a JPEG's frame may be coded. Lossless, hierarchical and arithmetic frames are legal JPEG that no scanner writes and the decoder's least-exercised code; a lossless frame was the way into a heap overflow in Pillow's JPEG decoder (CVE-2026-112403) |
 | `allow_encrypted_pdf` | no | no | A scanned book is never encrypted |
 | `pdfinfo_timeout` | 30 s | 30 s | How long `pdfinfo` may take before the file is refused |
 
@@ -131,7 +132,8 @@ refused  scans/report.pdf    1,412 pages; the limit is 500
 
 Exit status 0 when every file passed, 1 when any was refused, 2 when the
 command could not do its job. `--strict`, `--formats`, `--max-pages`,
-`--max-pixels`, `--max-bytes` and `--any-name` adjust the policy; `--json`
+`--max-pixels`, `--max-bytes`, `--jpeg-frames` and `--any-name` adjust the
+policy; `--json`
 prints one object per line for a pipeline; `-q` prints only refusals.
 
 ## What it does, exactly
@@ -145,11 +147,13 @@ prints one object per line for a pipeline; `-q` prints only refusals.
    unknown format". Refused by name, and no reader of ours runs on it.
 3. **Name against contents.** `says PNG, is JPEG`.
 4. **The header**, with a reader of its own for each raster format: the
-   dimensions from a JPEG's frame header, a PNG's `IHDR` (and `acTL` frame
-   count), and every directory in a TIFF's chain, which is walked with a
-   limit and a memory of where it has been, so that a chain that loops or
-   points off the end of the file is a refusal, not a hang. Every read is
-   bounded and every offset is checked against the file's size. For a PDF,
+   dimensions, coding and component count from a JPEG's frame header, and
+   every picture of a multi-picture (MPF) JPEG, each read the same way and
+   required to match the first; a PNG's `IHDR` (and `acTL` frame count);
+   and every directory in a TIFF's chain, which is walked with a limit and
+   a memory of where it has been, so that a chain that loops or points off
+   the end of the file is a refusal, not a hang. Every read is bounded and
+   every offset is checked against the file's size. For a PDF,
    `pdfinfo` reports the page count, whether it is encrypted and, if the
    count is within the limit, every page's size.
 5. **The limits**, against what the header said.
@@ -161,8 +165,9 @@ Say this plainly, because a security library carries an implied promise.
 - **It does not protect against a flaw in the readers you *do* allow.** A
   crafted JPEG that exploits a bug in your JPEG decoder passes this check,
   because it is a JPEG of a sensible size. What this library removes is the
-  attack surface of every format you did not mean to read, and the whole
-  class of files that are too big to be safe. For the readers you keep:
+  attack surface of every format you did not mean to read, the whole class
+  of files that are too big to be safe, and, where the header shows them,
+  the rare codings a scanner never writes. For the readers you keep:
   update them, and run them in a boxed process with memory and time
   limits (a recipe for that is planned; it is deliberately not a
   dependency).
@@ -192,9 +197,11 @@ ruff check . && ruff format --check . && mypy && pytest --cov
 ```
 
 The tests build the hostile corpus by hand at test time (`tests/corpus.py`):
-renamed PostScript, a 100-byte PNG that claims ten billion pixels, a TIFF
-with ten thousand frames, a TIFF whose frame chain loops, a PDF of a
-thousand pages, a PDF with a page 200 inches wide. Nothing hostile is
+renamed PostScript, a 100-byte PNG that claims ten billion pixels, a
+lossless JPEG, a multi-picture JPEG whose second picture is four billion
+pixels or changes colour mode, a TIFF with ten thousand frames, a TIFF
+whose frame chain loops, a PDF of a thousand pages, a PDF with a page 200
+inches wide. Nothing hostile is
 checked in. The readers are also checked against Pillow's reading of real
 files, so that they agree with the decoder they stand in front of.
 

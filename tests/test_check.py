@@ -86,6 +86,37 @@ class TestHostileFiles:
         assert verdict.reasons == ("a page of 10,000,000,000 pixels; the limit is 89,478,485",)
         assert verdict.facts is not None and verdict.facts.max_pixels == 10_000_000_000
 
+    def test_a_lossless_jpeg(self, tmp_path: Path) -> None:
+        verdict = check(corpus.write(tmp_path / "scan.jpg", corpus.jpeg(10, 10, marker=0xC3)))
+        assert verdict.reasons == (
+            "a lossless JPEG; the policy allows baseline, extended and progressive frames",
+        )
+        assert verdict.facts is not None and verdict.facts.coding == "lossless"
+
+    def test_the_policy_can_allow_a_coding(self, tmp_path: Path) -> None:
+        path = corpus.write(tmp_path / "scan.jpg", corpus.jpeg(10, 10, marker=0xC9))
+        assert check(path, Policy(jpeg_frames=frozenset({"arithmetic"}))).ok
+        verdict = check(path, Policy(jpeg_frames=frozenset({"baseline"})))
+        assert verdict.reasons == ("an arithmetic JPEG; the policy allows baseline frames",)
+
+    def test_a_multi_picture_jpeg_whose_second_picture_is_a_bomb(self, tmp_path: Path) -> None:
+        path = corpus.write(tmp_path / "scan.jpg", corpus.mpo([(10, 10), (65_535, 65_535)]))
+        verdict = check(path)
+        assert verdict.reasons == ("a page of 4,294,836,225 pixels; the limit is 89,478,485",)
+        assert verdict.facts is not None and verdict.facts.pages == 2
+
+    def test_a_multi_picture_jpeg_that_changes_mode(self, tmp_path: Path) -> None:
+        path = corpus.write(
+            tmp_path / "scan.jpg", corpus.mpo([(10, 10), (10, 10)], components=[1, 3])
+        )
+        assert check(path).reasons == (
+            "the header could not be read: picture 2 has 3 components where picture 1 has 1",
+        )
+
+    def test_a_multi_picture_jpeg_with_too_many_pictures(self, tmp_path: Path) -> None:
+        path = corpus.write(tmp_path / "scan.jpg", corpus.mpo([(10, 10)] * 4))
+        assert check(path, Policy(max_pages=3)).reasons == ("4 pages; the limit is 3",)
+
     def test_a_tiff_with_ten_thousand_frames(self, tmp_path: Path) -> None:
         verdict = check(corpus.write(tmp_path / "frames.tif", corpus.tiff([(10, 10)] * 10_000)))
         assert verdict.reasons == ("more than 500 pages, which is the limit",)
@@ -182,6 +213,8 @@ class TestPolicy:
         [
             ({"formats": frozenset({"webp"})}, "unknown format"),
             ({"formats": frozenset()}, "at least one format"),
+            ({"jpeg_frames": frozenset({"baseline", "mpeg"})}, "unknown JPEG frame coding"),
+            ({"jpeg_frames": frozenset()}, "at least one JPEG frame coding"),
             ({"max_pages": 0}, "max_pages must be at least 1"),
             ({"pdfinfo_timeout": 0}, "must be positive"),
         ],

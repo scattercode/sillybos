@@ -16,6 +16,18 @@ FORMATS: tuple[str, ...] = ("jpeg", "png", "tiff", "pdf")
 Everything else is refused by name. Adding a format is adding attack surface,
 so one is added only when someone shows a scan in it."""
 
+JPEG_FRAMES: tuple[str, ...] = (
+    "baseline",
+    "extended",
+    "progressive",
+    "lossless",
+    "hierarchical",
+    "arithmetic",
+)
+"""Every way a JPEG frame can be coded, as its SOF marker says. A scanner
+writes the first three. The rest are legal, rare, and the decoder's least
+exercised code."""
+
 MIB = 1024 * 1024
 
 
@@ -45,6 +57,13 @@ class Policy:
             ``.png``). The readers would cope, but a file whose name lies
             is not one to trust, and the mismatch is the first thing an
             operator wants to know.
+        jpeg_frames: Which of :data:`JPEG_FRAMES` may pass. The default is
+            what a scanner writes: baseline, extended and progressive. A
+            lossless, hierarchical or arithmetic-coded frame goes down a
+            path of the decoder that almost no file exercises; a lossless
+            frame was the way into a heap overflow in Pillow's JPEG decoder
+            (CVE-2026-112403). A multi-picture JPEG's pictures count as
+            pages and are each read.
         allow_encrypted_pdf: Pass a PDF that ``pdfinfo`` reports as
             encrypted. A scanned book never is, so the default refuses.
         pdfinfo_timeout: Seconds to give ``pdfinfo`` before giving up on a
@@ -58,6 +77,9 @@ class Policy:
     max_pages: int = 500
     render_dpi: int = 200
     name_must_match: bool = True
+    jpeg_frames: frozenset[str] = field(
+        default_factory=lambda: frozenset({"baseline", "extended", "progressive"})
+    )
     allow_encrypted_pdf: bool = False
     pdfinfo_timeout: float = 30.0
 
@@ -69,6 +91,14 @@ class Policy:
             )
         if not self.formats:
             raise ValueError("a policy must allow at least one format")
+        unknown = set(self.jpeg_frames) - set(JPEG_FRAMES)
+        if unknown:
+            raise ValueError(
+                f"unknown JPEG frame coding(s) {sorted(unknown)}; "
+                f"the codings are {', '.join(JPEG_FRAMES)}"
+            )
+        if not self.jpeg_frames:
+            raise ValueError("a policy must allow at least one JPEG frame coding")
         for name in ("max_bytes", "max_pixels", "max_pages", "render_dpi"):
             if getattr(self, name) < 1:
                 raise ValueError(f"{name} must be at least 1")

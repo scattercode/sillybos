@@ -49,6 +49,9 @@ class Header:
         max_pixels: The most pixels in any one frame the reader looked at.
         complete: ``False`` if the walk stopped at the limit, so ``pages``
             and ``max_pixels`` describe only the frames it reached.
+        coding: For a JPEG, how its frame is coded, by a name from
+            :data:`sillybos.JPEG_FRAMES` (``"baseline"``, ``"progressive"``,
+            ``"lossless"``, ...). ``None`` for the other formats.
     """
 
     width: int
@@ -56,6 +59,7 @@ class Header:
     pages: int
     max_pixels: int
     complete: bool = True
+    coding: str | None = None
 
 
 def _read_exactly(f: Reader, n: int, what: str) -> bytes:
@@ -74,19 +78,88 @@ def _dimensions(width: int, height: int, what: str) -> None:
 
 # --- JPEG -------------------------------------------------------------------
 
-# Start-of-frame markers, which carry the dimensions. C4 (DHT), C8 (JPG
-# extension) and CC (DAC) share the range but are not frames.
-_SOF = {0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF}
+# Start-of-frame markers, which carry the dimensions, and how each codes the
+# image. C4 (DHT), C8 (JPG extension) and CC (DAC) share the range but are
+# not frames. A scanner writes baseline or progressive frames; the rest are
+# legal JPEG that no scanner produces and the decoder's rarest paths, and the
+# policy says which may pass. The names are :data:`sillybos.JPEG_FRAMES`.
+_FRAME_CODINGS = {
+    0xC0: "baseline",
+    0xC1: "extended",
+    0xC2: "progressive",
+    0xC3: "lossless",
+    0xC5: "hierarchical",
+    0xC6: "hierarchical",
+    0xC7: "hierarchical",
+    0xC9: "arithmetic",
+    0xCA: "arithmetic",
+    0xCB: "arithmetic",
+    0xCD: "hierarchical",
+    0xCE: "hierarchical",
+    0xCF: "hierarchical",
+}
 # Markers with no length field.
 _STANDALONE = {0x01, 0xD0, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8}
+_APP2 = 0xE2
+_MPF = b"MPF\x00"
+_MP_NUMBER_OF_IMAGES = 0xB001
+_MP_ENTRY = 0xB002
+
+
+@dataclass(frozen=True)
+class _Frame:
+    width: int
+    height: int
+    coding: str
+    components: int
 
 
 def jpeg(f: Reader, size: int, limit: int) -> Header:
-    """Read a JPEG's frame header: walk the segments to the first SOF marker."""
-    del limit  # a JPEG has one frame
-    f.seek(0)
+    """Read a JPEG's frame header, and every picture of a multi-picture file.
+
+    The segments are walked to the first SOF marker, which carries the
+    dimensions, the coding and the component count. An APP2 segment holding
+    a Multi-Picture Format index (the MPO files that cameras and phones
+    write, which Pillow steps through as frames) names further pictures by
+    offset and size. Each is read the same way and counted as a page, and
+    each must match the first in coding and components, because the decoder
+    that sized its buffers for the first picture is the one that will decode
+    the rest. As with a TIFF, the walk stops after ``limit + 1`` pictures.
+    """
+    first, pictures = _frame(f, size, 0, "frame header", index=True)
+    pages = 1
+    max_pixels = first.width * first.height
+    for number, offset in enumerate(pictures, start=2):
+        if pages > limit:
+            return Header(first.width, first.height, pages, max_pixels, False, first.coding)
+        if not 2 <= offset < size:
+            raise HeaderError(f"picture {number} lies outside the file")
+        picture, _ = _frame(f, size, offset, f"picture {number}", index=False)
+        if picture.coding != first.coding:
+            raise HeaderError(
+                f"picture {number} is {picture.coding} where picture 1 is {first.coding}"
+            )
+        if picture.components != first.components:
+            raise HeaderError(
+                f"picture {number} has {picture.components} components "
+                f"where picture 1 has {first.components}"
+            )
+        pages += 1
+        max_pixels = max(max_pixels, picture.width * picture.height)
+    return Header(first.width, first.height, pages, max_pixels, coding=first.coding)
+
+
+def _frame(f: Reader, size: int, start: int, what: str, *, index: bool) -> tuple[_Frame, list[int]]:
+    """Walk one picture's segments from ``start`` to its frame header.
+
+    Returns the frame and, when ``index`` is set and the picture carries a
+    Multi-Picture index, the offset in the file of every further picture it
+    names.
+    """
+    f.seek(start)
     if _read_exactly(f, 2, "header") != b"\xff\xd8":
-        raise HeaderError("no JPEG start-of-image marker")
+        raise HeaderError(f"no JPEG start-of-image marker in the {what}")
+    pictures: list[int] = []
     for _ in range(MAX_SEGMENTS):
         byte = _read_exactly(f, 1, "segment marker")
         if byte != b"\xff":
@@ -101,21 +174,84 @@ def jpeg(f: Reader, size: int, limit: int) -> Header:
         (length,) = struct.unpack(">H", _read_exactly(f, 2, "segment length"))
         if length < 2:
             raise HeaderError("a segment claims a length shorter than its own length field")
-        if marker in _SOF:
-            if length < 7:
+        if marker in _FRAME_CODINGS:
+            if length < 8:
                 raise HeaderError("the frame header is too short to hold the dimensions")
-            _precision, height, width = struct.unpack(">BHH", _read_exactly(f, 5, "frame header"))
+            _precision, height, width, components = struct.unpack(
+                ">BHHB", _read_exactly(f, 6, "frame header")
+            )
             if height == 0:
                 # Legal (a DNL marker supplies it later) and never seen in a
                 # scan; refusing it keeps every decoder's rarest path closed.
                 raise HeaderError("the height is deferred to a DNL marker")
-            _dimensions(width, height, "frame header")
-            return Header(width, height, 1, width * height)
-        next_offset = f.tell() + length - 2
+            _dimensions(width, height, what)
+            return _Frame(width, height, _FRAME_CODINGS[marker], components), pictures
+        payload = f.tell()
+        next_offset = payload + length - 2
         if next_offset > size:
             raise HeaderError("a segment runs past the end of the file")
+        if (
+            index
+            and marker == _APP2
+            and length >= 2 + len(_MPF)
+            and _read_exactly(f, len(_MPF), "APP2 segment") == _MPF
+        ):
+            if pictures:
+                raise HeaderError("two multi-picture indexes")
+            data = _read_exactly(f, length - 2 - len(_MPF), "multi-picture index")
+            pictures = _mp_index(data, payload + len(_MPF))
         f.seek(next_offset)
     raise HeaderError(f"no frame header in the first {MAX_SEGMENTS} segments")
+
+
+def _mp_index(data: bytes, base: int) -> list[int]:
+    """Read the MP Index IFD of a Multi-Picture Format segment.
+
+    ``data`` is the segment after its ``MPF`` identifier: a small TIFF of
+    its own, whose offsets count from its first byte, which sits at ``base``
+    in the file. Returns the offset in the file of every picture after the
+    first. An index that names one picture, or none, is an ordinary JPEG,
+    which is how Pillow reads it too. Each entry also carries the picture's
+    size, which is ignored here as it is by Pillow's reader (and written
+    wrongly, from the third picture on, by Pillow's writer): a decoder that
+    never reads a field cannot be steered by it.
+    """
+    if len(data) < 8:
+        raise HeaderError("the multi-picture index is too short")
+    endian = {b"II*\x00": "<", b"MM\x00*": ">"}.get(data[:4])
+    if endian is None:
+        raise HeaderError("the multi-picture index has no byte-order mark")
+    (offset,) = struct.unpack(endian + "I", data[4:8])
+    if offset + 2 > len(data):
+        raise HeaderError("the multi-picture index lies outside its segment")
+    (count,) = struct.unpack(endian + "H", data[offset : offset + 2])
+    if offset + 2 + count * 12 > len(data):
+        raise HeaderError("the multi-picture index runs past its segment")
+    number = 1
+    entries: list[tuple[int, int, int, int, int]] = []
+    for position in range(offset + 2, offset + 2 + count * 12, 12):
+        tag, _kind, n, raw = struct.unpack(endian + "HHI4s", data[position : position + 12])
+        if tag == _MP_NUMBER_OF_IMAGES:
+            (number,) = struct.unpack(endian + "I", raw)
+        elif tag == _MP_ENTRY:
+            (at,) = struct.unpack(endian + "I", raw)
+            if n % 16 or at + n > len(data):
+                raise HeaderError("the multi-picture entries lie outside their segment")
+            entries = [
+                struct.unpack(endian + "IIIHH", data[at + k : at + k + 16]) for k in range(0, n, 16)
+            ]
+    if number <= 1 and len(entries) <= 1:
+        return []
+    if number != len(entries):
+        raise HeaderError(
+            f"the multi-picture index names {number:,} pictures but lists {len(entries):,}"
+        )
+    pictures = []
+    for position, (attribute, _length, offset, _dep1, _dep2) in enumerate(entries[1:], start=2):
+        if (attribute >> 24) & 0x07:
+            raise HeaderError(f"picture {position} is not coded as JPEG")
+        pictures.append(base + offset)
+    return pictures
 
 
 # --- PNG --------------------------------------------------------------------

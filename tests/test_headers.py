@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import io
+import struct
 
 import pytest
 from PIL import Image
 
-from sillybos import headers
+from sillybos import JPEG_FRAMES, headers
 from sillybos.headers import HeaderError
 from tests import corpus
 
@@ -18,7 +19,9 @@ def read(fmt: str, data: bytes, limit: int = 500) -> headers.Header:
 
 class TestJpeg:
     def test_reads_the_dimensions_from_the_frame_header(self) -> None:
-        assert read("jpeg", corpus.jpeg(4000, 6000)) == headers.Header(4000, 6000, 1, 24_000_000)
+        assert read("jpeg", corpus.jpeg(4000, 6000)) == headers.Header(
+            4000, 6000, 1, 24_000_000, coding="baseline"
+        )
 
     def test_skips_segments_before_the_frame(self) -> None:
         data = corpus.jpeg(30, 20, before_sof=corpus.jpeg_padding(50))
@@ -26,7 +29,87 @@ class TestJpeg:
 
     def test_a_progressive_frame_counts_too(self) -> None:
         data = corpus.jpeg(30, 20).replace(b"\xff\xc0", b"\xff\xc2")
-        assert read("jpeg", data).height == 20
+        assert read("jpeg", data) == headers.Header(30, 20, 1, 600, coding="progressive")
+
+    @pytest.mark.parametrize(
+        ("marker", "coding"),
+        [
+            (0xC0, "baseline"),
+            (0xC1, "extended"),
+            (0xC2, "progressive"),
+            (0xC3, "lossless"),
+            (0xC5, "hierarchical"),
+            (0xC7, "hierarchical"),
+            (0xC9, "arithmetic"),
+            (0xCB, "arithmetic"),
+            (0xCF, "hierarchical"),
+        ],
+    )
+    def test_names_the_frame_coding(self, marker: int, coding: str) -> None:
+        assert read("jpeg", corpus.jpeg(30, 20, marker=marker)).coding == coding
+
+    def test_every_coding_name_is_one_the_policy_knows(self) -> None:
+        assert set(headers._FRAME_CODINGS.values()) <= set(JPEG_FRAMES)
+
+    def test_reads_every_picture_of_a_multi_picture_file(self) -> None:
+        data = corpus.mpo([(30, 20), (40, 50), (10, 10)])
+        assert read("jpeg", data) == headers.Header(30, 20, 3, 2000, coding="baseline")
+
+    def test_an_index_naming_one_picture_is_an_ordinary_jpeg(self) -> None:
+        assert read("jpeg", corpus.mpo([(30, 20)])).pages == 1
+
+    def test_stops_walking_pictures_at_the_limit(self) -> None:
+        data = corpus.mpo([(10, 10)] * 12)
+        header = read("jpeg", data, limit=5)
+        assert header.pages == 6 and not header.complete
+        assert read("jpeg", data).pages == 12
+
+    @pytest.mark.parametrize(
+        ("data", "reason"),
+        [
+            (corpus.mpo([(10, 10), (0, 10)]), "picture 2 gives a zero width or height"),
+            (corpus.mpo([(10, 10), (10, 10)], markers=[0xC0, 0xC2]), "picture 2 is progressive"),
+            (corpus.mpo([(10, 10), (10, 10)], components=[1, 3]), "picture 2 has 3 components"),
+            (corpus.mpo([(10, 10), (10, 10)], declared=3), "names 3 pictures but lists 2"),
+            (corpus.mpo([(10, 10), (10, 10)], stray=True), "picture 2 lies outside the file"),
+            (corpus.mpo([(10, 10), (10, 10)], not_jpeg=True), "picture 2 is not coded as JPEG"),
+            (corpus.mpo([(10, 10), (10, 10)], index=b"II*\x00"), "index is too short"),
+            (corpus.mpo([(10, 10), (10, 10)], index=b"XX*\x00" + b"\x00" * 4), "byte-order"),
+            (
+                corpus.mpo([(10, 10), (10, 10)], index=b"II*\x00" + struct.pack("<I", 1 << 20)),
+                "index lies outside its segment",
+            ),
+            (
+                corpus.mpo([(10, 10), (10, 10)], index=b"II*\x00" + struct.pack("<IH", 8, 500)),
+                "index runs past its segment",
+            ),
+            (
+                corpus.mpo(
+                    [(10, 10), (10, 10)],
+                    index=b"II*\x00"
+                    + struct.pack("<IH", 8, 1)
+                    + struct.pack("<HHII", 0xB002, 7, 32, 1 << 20),
+                ),
+                "entries lie outside their segment",
+            ),
+        ],
+    )
+    def test_refuses_a_malformed_multi_picture_file(self, data: bytes, reason: str) -> None:
+        with pytest.raises(HeaderError, match=reason):
+            read("jpeg", data)
+
+    def test_a_second_picture_that_is_not_a_jpeg(self) -> None:
+        data = corpus.mpo([(10, 10), (10, 10)])
+        second = data.rindex(b"\xff\xd8")
+        broken = data[:second] + b"\x00\x00" + data[second + 2 :]
+        with pytest.raises(HeaderError, match="no JPEG start-of-image marker in the picture 2"):
+            read("jpeg", broken)
+
+    def test_two_indexes_are_refused(self) -> None:
+        data = corpus.mpo([(10, 10), (10, 10)])
+        app2 = data[20 : 20 + 2 + struct.unpack(">H", data[22:24])[0]]
+        with pytest.raises(HeaderError, match="two multi-picture indexes"):
+            read("jpeg", data[:20] + app2 + data[20:])
 
     @pytest.mark.parametrize(
         ("data", "reason"),
@@ -122,7 +205,8 @@ class TestAgainstPillow:
         buffer = io.BytesIO()
         Image.new(mode, (123, 45)).save(buffer, format=fmt)
         data = buffer.getvalue()
-        assert read(fmt.lower(), data) == headers.Header(123, 45, 1, 123 * 45)
+        coding = "baseline" if fmt == "JPEG" else None
+        assert read(fmt.lower(), data) == headers.Header(123, 45, 1, 123 * 45, coding=coding)
 
     def test_a_multi_frame_tiff(self) -> None:
         buffer = io.BytesIO()
@@ -139,4 +223,17 @@ class TestAgainstPillow:
         exif = image.getexif()
         exif[0x0110] = "a camera"
         image.save(buffer, format="JPEG", progressive=True, exif=exif)
-        assert read("jpeg", buffer.getvalue()).width == 64
+        assert read("jpeg", buffer.getvalue()) == headers.Header(
+            64, 32, 1, 2048, coding="progressive"
+        )
+
+    def test_a_multi_picture_jpeg(self) -> None:
+        buffer = io.BytesIO()
+        first, *rest = [Image.new("RGB", (20 + i, 30)) for i in range(3)]
+        first.save(buffer, format="MPO", save_all=True, append_images=rest)
+        header = read("jpeg", buffer.getvalue())
+        with Image.open(buffer) as image:
+            assert header.pages == getattr(image, "n_frames", 1) == 3
+            image.seek(2)
+            assert header.max_pixels == image.width * image.height == 22 * 30
+        assert header.coding == "baseline"
