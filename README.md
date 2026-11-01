@@ -202,8 +202,8 @@ Say this plainly, because a security library carries an implied promise.
   of files that are too big to be safe, and, where the header shows them,
   the rare codings a scanner never writes. For the readers you keep:
   update them, and run them in a boxed process with memory and time
-  limits (a recipe for that is planned; it is deliberately not a
-  dependency).
+  limits ([Decoding in a box](https://scattercode.github.io/sillybos/boxed-decoding/)
+  is the recipe; it is deliberately not a dependency).
 - **It does not scan for malware.** ClamAV does that, for malware that has
   been seen before.
 - **It does not repair, re-encode or "sanitise" a file.** That needs a

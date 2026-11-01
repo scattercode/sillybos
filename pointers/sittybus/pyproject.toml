@@ -1,0 +1,22 @@
+# A pointer at sillybos, held so the name cannot be taken by someone else.
+# Published once by hand (see ../README.md); never released with sillybos.
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sittybus"
+version = "0.0.1"
+description = "You probably meant sillybos. This package installs it."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = ["sillybos"]
+classifiers = ["Development Status :: 7 - Inactive"]
+
+[project.urls]
+Homepage = "https://github.com/scattercode/sillybos"
+"The real package" = "https://pypi.org/project/sillybos/"
+
+[tool.setuptools]
+py-modules = []
