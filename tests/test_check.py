@@ -117,6 +117,117 @@ class TestHostileFiles:
         path = corpus.write(tmp_path / "scan.jpg", corpus.mpo([(10, 10)] * 4))
         assert check(path, Policy(max_pages=3)).reasons == ("4 pages; the limit is 3",)
 
+    def test_a_pixarlog_tiff(self, tmp_path: Path) -> None:
+        path = corpus.write(tmp_path / "scan.tif", corpus.tiff([(10, 10)], compression=32909))
+        verdict = check(path)
+        assert verdict.reasons == (
+            "a pixar-compressed TIFF; the policy allows none, ccitt, lzw, jpeg, deflate "
+            "and packbits",
+        )
+        assert verdict.facts is not None and verdict.facts.compression == "pixar"
+
+    def test_the_policy_can_allow_a_scheme(self, tmp_path: Path) -> None:
+        path = corpus.write(tmp_path / "scan.tif", corpus.tiff([(10, 10)], compression=50000))
+        assert check(path, Policy(tiff_compressions=frozenset({"zstd"}))).ok
+        verdict = check(path, Policy(tiff_compressions=frozenset({"lzw"})))
+        assert verdict.reasons == ("a zstd-compressed TIFF; the policy allows lzw",)
+
+    def test_a_cielab_tiff(self, tmp_path: Path) -> None:
+        path = corpus.write(tmp_path / "scan.tif", corpus.tiff([(10, 10)], layout=(8, 3, 8)))
+        verdict = check(path)
+        assert verdict.reasons == (
+            "a cielab TIFF; the policy allows greyscale, rgb, palette, cmyk and ycbcr",
+        )
+        assert verdict.facts is not None and verdict.facts.colour == "cielab"
+        assert check(path, Policy(tiff_photometrics=frozenset({"cielab"}))).ok
+
+    def test_a_ycbcr_tiff_subsampled_four_by_four(self, tmp_path: Path) -> None:
+        data = corpus.tiff([(10, 10)], layout=(6, 3, 8), subsampling=(4, 4))
+        path = corpus.write(tmp_path / "scan.tif", data)
+        assert check(path).reasons == (
+            "a ycbcr TIFF subsampled 4x4; the policy allows 1x1, 2x1, 1x2 and 2x2",
+        )
+        assert check(path, Policy(tiff_subsamplings=frozenset({"4x4"}))).ok
+        usual = corpus.write(tmp_path / "usual.tif", corpus.tiff([(10, 10)], layout=(6, 3, 8)))
+        verdict = check(usual)
+        assert verdict.ok and verdict.facts is not None and verdict.facts.subsampling == "2x2"
+
+    def test_a_tiled_tiff_passes_by_default_and_not_under_strict(self, tmp_path: Path) -> None:
+        path = corpus.write(tmp_path / "map.tif", corpus.tiff([(5000, 5000)], tile=(512, 512)))
+        verdict = check(path)
+        assert verdict.ok and verdict.facts is not None and verdict.facts.tile == (512, 512)
+        assert check(path, STRICT).reasons == ("a tiled TIFF; the policy allows strips only",)
+        assert check(path, Policy(allow_tiled_tiff=False)).reasons == (
+            "a tiled TIFF; the policy allows strips only",
+        )
+
+    def test_a_tile_bigger_than_the_pixel_limit(self, tmp_path: Path) -> None:
+        path = corpus.write(tmp_path / "scan.tif", corpus.tiff([(10, 10)], tile=(65_535, 65_535)))
+        assert check(path).reasons == ("a tile of 4,294,836,225 pixels; the limit is 89,478,485",)
+
+    def test_a_tiff_that_changes_mode_between_frames(self, tmp_path: Path) -> None:
+        path = corpus.write(
+            tmp_path / "scan.tif",
+            corpus.tiff([(10, 10), (10, 10)], layout=[(1, 1, 8), (2, 3, 8)]),
+        )
+        assert check(path).reasons == (
+            "the header could not be read: frame 2 is rgb, 3 samples of 8 bits where frame 1 "
+            "is greyscale, 1 sample of 8 bits",
+        )
+
+    def test_a_tiff_that_changes_scheme_between_frames(self, tmp_path: Path) -> None:
+        path = corpus.write(
+            tmp_path / "scan.tif", corpus.tiff([(10, 10), (10, 10)], compression=[1, 5])
+        )
+        assert check(path).reasons == (
+            "the header could not be read: frame 2 is compressed with lzw where frame 1 is "
+            "compressed with none",
+        )
+
+    def test_an_interlaced_png(self, tmp_path: Path) -> None:
+        path = corpus.write(tmp_path / "scan.png", corpus.png(10, 10, interlace=1))
+        assert check(path).reasons == ("an interlaced PNG; the policy does not allow interlacing",)
+        assert check(path, Policy(allow_interlaced_png=True)).ok
+        verdict = check(path, Policy(allow_interlaced_png=True))
+        assert verdict.facts is not None and verdict.facts.interlaced
+
+    def test_a_palette_png_under_a_scans_only_policy(self, tmp_path: Path) -> None:
+        path = corpus.write(tmp_path / "scan.png", corpus.png(10, 10, colour=3, depth=8))
+        assert check(path).ok
+        verdict = check(path, Policy(png_colour_types=frozenset({"greyscale", "rgb"})))
+        assert verdict.reasons == ("a palette PNG; the policy allows greyscale and rgb",)
+
+    def test_a_sixteen_bit_png_is_strict_only_by_default(self, tmp_path: Path) -> None:
+        path = corpus.write(tmp_path / "scan.png", corpus.png(10, 10, colour=0, depth=16))
+        assert check(path).ok
+        assert check(path, STRICT).reasons == ("a 16-bit PNG; the limit is 8 bits",)
+
+    def test_a_png_with_an_enormous_exif_chunk(self, tmp_path: Path) -> None:
+        data = corpus.png(10, 10, after_idat=corpus.png_chunk(b"eXIf", 5_000_000))
+        verdict = check(corpus.write(tmp_path / "scan.png", data))
+        assert verdict.reasons == ("a PNG eXIf chunk of 5,000,000 bytes; the limit is 4,194,304",)
+        assert verdict.facts is not None and verdict.facts.metadata == ("PNG eXIf chunk", 5_000_000)
+
+    def test_strict_allows_less_metadata(self, tmp_path: Path) -> None:
+        data = corpus.jpeg(10, 10, before_sof=corpus.jpeg_profile(2_000_000))
+        path = corpus.write(tmp_path / "scan.jpg", data)
+        assert check(path).ok
+        assert check(path, STRICT).reasons == (
+            "a JPEG colour profile of 2,000,000 bytes; the limit is 1,048,576",
+        )
+        assert (
+            check(path, Policy(max_metadata_bytes=1_999_999))
+            .reasons[0]
+            .startswith("a JPEG colour profile")
+        )
+
+    def test_a_tiff_tag_over_the_limit(self, tmp_path: Path) -> None:
+        data = corpus.tiff([(10, 10)], tags=[(34377, 7, b"\x00" * 4_194_305)])
+        verdict = check(corpus.write(tmp_path / "scan.tif", data))
+        assert verdict.reasons == (
+            "a TIFF tag 34,377 (Photoshop) of 4,194,305 bytes; the limit is 4,194,304",
+        )
+
     def test_a_tiff_with_ten_thousand_frames(self, tmp_path: Path) -> None:
         verdict = check(corpus.write(tmp_path / "frames.tif", corpus.tiff([(10, 10)] * 10_000)))
         assert verdict.reasons == ("more than 500 pages, which is the limit",)
@@ -215,7 +326,17 @@ class TestPolicy:
             ({"formats": frozenset()}, "at least one format"),
             ({"jpeg_frames": frozenset({"baseline", "mpeg"})}, "unknown JPEG frame coding"),
             ({"jpeg_frames": frozenset()}, "at least one JPEG frame coding"),
+            ({"tiff_compressions": frozenset({"lzw", "rar"})}, "unknown TIFF compression"),
+            ({"tiff_compressions": frozenset()}, "at least one TIFF compression"),
+            ({"tiff_photometrics": frozenset({"hsv"})}, "unknown TIFF photometric"),
+            ({"tiff_photometrics": frozenset()}, "at least one TIFF photometric"),
+            ({"tiff_subsamplings": frozenset({"3x3"})}, "unknown TIFF subsampling"),
+            ({"tiff_subsamplings": frozenset()}, "at least one TIFF subsampling"),
             ({"max_pages": 0}, "max_pages must be at least 1"),
+            ({"max_metadata_bytes": 0}, "max_metadata_bytes must be at least 1"),
+            ({"png_colour_types": frozenset({"cmyk"})}, "unknown PNG colour type"),
+            ({"png_colour_types": frozenset()}, "at least one PNG colour type"),
+            ({"max_png_bit_depth": 12}, "must be 1, 2, 4, 8 or 16"),
             ({"pdfinfo_timeout": 0}, "must be positive"),
         ],
     )
