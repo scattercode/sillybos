@@ -113,10 +113,33 @@ and `fixed` may be `null` when the upstream record does not say; `notes`
 says so when a record was written without the upstream text to hand.
 
 The first records (1 November 2026) are the advisories the policy table
-in the README already cited, each with the test that was written for it;
-the 138 advisories of the backfill are in `seen.json` but not yet in the
-record, since their buckets were decided before the record existed.
-Folding them in is open work.
+in the README already cited, each with the test that was written for it.
+The backfill's buckets were decided before the record existed and were not
+written down, so folding it in meant reading each advisory again. That
+re-reading, for everything published from 2025 on, is in `proposed/`.
+
+### Proposals
+
+[`proposed/`](proposed/) holds records in the same shape that have been
+drafted from the advisory's text but **not yet confirmed by a person**.
+Each says so in its `notes`. Nothing reads them but two commands, and the
+export never includes them, so the watch on tetrak.dev shows only what a
+maintainer has confirmed:
+
+```bash
+python scripts/advisory_record.py proposals        # what is waiting, by bucket, with what is in the way
+python scripts/advisory_record.py promote KEY...   # confirm: moves into record/, dated today, re-exports
+```
+
+To confirm one, read the advisory and the proposal's finding; if the
+bucket and the sentence are right, promote it, and if not, edit the file
+first. A proposal in bucket A, B or B2 cannot be promoted until it names a
+test that builds the triggering file and checks it is refused: for an A
+that test usually exists already, and for a B or B2 the policy field and
+the corpus case come first, as the next section says. The proposals in
+B2 at the time of writing all want one of two coarse PDF policies, on
+embedded fonts and on JBIG2 image streams, and the one B wants a ceiling
+on a single image dimension.
 
 ## The buckets
 

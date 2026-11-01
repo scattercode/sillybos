@@ -20,6 +20,9 @@ OLE = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\x00" * 24
 WEBP = b"RIFF\x1a\x00\x00\x00WEBPVP8 " + b"\x00" * 14
 HEIC = b"\x00\x00\x00\x18ftypheic" + b"\x00" * 12
 ZIP = b"PK\x03\x04" + b"\x00" * 26
+BMP = b"BM" + b"\x00" * 30
+PSD = b"8BPS\x00\x01" + b"\x00" * 20
+JP2 = b"\x00\x00\x00\x0cjP  \r\n\x87\n" + b"\x00" * 16
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 

@@ -54,7 +54,10 @@ class TestHostileFiles:
         verdict = check(corpus.write(tmp_path / "page.jpg", corpus.OLE))
         assert verdict.reasons[0].startswith("says JPEG, is an OLE compound file")
 
-    @pytest.mark.parametrize("data", [corpus.GIF, corpus.WEBP, corpus.HEIC, corpus.ZIP])
+    @pytest.mark.parametrize(
+        "data",
+        [corpus.GIF, corpus.WEBP, corpus.HEIC, corpus.ZIP, corpus.BMP, corpus.PSD, corpus.JP2],
+    )
     def test_a_format_a_scan_never_is(self, tmp_path: Path, data: bytes) -> None:
         verdict = check(corpus.write(tmp_path / "file.bin", data))
         assert not verdict.ok
