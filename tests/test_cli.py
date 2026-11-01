@@ -45,6 +45,30 @@ def test_options_adjust_the_policy(tmp_path: Path) -> None:
     lossless = corpus.write(tmp_path / "lossless.jpg", corpus.jpeg(10, 10, marker=0xC3))
     assert main([str(lossless)]) == 1
     assert main(["--jpeg-frames", "baseline,lossless", str(lossless)]) == 0
+    webp_tiff = corpus.write(tmp_path / "webp.tif", corpus.tiff([(10, 10)], compression=50001))
+    assert main([str(webp_tiff)]) == 1
+    assert main(["--tiff-compressions", "none,webp", str(webp_tiff)]) == 0
+    big_chunk = corpus.write(
+        tmp_path / "chunk.png", corpus.png(10, 10, extra=corpus.png_chunk(b"zTXt", 5000))
+    )
+    assert main([str(big_chunk)]) == 0
+    assert main(["--max-metadata-bytes", "4000", str(big_chunk)]) == 1
+    deep = corpus.write(tmp_path / "deep.png", corpus.png(10, 10, colour=3, depth=8, interlace=1))
+    assert main([str(deep)]) == 1
+    assert main(["--interlaced-png", str(deep)]) == 0
+    assert main(["--interlaced-png", "--png-colour-types", "rgb", str(deep)]) == 1
+    assert main(["--interlaced-png", "--max-png-bit-depth", "4", str(deep)]) == 1
+    tiled = corpus.write(tmp_path / "map.tif", corpus.tiff([(10, 10)], tile=(16, 16)))
+    assert main([str(tiled)]) == 0
+    assert main(["--no-tiled-tiff", str(tiled)]) == 1
+    lab = corpus.write(tmp_path / "lab.tif", corpus.tiff([(10, 10)], layout=(8, 3, 8)))
+    assert main([str(lab)]) == 1
+    assert main(["--tiff-photometrics", "cielab", str(lab)]) == 0
+    chroma = corpus.write(
+        tmp_path / "chroma.tif", corpus.tiff([(10, 10)], layout=(6, 3, 8), subsampling=(4, 1))
+    )
+    assert main([str(chroma)]) == 1
+    assert main(["--tiff-subsamplings", "2x2,4x1", str(chroma)]) == 0
     assert main(["--any-name", str(jpeg_called_png)]) == 0
     assert main(["--strict", "--max-bytes", "10", str(png)]) == 1
 

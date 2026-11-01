@@ -28,7 +28,17 @@ with the presets :data:`DEFAULT` and :data:`STRICT`; and, with the
 from __future__ import annotations
 
 from sillybos.check import Facts, Refused, Verdict, check, require
-from sillybos.policy import DEFAULT, FORMATS, JPEG_FRAMES, STRICT, Policy
+from sillybos.policy import (
+    DEFAULT,
+    FORMATS,
+    JPEG_FRAMES,
+    PNG_COLOUR_TYPES,
+    STRICT,
+    TIFF_COMPRESSIONS,
+    TIFF_PHOTOMETRICS,
+    TIFF_SUBSAMPLINGS,
+    Policy,
+)
 
 try:
     from sillybos._version import __version__
@@ -39,7 +49,11 @@ __all__ = [
     "DEFAULT",
     "FORMATS",
     "JPEG_FRAMES",
+    "PNG_COLOUR_TYPES",
     "STRICT",
+    "TIFF_COMPRESSIONS",
+    "TIFF_PHOTOMETRICS",
+    "TIFF_SUBSAMPLINGS",
     "Facts",
     "Policy",
     "Refused",

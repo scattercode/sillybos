@@ -30,11 +30,36 @@ def _chunk(kind: bytes, data: bytes) -> bytes:
     return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
 
 
-def png(width: int, height: int, *, frames: int | None = None, extra: bytes = b"") -> bytes:
-    """A PNG header with the given dimensions. No pixels: the check never reads them."""
-    ihdr = _chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+def png(
+    width: int,
+    height: int,
+    *,
+    frames: int | None = None,
+    extra: bytes = b"",
+    after_idat: bytes = b"",
+    idats: int = 1,
+    depth: int = 8,
+    colour: int = 2,
+    interlace: int = 0,
+    methods: tuple[int, int] = (0, 0),
+) -> bytes:
+    """A PNG header with the given dimensions. No pixels: the check never reads them.
+
+    ``extra`` goes before the image data, ``after_idat`` between the image
+    data and IEND; ``idats`` is how many empty image-data chunks to write.
+    The IHDR's bit depth, colour type, interlace method and (compression,
+    filter) methods default to an 8-bit RGB image as a scanner writes one.
+    """
+    fields = (width, height, depth, colour, *methods, interlace)
+    ihdr = _chunk(b"IHDR", struct.pack(">IIBBBBB", *fields))
     actl = _chunk(b"acTL", struct.pack(">II", frames, 0)) if frames is not None else b""
-    return PNG_SIGNATURE + ihdr + extra + actl + _chunk(b"IDAT", b"") + _chunk(b"IEND", b"")
+    idat = _chunk(b"IDAT", b"") * idats
+    return PNG_SIGNATURE + ihdr + extra + actl + idat + after_idat + _chunk(b"IEND", b"")
+
+
+def png_chunk(kind: bytes, size: int) -> bytes:
+    """One PNG chunk of the given type, ``size`` zero bytes long."""
+    return _chunk(kind, b"\x00" * size)
 
 
 # --- JPEG --------------------------------------------------------------------
@@ -130,7 +155,25 @@ def jpeg_padding(n: int) -> bytes:
     return _segment(0xFE, b"") * n
 
 
+def jpeg_profile(size: int) -> bytes:
+    """``size`` bytes of colour profile, split across APP2 segments as a writer splits it."""
+    per_segment = 65533 - 2 - len(b"ICC_PROFILE\x00")
+    pieces = [b"\x00" * min(per_segment, size - at) for at in range(0, size, per_segment)]
+    return b"".join(
+        _segment(0xE2, b"ICC_PROFILE\x00" + bytes([n + 1, len(pieces)]) + piece)
+        for n, piece in enumerate(pieces)
+    )
+
+
 # --- TIFF --------------------------------------------------------------------
+
+
+Tile = tuple[int | None, int | None]
+"""(TileWidth, TileLength) for a hand-made TIFF frame; ``None`` leaves that tag out."""
+
+Layout = tuple[int, int, int | tuple[int, ...]]
+"""(photometric, samples per pixel, bits per sample) for a hand-made TIFF frame;
+the bits may be one value for every sample or one per sample."""
 
 
 def tiff(
@@ -141,13 +184,28 @@ def tiff(
     dangling: bool = False,
     drop_height: bool = False,
     long_dims: bool = False,
+    compression: int | list[int | None] | None = None,
+    layout: Layout | list[Layout | None] | None = None,
+    tags: list[tuple[int, int, bytes]] | None = None,
+    data_outside: bool = False,
+    tile: Tile | list[Tile | None] | None = None,
+    subsampling: tuple[int, int] | list[tuple[int, int] | None] | None = None,
 ) -> bytes:
-    """A classic TIFF with one IFD per frame, holding just the two dimension tags.
+    """A classic TIFF with one IFD per frame, holding the two dimension tags.
 
     ``loop_to_first`` points the last IFD back at the first; ``dangling``
     points it past the end of the file; ``drop_height`` leaves the height
     out of the first frame; ``long_dims`` writes the dimensions as LONG
-    rather than SHORT.
+    rather than SHORT; ``compression`` adds a Compression tag with that
+    value to every frame, or one value per frame from a list; ``layout``
+    likewise adds PhotometricInterpretation, SamplesPerPixel and
+    BitsPerSample, the last written out of line when there are more than
+    two samples; ``tags`` adds further entries to every frame as (tag, type,
+    data), written out of line when the data is over four bytes;
+    ``data_outside`` points all out-of-line data past the end of the file;
+    ``tile`` adds TileWidth and TileLength tags (either may be ``None`` to
+    leave it out) to every frame, or one pair per frame from a list;
+    ``subsampling`` likewise adds a YCbCrSubSampling tag.
     """
     order = b"II" if endian == "<" else b"MM"
     header = order + struct.pack(endian + "HI", 42, 8)
@@ -155,7 +213,8 @@ def tiff(
     offset = 8
     first = 8
     for index, (width, height) in enumerate(frames):
-        entries = []
+        # (tag, kind, count, inline field or out-of-line data)
+        entries: list[tuple[int, int, int, bytes]] = []
         kind = 4 if long_dims else 3
         for tag, value in ((256, width), (257, height)):
             if tag == 257 and drop_height and index == 0:
@@ -164,21 +223,89 @@ def tiff(
                 raw = struct.pack(endian + "I", value)
             else:
                 raw = struct.pack(endian + "H", value) + b"\x00\x00"
-            entries.append(struct.pack(endian + "HHI", tag, kind, 1) + raw)
+            entries.append((tag, kind, 1, raw))
+        code = compression[index] if isinstance(compression, list) else compression
+        if code is not None:
+            entries.append((259, 3, 1, struct.pack(endian + "H", code) + b"\x00\x00"))
+        this = layout[index] if isinstance(layout, list) else layout
+        if this is not None:
+            photometric, samples, bits = this
+            depths = (bits,) * samples if isinstance(bits, int) else bits
+            entries.append((262, 3, 1, struct.pack(endian + "H", photometric) + b"\x00\x00"))
+            entries.append((277, 3, 1, struct.pack(endian + "H", samples) + b"\x00\x00"))
+            packed = struct.pack(endian + f"{len(depths)}H", *depths)
+            entries.append((258, 3, len(depths), packed.ljust(4, b"\x00")))
+        this_tile = tile[index] if isinstance(tile, list) else tile
+        if this_tile is not None:
+            for tag, side in zip((322, 323), this_tile, strict=True):
+                if side is not None:
+                    entries.append((tag, 4, 1, struct.pack(endian + "I", side)))
+        this_subsampling = subsampling[index] if isinstance(subsampling, list) else subsampling
+        if this_subsampling is not None:
+            entries.append((530, 3, 2, struct.pack(endian + "HH", *this_subsampling)))
+        for tag, type_, data in tags or []:
+            per_value = {1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 7: 1, 12: 8}.get(type_, 1)
+            entries.append((tag, type_, len(data) // per_value, data.ljust(4, b"\x00")))
+        entries.sort()
         ifd_size = 2 + 12 * len(entries) + 4
+        out_of_line = b""
+        fields = b""
+        for tag, kind, count, data in entries:
+            if len(data) > 4:
+                where = (1 << 30) if data_outside else offset + ifd_size + len(out_of_line)
+                fields += struct.pack(endian + "HHII", tag, kind, count, where)
+                out_of_line += data
+            else:
+                fields += struct.pack(endian + "HHI", tag, kind, count) + data
+        total = ifd_size + len(out_of_line)
         last = index == len(frames) - 1
         if not last:
-            next_offset = offset + ifd_size
+            next_offset = offset + total
         elif loop_to_first:
             next_offset = first
         elif dangling:
             next_offset = 1 << 30
         else:
             next_offset = 0
-        body += struct.pack(endian + "H", len(entries)) + b"".join(entries)
-        body += struct.pack(endian + "I", next_offset)
-        offset += ifd_size
+        body += struct.pack(endian + "H", len(entries)) + fields
+        body += struct.pack(endian + "I", next_offset) + out_of_line
+        offset += total
     return header + body
+
+
+def tiled_tiff(width: int, height: int, tile: int) -> bytes:
+    """A complete 8-bit greyscale uncompressed TIFF in ``tile`` x ``tile`` tiles, pixels and all.
+
+    Unlike :func:`tiff`, this one decodes: the agreement test opens it with
+    Pillow, which reads tiled files through libtiff.
+    """
+    across, down = -(-width // tile), -(-height // tile)
+    count = across * down
+    tile_bytes = tile * tile
+    entries = [
+        (256, 4, 1, width),
+        (257, 4, 1, height),
+        (258, 3, 1, 8),
+        (259, 3, 1, 1),
+        (262, 3, 1, 1),
+        (277, 3, 1, 1),
+        (322, 4, 1, tile),
+        (323, 4, 1, tile),
+    ]
+    ifd_size = 2 + 12 * (len(entries) + 2) + 4
+    offsets_at = 8 + ifd_size
+    counts_at = offsets_at + 4 * count
+    pixels_at = counts_at + 4 * count
+    fields = b""
+    for tag, kind, n, value in entries:
+        raw = struct.pack("<I", value) if kind == 4 else struct.pack("<H", value) + b"\x00\x00"
+        fields += struct.pack("<HHI", tag, kind, n) + raw
+    fields += struct.pack("<HHII", 324, 4, count, offsets_at)
+    fields += struct.pack("<HHII", 325, 4, count, counts_at)
+    ifd = struct.pack("<H", len(entries) + 2) + fields + struct.pack("<I", 0)
+    offsets = b"".join(struct.pack("<I", pixels_at + k * tile_bytes) for k in range(count))
+    counts = struct.pack("<I", tile_bytes) * count
+    return b"II*\x00" + struct.pack("<I", 8) + ifd + offsets + counts + bytes(tile_bytes * count)
 
 
 # --- PDF ---------------------------------------------------------------------

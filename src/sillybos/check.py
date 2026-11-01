@@ -11,7 +11,7 @@ to refuse it:
 3. Whether its name agrees with its contents.
 4. Its header, with the reader for its format (ours for JPEG, PNG and TIFF;
    ``pdfinfo`` in a separate process for PDF): dimensions, frames, pages,
-   and how a JPEG is coded.
+   how a JPEG is coded, how a TIFF is compressed, what kind of PNG it is.
 5. The policy's ceilings against what the header said.
 
 Every reason is a sentence an operator can act on, and the verdict carries
@@ -26,7 +26,16 @@ from pathlib import Path
 
 from sillybos import headers, sniff
 from sillybos.pdf import pdf as read_pdf
-from sillybos.policy import DEFAULT, FORMATS, JPEG_FRAMES, Policy
+from sillybos.policy import (
+    DEFAULT,
+    FORMATS,
+    JPEG_FRAMES,
+    PNG_COLOUR_TYPES,
+    TIFF_COMPRESSIONS,
+    TIFF_PHOTOMETRICS,
+    TIFF_SUBSAMPLINGS,
+    Policy,
+)
 
 
 @dataclass(frozen=True)
@@ -49,6 +58,22 @@ class Facts:
             ``pages`` is a floor, not a count.
         coding: How a JPEG's frame is coded, by a name from
             :data:`sillybos.JPEG_FRAMES`; ``None`` for the other formats.
+        compression: How a TIFF's frames are compressed, by a name from
+            :data:`sillybos.TIFF_COMPRESSIONS`; ``None`` for the other
+            formats.
+        metadata: The largest block of metadata in an image, as (what it
+            is, bytes): a PNG chunk, a TIFF tag's data, a JPEG colour
+            profile. ``None`` for a PDF or an image with none.
+        colour: A PNG's colour type, by a name from
+            :data:`sillybos.PNG_COLOUR_TYPES`, or a TIFF's photometric
+            interpretation, from :data:`sillybos.TIFF_PHOTOMETRICS`;
+            ``None`` for a JPEG or a PDF.
+        depth: A PNG's or TIFF's bits per sample; ``None`` otherwise.
+        interlaced: Whether a PNG is Adam7 interlaced.
+        tile: A tiled TIFF's largest tile as (width, height); ``None`` for
+            a TIFF in strips and for the other formats.
+        subsampling: A YCbCr TIFF's chroma subsampling, horizontal by
+            vertical, as ``"2x2"``; ``None`` otherwise.
     """
 
     bytes: int
@@ -59,6 +84,13 @@ class Facts:
     encrypted: bool = False
     pages_exact: bool = True
     coding: str | None = None
+    compression: str | None = None
+    metadata: tuple[str, int] | None = None
+    colour: str | None = None
+    depth: int | None = None
+    interlaced: bool = False
+    tile: tuple[int, int] | None = None
+    subsampling: str | None = None
 
 
 @dataclass(frozen=True)
@@ -159,7 +191,7 @@ def check(path: str | os.PathLike[str], policy: Policy = DEFAULT) -> Verdict:
             reasons.append(f"the header could not be read: {exc}")
             return Verdict(path, False, fmt, claimed, None, tuple(reasons))
 
-    reasons.extend(_against_limits(facts, policy))
+    reasons.extend(_against_limits(facts, policy, fmt))
     return Verdict(path, not reasons, fmt, claimed, facts, tuple(reasons))
 
 
@@ -194,10 +226,17 @@ def _facts(path: Path, fmt: str, f: headers.Reader, size: int, policy: Policy) -
         header.max_pixels if header.complete else None,
         pages_exact=header.complete,
         coding=header.coding,
+        compression=header.compression,
+        metadata=header.metadata,
+        colour=header.colour,
+        depth=header.depth,
+        interlaced=header.interlaced,
+        tile=header.tile,
+        subsampling=header.subsampling,
     )
 
 
-def _against_limits(facts: Facts, policy: Policy) -> list[str]:
+def _against_limits(facts: Facts, policy: Policy, fmt: str) -> list[str]:
     reasons = []
     if facts.pages > policy.max_pages:
         if facts.pages_exact:
@@ -206,6 +245,9 @@ def _against_limits(facts: Facts, policy: Policy) -> list[str]:
             reasons.append(f"more than {policy.max_pages:,} pages, which is the limit")
     if facts.max_pixels is not None and facts.max_pixels > policy.max_pixels:
         reasons.append(f"a page of {facts.max_pixels:,} pixels; the limit is {policy.max_pixels:,}")
+    if facts.metadata is not None and facts.metadata[1] > policy.max_metadata_bytes:
+        what, size = facts.metadata
+        reasons.append(f"a {what} of {size:,} bytes; the limit is {policy.max_metadata_bytes:,}")
     if facts.encrypted and not policy.allow_encrypted_pdf:
         reasons.append("the PDF is encrypted")
     if facts.coding is not None and facts.coding not in policy.jpeg_frames:
@@ -213,6 +255,32 @@ def _against_limits(facts: Facts, policy: Policy) -> list[str]:
         article = "an" if facts.coding[0] in "aeiou" else "a"
         reasons.append(
             f"{article} {facts.coding} JPEG; the policy allows {_listed(allowed)} frames"
+        )
+    if fmt == "png" and facts.colour is not None and facts.colour not in policy.png_colour_types:
+        allowed = [name for name in PNG_COLOUR_TYPES if name in policy.png_colour_types]
+        reasons.append(f"a {facts.colour} PNG; the policy allows {_listed(allowed)}")
+    if fmt == "tiff" and facts.colour is not None and facts.colour not in policy.tiff_photometrics:
+        allowed = [name for name in TIFF_PHOTOMETRICS if name in policy.tiff_photometrics]
+        reasons.append(f"a {facts.colour} TIFF; the policy allows {_listed(allowed)}")
+    if facts.subsampling is not None and facts.subsampling not in policy.tiff_subsamplings:
+        allowed = [name for name in TIFF_SUBSAMPLINGS if name in policy.tiff_subsamplings]
+        reasons.append(
+            f"a ycbcr TIFF subsampled {facts.subsampling}; the policy allows {_listed(allowed)}"
+        )
+    if facts.depth is not None and facts.depth > policy.max_png_bit_depth:
+        reasons.append(f"a {facts.depth}-bit PNG; the limit is {policy.max_png_bit_depth} bits")
+    if facts.interlaced and not policy.allow_interlaced_png:
+        reasons.append("an interlaced PNG; the policy does not allow interlacing")
+    if facts.tile is not None:
+        if not policy.allow_tiled_tiff:
+            reasons.append("a tiled TIFF; the policy allows strips only")
+        tile_pixels = facts.tile[0] * facts.tile[1]
+        if tile_pixels > policy.max_pixels:
+            reasons.append(f"a tile of {tile_pixels:,} pixels; the limit is {policy.max_pixels:,}")
+    if facts.compression is not None and facts.compression not in policy.tiff_compressions:
+        allowed = [name for name in TIFF_COMPRESSIONS if name in policy.tiff_compressions]
+        reasons.append(
+            f"a {facts.compression}-compressed TIFF; the policy allows {_listed(allowed)}"
         )
     return reasons
 

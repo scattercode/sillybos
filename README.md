@@ -93,8 +93,16 @@ check(path, Policy(formats={"tiff", "pdf"}, max_pages=50))
 | `max_bytes` | 512 MiB | 128 MiB | The file. Checked before anything reads it |
 | `max_pixels` | 89,478,485 | 50,000,000 | Any one page or frame, decoded. For a PDF page, at `render_dpi`. The default is Pillow's own decompression-bomb threshold, enforced here rather than left to a global |
 | `max_pages` | 500 | 100 | Pages of a PDF, frames of a TIFF or animated PNG, pictures of a multi-picture JPEG. Also bounds the header walk itself |
+| `max_metadata_bytes` | 4 MiB | 1 MiB | The largest block of metadata in an image: a PNG chunk other than image data, a TIFF tag's out-of-line data, a JPEG colour profile across its segments. A scan carries kilobytes; a block the size of the file is where parsers' quadratic paths and allocation flaws live (CVE-2026-96643, CVE-2023-6277) |
 | `render_dpi` | 200 | 200 | What you will render PDF pages at, so a page's pixels are known before the renderer allocates them |
 | `name_must_match` | yes | yes | Refuse a JPEG called `.png`. The readers would cope; the lie is what you want to know about |
+| `png_colour_types` | all five | the same | Which PNG colour types pass: greyscale, rgb, palette, greyscale-alpha, rgba. A policy for scans alone can keep to the first two, which closes libpng's palette paths (CVE-2025-64720, CVE-2026-33636) |
+| `max_png_bit_depth` | 16 | 8 | The deepest PNG sample. A scanner writes 8; some archival software writes 16-bit greyscale |
+| `allow_interlaced_png` | no | no | No scanner writes Adam7, and the interlaced 16-bit path was the way into two libpng overflows (CVE-2025-65018, CVE-2026-22695) |
+| `allow_tiled_tiff` | yes | no | A scanner writes strips; digitisation and mapping software write tiles. A tile is held to `max_pixels` on its own, since the decoder allocates it whole, and the tiled path is where two of Pillow's recent over-reads were (CVE-2026-112395, CVE-2026-112404) |
+| `tiff_photometrics` | greyscale, rgb, palette, cmyk, ycbcr | the same | Which colour models a TIFF may declare. The rest (CIELab, masks, raw sensor data, LogLuv) a scan never uses; a value the library does not know is refused outright |
+| `tiff_subsamplings` | 1x1, 2x1, 1x2, 2x2 | the same | Which chroma subsamplings a YCbCr TIFF may declare. The factor-of-four paths are where libtiff's most recent heap write was found (CVE-2026-4775) |
+| `tiff_compressions` | none, ccitt, lzw, jpeg, deflate, packbits | the same | How a TIFF may be compressed, by name. The other codecs in libtiff are where most of its flaws have been found (PixarLog most recently, CVE-2026-12912), and a scan never needs them. A code the library does not know is refused whatever the policy says, and every frame must use the same scheme |
 | `jpeg_frames` | baseline, extended, progressive | the same | How a JPEG's frame may be coded. Lossless, hierarchical and arithmetic frames are legal JPEG that no scanner writes and the decoder's least-exercised code; a lossless frame was the way into a heap overflow in Pillow's JPEG decoder (CVE-2026-112403) |
 | `allow_encrypted_pdf` | no | no | A scanned book is never encrypted |
 | `pdfinfo_timeout` | 30 s | 30 s | How long `pdfinfo` may take before the file is refused |
@@ -132,8 +140,10 @@ refused  scans/report.pdf    1,412 pages; the limit is 500
 
 Exit status 0 when every file passed, 1 when any was refused, 2 when the
 command could not do its job. `--strict`, `--formats`, `--max-pages`,
-`--max-pixels`, `--max-bytes`, `--jpeg-frames` and `--any-name` adjust the
-policy; `--json`
+`--max-pixels`, `--max-bytes`, `--max-metadata-bytes`, `--jpeg-frames`,
+`--tiff-compressions`, `--tiff-photometrics`, `--tiff-subsamplings`,
+`--no-tiled-tiff`, `--png-colour-types`, `--max-png-bit-depth`,
+`--interlaced-png` and `--any-name` adjust the policy; `--json`
 prints one object per line for a pipeline; `-q` prints only refusals.
 
 ## What it does, exactly
@@ -147,12 +157,21 @@ prints one object per line for a pipeline; `-q` prints only refusals.
    unknown format". Refused by name, and no reader of ours runs on it.
 3. **Name against contents.** `says PNG, is JPEG`.
 4. **The header**, with a reader of its own for each raster format: the
-   dimensions, coding and component count from a JPEG's frame header, and
-   every picture of a multi-picture (MPF) JPEG, each read the same way and
-   required to match the first; a PNG's `IHDR` (and `acTL` frame count);
-   and every directory in a TIFF's chain, which is walked with a limit and
-   a memory of where it has been, so that a chain that loops or points off
-   the end of the file is a refusal, not a hang. Every read is bounded and
+   dimensions, coding and component count from a JPEG's frame header, the
+   size of its colour profile, and every picture of a multi-picture (MPF)
+   JPEG, each read the same way and required to match the first; a PNG's
+   whole `IHDR` (bit depth, colour type, interlacing, and the methods the
+   specification fixes), its `acTL` frame count, and the size of every
+   other chunk, before and after the image data; and every directory in a TIFF's
+   chain, each with its dimensions, its
+   compression scheme, which must be one the policy names, and its pixel
+   layout (photometric interpretation and, for YCbCr, chroma subsampling,
+   both of which the policy names; samples per pixel; bits per sample),
+   all of which must be the same in every frame, since the decoder sizes
+   its buffers from the first, its tile size if it is tiled, and every
+   tag's data checked to lie inside the file; the chain is walked with a limit and a memory of where it has
+   been, so that one that loops or points off the end of the file is a
+   refusal, not a hang. Every read is bounded and
    every offset is checked against the file's size. For a PDF,
    `pdfinfo` reports the page count, whether it is encrypted and, if the
    count is within the limit, every page's size.
@@ -197,10 +216,13 @@ ruff check . && ruff format --check . && mypy && pytest --cov
 ```
 
 The tests build the hostile corpus by hand at test time (`tests/corpus.py`):
-renamed PostScript, a 100-byte PNG that claims ten billion pixels, a
-lossless JPEG, a multi-picture JPEG whose second picture is four billion
-pixels or changes colour mode, a TIFF with ten thousand frames, a TIFF
-whose frame chain loops, a PDF of a thousand pages, a PDF with a page 200
+renamed PostScript, a 100-byte PNG that claims ten billion pixels, a PNG
+with a five-megabyte EXIF chunk after the image data, an interlaced PNG,
+a PNG whose header pairs a colour type with a bit depth it cannot have, a
+TIFF whose tag points past the end of the file, a lossless JPEG, a multi-picture JPEG whose second picture is four billion
+pixels or changes colour mode, a PixarLog-compressed TIFF, a CIELab TIFF, a YCbCr TIFF subsampled four to one, a TIFF that
+changes compression or colour mode between frames, a TIFF whose tiles are four billion pixels each, a TIFF with ten thousand frames, a
+TIFF whose frame chain loops, a PDF of a thousand pages, a PDF with a page 200
 inches wide. Nothing hostile is
 checked in. The readers are also checked against Pillow's reading of real
 files, so that they agree with the decoder they stand in front of.
