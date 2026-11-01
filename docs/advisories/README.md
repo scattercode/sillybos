@@ -49,9 +49,13 @@ python scripts/advisories.py record    # fold everything published so far into s
 
 ## Where the state lives
 
-**The issues are the record.** Every issue the job opens starts with a
-hidden marker naming the advisory's identifiers, and the next run reads
-those markers back. Nothing is committed by the workflow: that keeps it
+Two things are kept, for two questions. *Has this advisory been seen?* is
+answered by the issues and `seen.json`, below. *What did we decide about
+it, and can we prove it?* is answered by the record, in the section after.
+
+**The issues are the record of what has been seen.** Every issue the job
+opens starts with a hidden marker naming the advisory's identifiers, and
+the next run reads those markers back. Nothing is committed by the workflow: that keeps it
 to `contents: read` and `issues: write`, and spares `main` a bot commit a
 week, which its ruleset would refuse in any case.
 
@@ -64,6 +68,55 @@ worth folding in:
 python scripts/advisories.py record
 git commit -m "chore(advisories): refresh the baseline" docs/advisories/seen.json
 ```
+
+## The record
+
+[`record/`](record/) holds one JSON file per advisory that has been
+triaged, named after its key (`CVE-2026-112403.json`). It is the committed
+answer to this page's question, as data that other things can read: the
+advisory's own facts (library, versions, when, how severe), how the
+triggering input reaches the flaw (`reached_by`: by opening a file, on a
+save path, through some other call, through a tool), the bucket and the
+finding in a sentence, what this library does about it (`refusal`: which
+check, whether the default policy refuses it or only a setting does), the
+tests that prove the refusal (`verified_by`), and how anyone could protect
+themselves with or without this library (`protect.general`,
+`protect.specific`).
+
+The rule that keeps it honest: **a record in bucket A, B or B2 claims a
+refusal, and a claimed refusal names at least one test that builds the
+triggering file and checks it is refused.** `tests/test_record.py` fails
+if the test does not exist, if a record claims a refusal with no test, or
+if a bucket that claims no refusal names one. A record in bucket N or C
+has `refusal: null` and no tests; it is kept so that nobody expects the
+check to prevent what it cannot. Where the default policy does not refuse
+the file but a setting would, `refusal.default` is `false` and
+`refusal.setting` says which.
+
+[`record.json`](record.json) is the merged file, newest first, with
+counts; it is what the documentation's coverage page and the security
+watch on [tetrak.dev](https://tetrak.dev/security/) read. It is
+**generated, never edited**:
+
+```bash
+python scripts/advisory_record.py validate         # every file against the schema
+python scripts/advisory_record.py export           # rewrite record.json
+python scripts/advisory_record.py export --check   # what the tests run: fails if stale
+```
+
+To add a record: copy the nearest existing file, fill it in from the
+advisory and the issue's triage, name the test (or write it first, as a B
+finding requires), run `export`, and commit both. Dates are
+`YYYY-MM-DD`; `triaged` is when the bucket was decided and `checked` when
+the record was last read against the advisory. `published`, `severity`
+and `fixed` may be `null` when the upstream record does not say; `notes`
+says so when a record was written without the upstream text to hand.
+
+The first records (1 November 2026) are the advisories the policy table
+in the README already cited, each with the test that was written for it;
+the 138 advisories of the backfill are in `seen.json` but not yet in the
+record, since their buckets were decided before the record existed.
+Folding them in is open work.
 
 ## The buckets
 

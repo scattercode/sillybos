@@ -230,7 +230,12 @@ files, so that they agree with the decoder they stand in front of.
 A weekly job fetches the security advisories for the decoders this library
 stands in front of and opens an issue for each new one;
 [docs/advisories/README.md](docs/advisories/README.md) says how we triage
-them.
+them. What each one meant for this library, and the test that proves any
+refusal it claims, is committed as data in
+[docs/advisories/record/](docs/advisories/record/), one file per advisory,
+and merged into [record.json](docs/advisories/record.json) for anything
+that wants to read it. The [security watch on
+tetrak.dev](https://tetrak.dev/security/) is built from that file.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the checks and the commit style,
 and [SECURITY.md](SECURITY.md) for how to report a flaw privately.
