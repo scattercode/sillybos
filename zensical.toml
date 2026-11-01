@@ -23,6 +23,7 @@ strict = true
 
 nav = [
     { "sillybos" = "index.md" },
+    { "Tutorials" = "tutorials.md" },
     { "API reference" = "api.md" },
     { "Command line reference" = "cli.md" },
     { "Advisories" = "advisories/README.md" },

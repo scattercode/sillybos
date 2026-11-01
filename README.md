@@ -131,6 +131,10 @@ list set from the policy. That one argument is the whole of the October fix
 for images, and it costs nothing; the check in front of it is what makes
 the limits bite before Pillow allocates a pixel.
 
+Longer examples, each a complete programme, are in the
+[tutorials](https://scattercode.github.io/sillybos/tutorials/): a
+thumbnailer, a PDF renderer and an inbox that quarantines what it refuses.
+
 ### The command
 
 ```bash
