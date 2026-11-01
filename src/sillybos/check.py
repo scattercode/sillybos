@@ -149,7 +149,7 @@ def check(path: str | os.PathLike[str], policy: Policy = DEFAULT) -> Verdict:
         policy: The limits to apply. :data:`sillybos.DEFAULT` if not given.
 
     Returns:
-        A :class:`Verdict`. Never raises for anything found *in* the file:
+        A :class:`Verdict`. Never raises for anything found *in* the file;
         a malformed header, a lying name and a page too large are all
         reasons, not exceptions.
 
