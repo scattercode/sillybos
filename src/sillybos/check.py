@@ -10,7 +10,8 @@ to refuse it:
    does not allow is refused by name, and no reader of ours runs on it.
 3. Whether its name agrees with its contents.
 4. Its header, with the reader for its format (ours for JPEG, PNG and TIFF;
-   ``pdfinfo`` in a separate process for PDF): dimensions, frames, pages.
+   ``pdfinfo`` in a separate process for PDF): dimensions, frames, pages,
+   and how a JPEG is coded.
 5. The policy's ceilings against what the header said.
 
 Every reason is a sentence an operator can act on, and the verdict carries
@@ -25,7 +26,7 @@ from pathlib import Path
 
 from sillybos import headers, sniff
 from sillybos.pdf import pdf as read_pdf
-from sillybos.policy import DEFAULT, FORMATS, Policy
+from sillybos.policy import DEFAULT, FORMATS, JPEG_FRAMES, Policy
 
 
 @dataclass(frozen=True)
@@ -46,6 +47,8 @@ class Facts:
         encrypted: Whether a PDF is encrypted. Always ``False`` for an image.
         pages_exact: ``False`` when the frame walk stopped at the limit, so
             ``pages`` is a floor, not a count.
+        coding: How a JPEG's frame is coded, by a name from
+            :data:`sillybos.JPEG_FRAMES`; ``None`` for the other formats.
     """
 
     bytes: int
@@ -55,6 +58,7 @@ class Facts:
     max_pixels: int | None
     encrypted: bool = False
     pages_exact: bool = True
+    coding: str | None = None
 
 
 @dataclass(frozen=True)
@@ -189,6 +193,7 @@ def _facts(path: Path, fmt: str, f: headers.Reader, size: int, policy: Policy) -
         header.pages,
         header.max_pixels if header.complete else None,
         pages_exact=header.complete,
+        coding=header.coding,
     )
 
 
@@ -203,4 +208,16 @@ def _against_limits(facts: Facts, policy: Policy) -> list[str]:
         reasons.append(f"a page of {facts.max_pixels:,} pixels; the limit is {policy.max_pixels:,}")
     if facts.encrypted and not policy.allow_encrypted_pdf:
         reasons.append("the PDF is encrypted")
+    if facts.coding is not None and facts.coding not in policy.jpeg_frames:
+        allowed = [name for name in JPEG_FRAMES if name in policy.jpeg_frames]
+        article = "an" if facts.coding[0] in "aeiou" else "a"
+        reasons.append(
+            f"{article} {facts.coding} JPEG; the policy allows {_listed(allowed)} frames"
+        )
     return reasons
+
+
+def _listed(names: list[str]) -> str:
+    if len(names) < 2:
+        return "".join(names)
+    return ", ".join(names[:-1]) + " and " + names[-1]

@@ -42,6 +42,9 @@ def test_options_adjust_the_policy(tmp_path: Path) -> None:
     jpeg_called_png = corpus.write(tmp_path / "lie.png", corpus.jpeg(10, 10))
     assert main(["--max-pixels", "50", str(png)]) == 1
     assert main(["--formats", "jpeg,tiff", str(png)]) == 1
+    lossless = corpus.write(tmp_path / "lossless.jpg", corpus.jpeg(10, 10, marker=0xC3))
+    assert main([str(lossless)]) == 1
+    assert main(["--jpeg-frames", "baseline,lossless", str(lossless)]) == 0
     assert main(["--any-name", str(jpeg_called_png)]) == 0
     assert main(["--strict", "--max-bytes", "10", str(png)]) == 1
 

@@ -35,6 +35,8 @@ def _policy(args: argparse.Namespace) -> Policy:
     }
     if args.formats:
         changes["formats"] = frozenset(args.formats.split(","))
+    if args.jpeg_frames:
+        changes["jpeg_frames"] = frozenset(args.jpeg_frames.split(","))
     if args.any_name:
         changes["name_must_match"] = False
     return dataclasses.replace(base, **changes) if changes else base
@@ -63,6 +65,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--max-pixels", type=int, metavar="N", help="most pixels in any one page or frame"
     )
     parser.add_argument("--max-pages", type=int, metavar="N", help="most pages or frames")
+    parser.add_argument(
+        "--jpeg-frames",
+        metavar="LIST",
+        help=(
+            "comma-separated JPEG frame codings to allow, from "
+            "baseline,extended,progressive,lossless,hierarchical,arithmetic "
+            "(default: the first three)"
+        ),
+    )
     parser.add_argument(
         "--any-name",
         action="store_true",
