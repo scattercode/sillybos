@@ -112,8 +112,8 @@ class Policy:
             drove libtiff's RGBA reader to write colour data to an
             arbitrary address (CVE-2025-9900). No scanner writes a side
             longer than a few tens of thousands of pixels: the default is
-            three times the longest side in the corpus (9,933 pixels, A3 at
-            600 dpi).
+            three times the longest side of an A3 page at 600 dpi (9,933
+            pixels), and nothing in the corpus comes near it.
         max_pages: The most pages in a PDF, or frames in a multi-frame TIFF
             or animated PNG. Bounds the time and the memory a run takes,
             and stops the header walk itself on a file with a million
