@@ -46,6 +46,8 @@ chooses from it.
 
 ::: sillybos.PDF_FEATURES
 
+::: sillybos.PDF_IMAGE_CODECS
+
 ::: sillybos.PNG_COLOUR_TYPES
 
 ::: sillybos.TIFF_COMPRESSIONS

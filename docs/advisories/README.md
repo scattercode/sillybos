@@ -2,8 +2,8 @@
 
 sillybos stands in front of decoders it does not control. When one of them
 publishes a security advisory, the question for this library is narrow:
-**would a bounded header check, or what `pdfinfo`, `pdfimages -list` or
-`pdffonts` report, have kept the triggering file from the decoder?** A
+**would a bounded header check, what `pdfinfo` reports, or a name found
+in a PDF's bytes have kept the triggering file from the decoder?** A
 weekly job fetches the advisories and opens an issue for each; a
 maintainer answers that question and files the issue in a bucket. This
 page is the procedure.
@@ -136,10 +136,13 @@ bucket and the sentence are right, promote it, and if not, edit the file
 first. A proposal in bucket A, B or B2 cannot be promoted until it names a
 test that builds the triggering file and checks it is refused: for an A
 that test usually exists already, and for a B or B2 the policy field and
-the corpus case come first, as the next section says. The proposals in
-B2 at the time of writing all want one of two coarse PDF policies, on
-embedded fonts and on JBIG2 image streams, and the one B wants a ceiling
-on a single image dimension.
+the corpus case come first, as the next section says. The B2 proposals on
+JBIG2 streams name `pdf_image_codecs`, which came out of them; the ones on
+embedded fonts were moved to C, because every searchable PDF embeds a
+font, so a policy refusing fonts would refuse the text layers it exists to
+protect. `pdfimages -list` was found to open a JPX stream with OpenJPEG
+just to describe it, which is why the codecs are found by name and that
+tool is never run.
 
 ## The buckets
 
@@ -150,7 +153,7 @@ answer to the question at the top of this page.
 |---|---|---|
 | **A** | Already refused by an existing check: a format outside the four, a frame coding the policy refuses, a size over a limit | Say which check, and close |
 | **B** | Preventable from a header field our readers can see: a marker, a tag, a chunk, a count, a dimension | A policy field and a hostile corpus case (below), then close when it ships |
-| **B2** | Preventable only by a coarse policy on a PDF's contents that `pdfimages -list` or `pdffonts` report: a JBIG2 or JPX stream, an embedded font | The same as B, through the PDF path; note that the policy will be coarse |
+| **B2** | Preventable only by a coarse policy on a PDF's contents: the codec of an image, found by its filter's name in the bytes (`pdf_image_codecs`). Not an embedded font: every searchable PDF carries one, so a policy on fonts has no user, and a flaw in the font program is C | The same as B, through the PDF path; note that the policy will be coarse |
 | **C** | Needs decoding to detect: a flaw in the pixel data, the entropy-coded segment, the font program | Out of this library's reach by design; say so and close. Updating the decoder is the fix |
 | **D** | Reaches `pdfinfo` itself | Check that the check still fails closed (a timeout or a non-zero exit is a refusal), and close |
 | **N** | Not reached by opening a file: a command-line tool, a save or encode path, a drawing or font API, a parser that only runs on append | Close |

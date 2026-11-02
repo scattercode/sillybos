@@ -105,3 +105,11 @@ def test_pdf_features_can_be_allowed(tmp_path: Path) -> None:
     assert main([str(scripted)]) == 1
     assert main(["--pdf-features", "javascript", str(scripted)]) == 0
     assert main(["--pdf-features", "forms", str(scripted)]) == 1
+
+
+@pytest.mark.skipif(shutil.which("pdfinfo") is None, reason="pdfinfo (poppler)")
+def test_pdf_image_codecs_can_be_refused(tmp_path: Path) -> None:
+    scan = corpus.write(tmp_path / "scan.pdf", corpus.pdf_with("jbig2"))
+    assert main([str(scan)]) == 0
+    assert main(["--pdf-image-codecs", "jpeg,jpx,ccitt", str(scan)]) == 1
+    assert main(["--pdf-image-codecs", "jbig2", str(scan)]) == 0

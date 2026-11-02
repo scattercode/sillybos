@@ -111,6 +111,7 @@ check(path, Policy(formats={"tiff", "pdf"}, max_pages=50))
 | `jpeg_frames` | baseline, extended, progressive | the same | How a JPEG's frame may be coded. Lossless, hierarchical and arithmetic frames are legal JPEG that no scanner writes and the decoder's least-exercised code; a lossless frame was the way into a heap overflow in Pillow's JPEG decoder (CVE-2026-112403) |
 | `allow_encrypted_pdf` | no | no | A scanned book is never encrypted |
 | `pdf_features` | none | none | Which of JavaScript, forms, attached files and launch actions a PDF may carry. Each makes a viewer do something other than draw the page, and a scanned book has none. Forms are read from `pdfinfo`'s report and attached files from `pdfdetach`'s; a launch action is found by its name in the file, since no poppler tool reports one; JavaScript is looked for both ways |
+| `pdf_image_codecs` | jpeg, jpx, jbig2, ccitt | the same | Which codecs a PDF's images may be coded with: JPEG, JPEG 2000 (OpenJPEG), JBIG2 and CCITT fax. Each hands the stream to a decoder of its own inside poppler, and the JBIG2 decoder is where several of its flaws have been (CVE-2025-32365, CVE-2026-93312, CVE-2026-93313). Scanners and the archives that derive PDFs from scans write all four, so both presets allow them; refuse one only when you know your source never writes it. Found by the filter's name in the file, not by `pdfimages -list`, which opens a JPX stream with OpenJPEG just to describe it |
 | `pdfinfo_timeout` | 30 s | 30 s | How long `pdfinfo` may take before the file is refused |
 
 The defaults were set from a real corpus of archival scans (largest page 39
@@ -187,8 +188,9 @@ prints one object per line for a pipeline; `-q` prints only refusals.
    `pdfinfo` reports the page count, whether it is encrypted, whether it
    carries JavaScript or a form and, if the count is within the limit,
    every page's size; `pdfdetach` reports attached files; and a bounded
-   scan of the bytes finds the name of a launch action, and of JavaScript
-   that an older poppler does not report, with the `#xx` escapes a name
+   scan of the bytes finds the name of a launch action, of JavaScript
+   that an older poppler does not report, and of the filters its images
+   are coded with (DCT, JPX, JBIG2, CCITT), with the `#xx` escapes a name
    may hide behind undone.
 5. **The limits**, against what the header said.
 
@@ -213,8 +215,12 @@ Say this plainly, because a security library carries an implied promise.
 - **It does not look inside a PDF beyond what `pdfinfo` reports.** A PDF's
   structure cannot be read from a fixed header; it has to be parsed, and
   the parser this library trusts is poppler's, in its own process, with a
-  timeout. Checks for JavaScript, launch actions, embedded files and forms
-  (things a scanned book never has) are the next step.
+  timeout. JavaScript, launch actions, embedded files, forms and the
+  codecs of its images are found from that report and from names in the
+  bytes; a name reachable only through an indirect reference inside a
+  compressed object stream is not seen. `pdfimages -list` would see it,
+  but it opens a JPEG 2000 stream with OpenJPEG just to describe it, so
+  this library never runs it.
 - **It does not validate uploads.** File names, path traversal and zip
   bombs belong to a web framework's upload handling. This library starts
   after the file is on disk and asks only whether a decoder may open it.

@@ -31,6 +31,7 @@ from sillybos.policy import (
     FORMATS,
     JPEG_FRAMES,
     PDF_FEATURES,
+    PDF_IMAGE_CODECS,
     PNG_COLOUR_TYPES,
     TIFF_COMPRESSIONS,
     TIFF_PHOTOMETRICS,
@@ -80,6 +81,9 @@ class Facts:
         features: Which of [sillybos.PDF_FEATURES][] a PDF carries:
             JavaScript, a form, attached files, a launch action. Empty for
             an image and for a PDF with none.
+        codecs: Which of [sillybos.PDF_IMAGE_CODECS][] a PDF's images are
+            coded with, by the filters named in the file. Empty for an
+            image and for a PDF whose images use none of them.
     """
 
     bytes: int
@@ -99,6 +103,7 @@ class Facts:
     tile: tuple[int, int] | None = None
     subsampling: str | None = None
     features: tuple[str, ...] = ()
+    codecs: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -233,6 +238,7 @@ def _facts(path: Path, fmt: str, f: headers.Reader, size: int, policy: Policy) -
             info.max_side,
             info.encrypted,
             features=info.features,
+            codecs=info.codecs,
         )
     header = headers.READERS[fmt](f, size, policy.max_pages)
     return Facts(
@@ -278,6 +284,14 @@ def _against_limits(facts: Facts, policy: Policy, fmt: str) -> list[str]:
         allowed = [_FEATURE_WORDS[name] for name in PDF_FEATURES if name in policy.pdf_features]
         permits = _listed(allowed) if allowed else "none of the features a PDF can carry"
         reasons.append(f"a PDF with {found}; the policy allows {permits}")
+    refused_codecs = [name for name in facts.codecs if name not in policy.pdf_image_codecs]
+    if refused_codecs:
+        found = _listed([_CODEC_WORDS[name] for name in refused_codecs])
+        allowed = [
+            _CODEC_WORDS[name] for name in PDF_IMAGE_CODECS if name in policy.pdf_image_codecs
+        ]
+        permits = _listed(allowed) if allowed else "none of the image codecs a PDF can carry"
+        reasons.append(f"a PDF with images coded as {found}; the policy allows {permits}")
     if facts.coding is not None and facts.coding not in policy.jpeg_frames:
         allowed = [name for name in JPEG_FRAMES if name in policy.jpeg_frames]
         article = "an" if facts.coding[0] in "aeiou" else "a"
@@ -318,6 +332,7 @@ def _against_limits(facts: Facts, policy: Policy, fmt: str) -> list[str]:
     return reasons
 
 
+_CODEC_WORDS = {"jpeg": "JPEG", "jpx": "JPEG 2000", "jbig2": "JBIG2", "ccitt": "CCITT"}
 _FEATURE_WORDS = {
     "javascript": "JavaScript",
     "forms": "a form",
