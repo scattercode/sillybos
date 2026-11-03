@@ -17,7 +17,7 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 55,
+    "records": 56,
     "refused_by_default": 18,
     "by_bucket": {
       "A": 8,
@@ -25,14 +25,14 @@
       "B2": 1,
       "C": 8,
       "D": 3,
-      "N": 19,
+      "N": 20,
       "U": 0
     },
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 4,
       "Pillow": 15,
-      "libpng": 9,
+      "libpng": 10,
       "libtiff": 14,
       "poppler": 9
     }
@@ -776,6 +776,35 @@
       "sources": [
         "https://github.com/advisories/GHSA-cm99-m826-vgg7"
       ]
+    },
+    {
+      "key": "CVE-2026-3713",
+      "aliases": [],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "The pnm2png contributed tool overruns a heap buffer",
+      "summary": "A flaw has been found in pnggroup libpng up to 1.6.55.",
+      "published": "2026-03-08",
+      "severity": null,
+      "affected": "libpng up to 1.6.55 (contrib/pngminus only)",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running contrib/pngminus/pnm2png with a crafted width or height.",
+      "bucket": "N",
+      "finding": "A contributed tool under contrib/, not the library; no library call runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libpng to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-3713"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "key": "CVE-2026-23865",
