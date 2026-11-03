@@ -282,6 +282,22 @@ class TestHostileFiles:
         verdict = check(path, Policy(png_colour_types=frozenset({"greyscale", "rgb"})))
         assert verdict.reasons == ("a palette PNG; the policy allows greyscale and rgb",)
 
+    def test_a_palette_png_with_an_empty_palette(self, tmp_path: Path) -> None:
+        # CVE-2026-112898: a palette image with no entries, used as the palette
+        # for Image.quantize, returns uninitialised stack memory as pixels; an
+        # 80-byte PNG with an empty PLTE is one. The reader does not open the
+        # PLTE, so the default passes it; a scans-only policy refuses the file.
+        data = corpus.png(10, 10, colour=3, extra=corpus.png_chunk(b"PLTE", 0))
+        path = corpus.write(tmp_path / "scan.png", data)
+        assert check(path).ok
+        scans_only = Policy(
+            png_colour_types=frozenset({"greyscale", "rgb", "greyscale-alpha", "rgba"})
+        )
+        verdict = check(path, scans_only)
+        assert verdict.reasons == (
+            "a palette PNG; the policy allows greyscale, rgb, greyscale-alpha and rgba",
+        )
+
     def test_a_sixteen_bit_png_is_strict_only_by_default(self, tmp_path: Path) -> None:
         path = corpus.write(tmp_path / "scan.png", corpus.png(10, 10, colour=0, depth=16))
         assert check(path).ok

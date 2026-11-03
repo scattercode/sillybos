@@ -1212,7 +1212,7 @@
       "refusal": {
         "check": "png_colour_types",
         "default": false,
-        "setting": "Policy(png_colour_types=frozenset({\"greyscale\", \"rgb\", \"greyscale-alpha\", \"rgb-alpha\"})); tiff_photometrics without palette for a TIFF"
+        "setting": "Policy(png_colour_types=frozenset({\"greyscale\", \"rgb\", \"greyscale-alpha\", \"rgba\"})); tiff_photometrics without palette for a TIFF"
       },
       "verified_by": [
         "tests/test_check.py::TestHostileFiles::test_a_palette_png_under_a_scans_only_policy"
