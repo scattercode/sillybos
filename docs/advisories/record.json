@@ -17,7 +17,7 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 29,
+    "records": 30,
     "refused_by_default": 16,
     "by_bucket": {
       "A": 5,
@@ -25,14 +25,14 @@
       "B2": 0,
       "C": 0,
       "D": 0,
-      "N": 8,
+      "N": 9,
       "U": 0
     },
     "by_library": {
       "OpenJPEG": 2,
       "Pillow": 14,
       "libpng": 5,
-      "libtiff": 8
+      "libtiff": 9
     }
   },
   "records": [
@@ -845,6 +845,35 @@
       "triaged": "2026-11-02",
       "checked": "2026-11-02",
       "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-02."
+    },
+    {
+      "key": "CVE-2025-8851",
+      "aliases": [],
+      "library": "libtiff",
+      "package": "tiff",
+      "ecosystem": "Debian",
+      "title": "tiffcrop overruns a stack buffer in readSeparateStripsetoBuffer",
+      "summary": "A vulnerability was determined in LibTIFF up to 4.5.1.",
+      "published": "2025-08-11",
+      "severity": null,
+      "affected": "LibTIFF up to 4.5.1",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the tiffcrop command-line tool on a crafted TIFF.",
+      "bucket": "N",
+      "finding": "In tools/tiffcrop.c, a command-line tool; no library call opening a file runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libtiff to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-8851"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "key": "CVE-2025-8534",
