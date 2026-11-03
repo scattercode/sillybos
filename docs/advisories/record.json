@@ -17,7 +17,7 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 88,
+    "records": 89,
     "refused_by_default": 25,
     "by_bucket": {
       "A": 15,
@@ -25,7 +25,7 @@
       "B2": 1,
       "C": 13,
       "D": 3,
-      "N": 40,
+      "N": 41,
       "U": 0
     },
     "by_library": {
@@ -35,7 +35,7 @@
       "libpng": 15,
       "libtiff": 18,
       "poppler": 10,
-      "zlib": 2
+      "zlib": 3
     }
   },
   "records": [
@@ -665,6 +665,35 @@
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
       "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-85091",
+      "aliases": [],
+      "library": "zlib",
+      "package": "zlib",
+      "ecosystem": "Debian",
+      "title": "zlib's gz_vacate overflows a heap buffer after a stalled gzwrite",
+      "summary": "zlib versions 1.3.1.2 through 1.3.2 contain a heap buffer overflow vulnerability in the gz_vacate() function when processing non-blocking gzwrite() operations with stale external buffer pointers.",
+      "published": "2026-09-03",
+      "severity": null,
+      "affected": "zlib 1.3.1.2 through 1.3.2",
+      "fixed": null,
+      "reached_by": "save",
+      "trigger": "Calling gzprintf or gzvprintf after a non-blocking gzwrite stalled.",
+      "bucket": "N",
+      "finding": "In zlib's gz file layer (gzwrite, gzprintf), on a non-blocking descriptor whose write stalled. No image file is the input, and nothing in the image stack calls that layer: libpng and libtiff use the raw deflate stream, Pillow's wheel references none of the gz write functions, and Python's zlib module has no gz API. Only a program that writes .gz files through zlib's own file functions, on a non-blocking descriptor, is in the path.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade zlib to a version that has the fix; the upstream record names it.",
+        "specific": "Not reached through an image: only a program's own gzwrite on a non-blocking descriptor; upgrade zlib."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-85091"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Checked on 2026-11-03 that nothing in the image stack calls zlib's gz write layer."
     },
     {
       "key": "CVE-2026-52491",
