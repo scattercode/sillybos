@@ -17,7 +17,7 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 43,
+    "records": 44,
     "refused_by_default": 16,
     "by_bucket": {
       "A": 5,
@@ -25,7 +25,7 @@
       "B2": 1,
       "C": 7,
       "D": 1,
-      "N": 13,
+      "N": 14,
       "U": 0
     },
     "by_library": {
@@ -34,7 +34,7 @@
       "Pillow": 14,
       "libpng": 7,
       "libtiff": 11,
-      "poppler": 5
+      "poppler": 6
     }
   },
   "records": [
@@ -1278,6 +1278,35 @@
       },
       "sources": [
         "https://osv.dev/vulnerability/DEBIAN-CVE-2025-8176"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-43903",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "poppler accepts a forged adbe.pkcs7.sha1 signature",
+      "summary": "NSSCryptoSignBackend.cc in Poppler before 25.04.0 does not verify the adbe.pkcs7.sha1 signatures on documents, resulting in potential signature forgeries.",
+      "published": "2025-04-18",
+      "severity": 3.3,
+      "affected": "poppler before 25.04.0",
+      "fixed": "25.04.0",
+      "reached_by": "api",
+      "trigger": "Asking poppler to verify a document signature (pdfsig or the signature API).",
+      "bucket": "N",
+      "finding": "Signature verification is a separate call that rendering and pdfinfo never make; a forged signature does not reach a pipeline that only renders pages.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to poppler 25.04.0.",
+        "specific": "Not a pre-decode matter. If signatures are verified, use poppler 25.04.0 or later."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-43903"
       ],
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
