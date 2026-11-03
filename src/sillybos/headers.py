@@ -79,6 +79,15 @@ class Header:
         tile: For a tiled TIFF, the (width, height) of its largest tile,
             which is what the decoder allocates whole. `None` for a TIFF
             in strips and for the other formats.
+        tags: For a TIFF, every tag outside the standard set, as (kind,
+            number) with the kind a name from [sillybos.TIFF_TAGS][]
+            (`"metadata"` or `"private"`), each number once, in order of
+            first appearance. Empty for a TIFF of standard tags only and
+            for the other formats.
+        inconsistencies: For a TIFF, each way its tags contradict each
+            other, in a sentence: a ColorMap with the wrong number of
+            entries for the bit depth, a floating-point Predictor on
+            integer samples. Empty when they agree.
     """
 
     width: int
@@ -95,6 +104,8 @@ class Header:
     interlaced: bool = False
     tile: tuple[int, int] | None = None
     subsampling: str | None = None
+    tags: tuple[tuple[str, int], ...] = ()
+    inconsistencies: tuple[str, ...] = ()
 
 
 def _read_exactly(f: Reader, n: int, what: str) -> bytes:
@@ -413,8 +424,14 @@ _SAMPLES_PER_PIXEL = 277
 _TILE_WIDTH = 322
 _TILE_LENGTH = 323
 _YCBCR_SUBSAMPLING = 530
+_PREDICTOR = 317
+_COLORMAP = 320
+_SAMPLE_FORMAT = 339
 _YCBCR = 6
+_FLOATING_POINT_PREDICTOR = 3
+_FLOATING_POINT_SAMPLES = 3
 _SINGLE_VALUE_TAGS = (
+    _PREDICTOR,
     _IMAGE_WIDTH,
     _IMAGE_LENGTH,
     _COMPRESSION,
@@ -426,6 +443,7 @@ _SINGLE_VALUE_TAGS = (
 _TAG_NAMES = {
     _IMAGE_WIDTH: "a dimension tag",
     _IMAGE_LENGTH: "a dimension tag",
+    _PREDICTOR: "a predictor tag",
     _COMPRESSION: "a compression tag",
     _PHOTOMETRIC: "a photometric tag",
     _SAMPLES_PER_PIXEL: "a samples-per-pixel tag",
@@ -440,14 +458,49 @@ _TAG_LABELS = {
     270: "ImageDescription",
     273: "StripOffsets",
     279: "StripByteCounts",
+    317: "Predictor",
+    320: "ColorMap",
     324: "TileOffsets",
     325: "TileByteCounts",
+    339: "SampleFormat",
     700: "XMP",
     33723: "IPTC",
     34377: "Photoshop",
     34665: "Exif",
     34675: "ICC profile",
+    34853: "GPS",
+    50706: "DNGVersion",
+    50740: "DNGPrivateData",
+    50829: "ActiveArea",
 }
+# The TIFF 6.0 tags, baseline and extensions (254 to 532), with the few
+# later additions every writer uses: TIFF-FX's global parameters (400 to
+# 405), the JPEG tables and YCbCr tags, Copyright (33432), and TIFF/EP's
+# CFA and sensor tags (33421 to 33423, 37399, 37400). Everything a scanner
+# or an editor writes that is not here is in _METADATA_TAGS; what is in
+# neither is a private tag, as TIFF calls 32,768 and above, or an
+# unassigned number, and [sillybos.TIFF_TAGS][] names both "private".
+_STANDARD_TAGS = (
+    frozenset(range(254, 348))
+    | frozenset(range(400, 406))
+    | frozenset(range(512, 522))
+    | frozenset({529, 530, 531, 532, 33421, 33422, 33423, 33432, 37399, 37400})
+)
+# The registered metadata blocks: XMP, Microsoft's ratings, GeoTIFF, IPTC,
+# Photoshop, the Exif, GPS and interoperability IFDs, the ICC profile,
+# Photoshop's image source data, GDAL's two, the PrintIM block, and the
+# padding and offset-schema tags Microsoft's writers leave.
+_METADATA_TAGS = frozenset(
+    {700, 18246, 18247, 18248, 18249, 33550, 33723, 33922, 34377, 34665, 34675, 34735}
+) | frozenset({34736, 34737, 34853, 37724, 40965, 42112, 42113, 50341, 59932, 59933})
+
+
+def tag_name(number: int) -> str:
+    """A TIFF tag's number, with its name where the library knows one: `50,740 (DNGPrivateData)`."""
+    label = _TAG_LABELS.get(number)
+    return f"{number:,}" + (f" ({label})" if label else "")
+
+
 MAX_SAMPLES = 64
 """The most samples per pixel a BitsPerSample tag may list. A scan has one,
 three or four; the bound keeps the out-of-line read small."""
@@ -537,6 +590,8 @@ def tiff(f: Reader, size: int, limit: int) -> Header:
     metadata: tuple[str, int] | None = None
     tile: tuple[int, int] | None = None
     subsampling: str | None = None
+    tags: dict[int, str] = {}  # every tag outside the standard set, by number
+    inconsistencies: list[str] = []
     max_pixels = 0
     max_side = 0
     pages = 0
@@ -558,6 +613,8 @@ def tiff(f: Reader, size: int, limit: int) -> Header:
                 colour=layout[0],
                 depth=layout[2],
                 subsampling=subsampling,
+                tags=tuple((kind, number) for number, kind in tags.items()),
+                inconsistencies=tuple(inconsistencies),
             )
         if offset in seen:
             raise HeaderError("the frame chain loops back on itself")
@@ -579,10 +636,22 @@ def tiff(f: Reader, size: int, limit: int) -> Header:
         }
         bits: tuple[int, bytes] | None = None  # (count, field) to resolve after the directory
         factors = (2, 2)  # the subsampling tag's default
+        colormap_entries: int | None = None
+        predictor = 1  # the tag's default: none
+        sample_format = 1  # the tag's default: unsigned integer
         for _ in range(count):
             tag, kind, n, raw = struct.unpack(
                 endian + "HHI4s", _read_exactly(f, 12, "frame directory")
             )
+            if tag not in _STANDARD_TAGS and tag not in tags:
+                tags[tag] = "metadata" if tag in _METADATA_TAGS else "private"
+            if tag == _COLORMAP:
+                colormap_entries = n
+            elif tag == _SAMPLE_FORMAT and kind == _TIFF_SHORT and 1 <= n <= 2:
+                # One value per sample; a tag whose values sit out of line
+                # is left as the default, since nothing here depends on
+                # reading it, and a wrong guess would refuse a sound file.
+                (sample_format,) = struct.unpack(endian + "H", raw[:2])
             data_size = n * _TYPE_SIZES.get(kind, 1)
             if data_size > 4:
                 # The field holds an offset to the data. A count that would
@@ -629,6 +698,8 @@ def tiff(f: Reader, size: int, limit: int) -> Header:
                 width = value
             elif tag == _IMAGE_LENGTH:
                 height = value
+            elif tag == _PREDICTOR:
+                predictor = value
             else:
                 values[tag] = value
         if width is None or height is None:
@@ -643,6 +714,18 @@ def tiff(f: Reader, size: int, limit: int) -> Header:
             if tile is None or tile_width * tile_length > tile[0] * tile[1]:
                 tile = (tile_width, tile_length)
         depth = _bits_per_sample(f, size, endian, bits, pages + 1)
+        if colormap_entries is not None and (depth > 16 or colormap_entries != 3 * (1 << depth)):
+            # A ColorMap holds 3 * 2**depth entries, one plane per channel;
+            # past 16 bits no map fits, and the shift is not worth taking.
+            needed = f"which need {3 * (1 << depth):,}" if depth <= 16 else "which no map fits"
+            inconsistencies.append(
+                f"frame {pages + 1} has a ColorMap of {colormap_entries:,} entries for "
+                f"{depth}-bit samples, {needed}"
+            )
+        if predictor == _FLOATING_POINT_PREDICTOR and sample_format != _FLOATING_POINT_SAMPLES:
+            inconsistencies.append(
+                f"frame {pages + 1} has a floating-point Predictor on integer samples"
+            )
         photometric, samples = values[_PHOTOMETRIC], values[_SAMPLES_PER_PIXEL]
         assert photometric is not None and samples is not None  # noqa: S101 - defaults above
         colour = _PHOTOMETRICS.get(photometric)
@@ -703,6 +786,8 @@ def tiff(f: Reader, size: int, limit: int) -> Header:
         colour=layout[0],
         depth=layout[2],
         subsampling=subsampling,
+        tags=tuple((kind, number) for number, kind in tags.items()),
+        inconsistencies=tuple(inconsistencies),
     )
 
 

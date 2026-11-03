@@ -89,6 +89,15 @@ draw the page: JavaScript, an interactive form, attached (embedded) files, and
 a launch action that runs a program. A scanned book has none of them, so the
 default policy refuses them all; a policy names the ones it will pass."""
 
+TIFF_TAGS: tuple[str, ...] = ("standard", "metadata", "private")
+"""The three kinds of tag a TIFF directory can hold, by name. `standard` is
+the TIFF 6.0 set (baseline and extensions) with the few later additions
+every writer uses; `metadata` is the registered blocks a scanner or an
+editor attaches (XMP, IPTC, Photoshop, Exif, ICC, GPS, GeoTIFF, GDAL);
+`private` is everything else, the vendor and DNG tags a scan never
+carries, which is where a crafted tag goes when it is meant to reach the
+encoder on a save (CVE-2026-112902)."""
+
 PDF_IMAGE_CODECS: tuple[str, ...] = ("jpeg", "jpx", "jbig2", "ccitt")
 """Every codec a PDF's images can be coded with that hands the stream to a
 decoder of its own inside poppler, by name: DCT (JPEG), JPX (JPEG 2000,
@@ -182,6 +191,23 @@ class Policy:
             libtiff's flaws have been found (PixarLog most recently,
             CVE-2026-12912), and a scan never needs them. Every frame of a
             file must use the same scheme.
+        tiff_tags: Which of [TIFF_TAGS][sillybos.TIFF_TAGS] a TIFF's directories
+            may hold: standard, metadata, private. The default is all
+            three, since a vendor's own tag in a scanner's output is
+            harmless on a read. A program that saves a file back as TIFF
+            with its tag table carries every tag into libtiff's encoder,
+            where a crafted private tag copied process memory into the
+            output (CVE-2026-112902); such a program should allow standard
+            and metadata tags only.
+        allow_inconsistent_tiff_tags: Pass a TIFF whose tags contradict
+            each other: a ColorMap with the wrong number of entries for
+            the bit depth (768 for 16-bit samples, which need 196,608;
+            CVE-2026-112896), or a floating-point Predictor on integer
+            samples (CVE-2026-112396). No scanner writes either; both are
+            what a crafted file carries to reach an encoder that trusts
+            the tag. The default allows them, because refusing a file
+            that passed before is a breaking change; a policy for files
+            from outside should not.
         allow_encrypted_pdf: Pass a PDF that `pdfinfo` reports as
             encrypted. A scanned book never is, so the default refuses.
         pdf_features: Which of [PDF_FEATURES][sillybos.PDF_FEATURES] a PDF may carry:
@@ -234,6 +260,8 @@ class Policy:
     tiff_compressions: frozenset[str] = field(
         default_factory=lambda: frozenset({"none", "ccitt", "lzw", "jpeg", "deflate", "packbits"})
     )
+    tiff_tags: frozenset[str] = field(default_factory=lambda: frozenset(TIFF_TAGS))
+    allow_inconsistent_tiff_tags: bool = True
     allow_encrypted_pdf: bool = False
     pdf_features: frozenset[str] = frozenset()
     pdf_image_codecs: frozenset[str] = field(default_factory=lambda: frozenset(PDF_IMAGE_CODECS))
@@ -269,6 +297,7 @@ class Policy:
             ("tiff_compressions", TIFF_COMPRESSIONS, "TIFF compression"),
             ("tiff_photometrics", TIFF_PHOTOMETRICS, "TIFF photometric interpretation"),
             ("tiff_subsamplings", TIFF_SUBSAMPLINGS, "TIFF subsampling"),
+            ("tiff_tags", TIFF_TAGS, "TIFF tag kind"),
         ):
             chosen = getattr(self, field_name)
             unknown = set(chosen) - set(known)
