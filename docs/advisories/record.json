@@ -17,10 +17,10 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 113,
-    "refused_by_default": 41,
+    "records": 114,
+    "refused_by_default": 42,
     "by_bucket": {
-      "A": 34,
+      "A": 35,
       "B": 16,
       "B2": 3,
       "C": 18,
@@ -31,7 +31,7 @@
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 6,
-      "Pillow": 51,
+      "Pillow": 52,
       "libpng": 15,
       "libtiff": 18,
       "poppler": 16,
@@ -537,6 +537,42 @@
       "sources": [
         "https://github.com/advisories/GHSA-w889-685w-c8fh"
       ]
+    },
+    {
+      "key": "CVE-2026-112894",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Saving a multi-frame image as a PDF takes quadratic time",
+      "summary": "Pillow: Quadratic-time DoS in PDF save_all (PdfParser.next_object_id)",
+      "published": "2026-10-21",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "save",
+      "trigger": "Image.save(format=\"PDF\", save_all=True) of an image with many frames.",
+      "bucket": "A",
+      "finding": "The frame count comes from the opened file: a TIFF's frame chain, which the reader walks, or an animated PNG's acTL count, which it reads. max_pages bounds both, and the default of 500 keeps the quadratic cost small; the 125-byte animated PNG that declares two billion frames is refused on the count alone.",
+      "refusal": {
+        "check": "max_pages",
+        "default": true,
+        "setting": "max_pages"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_an_animated_png_that_declares_too_many_frames",
+        "tests/test_check.py::TestHostileFiles::test_a_tiff_with_ten_thousand_frames"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Keep max_pages at what a document needs; sillybos reads the declared frame count before Pillow does."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-jg86-v3jv-hrpm"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-read on 2026-11-03 against the question of what rides from an opened file into a save: the file is the input."
     },
     {
       "key": "CVE-2026-112893",
