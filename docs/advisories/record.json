@@ -17,7 +17,7 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 30,
+    "records": 31,
     "refused_by_default": 16,
     "by_bucket": {
       "A": 5,
@@ -25,14 +25,14 @@
       "B2": 0,
       "C": 0,
       "D": 0,
-      "N": 9,
+      "N": 10,
       "U": 0
     },
     "by_library": {
       "OpenJPEG": 2,
       "Pillow": 14,
       "libpng": 5,
-      "libtiff": 9
+      "libtiff": 10
     }
   },
   "records": [
@@ -845,6 +845,35 @@
       "triaged": "2026-11-02",
       "checked": "2026-11-02",
       "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-02."
+    },
+    {
+      "key": "CVE-2025-8961",
+      "aliases": [],
+      "library": "libtiff",
+      "package": "tiff",
+      "ecosystem": "Debian",
+      "title": "tiffcrop corrupts memory in main",
+      "summary": "A weakness has been identified in LibTIFF 4.7.0.",
+      "published": "2025-08-14",
+      "severity": null,
+      "affected": "LibTIFF 4.7.0",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the tiffcrop command-line tool with crafted arguments.",
+      "bucket": "N",
+      "finding": "In tiffcrop.c, a command-line tool; no library call opening a file runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libtiff to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-8961"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "key": "CVE-2025-8851",
