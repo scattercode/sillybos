@@ -17,7 +17,7 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 38,
+    "records": 39,
     "refused_by_default": 16,
     "by_bucket": {
       "A": 5,
@@ -25,14 +25,14 @@
       "B2": 0,
       "C": 6,
       "D": 0,
-      "N": 11,
+      "N": 12,
       "U": 0
     },
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 2,
       "Pillow": 14,
-      "libpng": 5,
+      "libpng": 6,
       "libtiff": 11,
       "poppler": 2
     }
@@ -805,6 +805,35 @@
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
       "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Moved from B2 to C on 2026-11-02, with the finding above."
+    },
+    {
+      "key": "CVE-2025-28162",
+      "aliases": [],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "libpng's pngimage test program leaks memory",
+      "summary": "Buffer Overflow vulnerability in libpng 1.6.43-1.6.46 allows a local attacker to cause a denial of service via the pngimage with AddressSanitizer (ASan), the program leaks memory in various locations, eventually leading to high memory us...",
+      "published": "2026-01-27",
+      "severity": 5.5,
+      "affected": "libpng 1.6.43 to 1.6.46",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the pngimage test program under AddressSanitizer.",
+      "bucket": "N",
+      "finding": "A test program, not the library; no library call opening a file runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libpng to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-28162"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "triaged": "2026-11-01",
