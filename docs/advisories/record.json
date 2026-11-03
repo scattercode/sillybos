@@ -17,7 +17,7 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 81,
+    "records": 82,
     "refused_by_default": 22,
     "by_bucket": {
       "A": 12,
@@ -25,13 +25,13 @@
       "B2": 1,
       "C": 10,
       "D": 3,
-      "N": 39,
+      "N": 40,
       "U": 0
     },
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 5,
-      "Pillow": 27,
+      "Pillow": 28,
       "libpng": 15,
       "libtiff": 18,
       "poppler": 10,
@@ -784,6 +784,36 @@
       "sources": [
         "https://osv.dev/vulnerability/GHSA-62p4-gmf7-7g93",
         "https://osv.dev/vulnerability/PYSEC-2026-3493"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-59197",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A huge rank-filter size writes out of bounds in ImagingExpand",
+      "summary": "Pillow: Heap out-of-bounds write in `ImageFilter.RankFilter` via integer overflow in `ImagingExpand`",
+      "published": "2026-07-14",
+      "severity": 8.2,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "image.filter(ImageFilter.MedianFilter(n)) with an enormous odd n.",
+      "bucket": "N",
+      "finding": "In the filter API, called with a size the program chooses; opening a file never runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Not a pre-decode matter: the flaw is in a call that opening a file never makes."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-xj96-63gp-2gmr",
+        "https://osv.dev/vulnerability/PYSEC-2026-3454"
       ],
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
