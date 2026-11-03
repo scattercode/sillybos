@@ -17,7 +17,7 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 58,
+    "records": 59,
     "refused_by_default": 18,
     "by_bucket": {
       "A": 8,
@@ -25,7 +25,7 @@
       "B2": 1,
       "C": 9,
       "D": 3,
-      "N": 21,
+      "N": 22,
       "U": 0
     },
     "by_library": {
@@ -33,7 +33,7 @@
       "OpenJPEG": 5,
       "Pillow": 15,
       "libpng": 10,
-      "libtiff": 14,
+      "libtiff": 15,
       "poppler": 10
     }
   },
@@ -635,6 +635,35 @@
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
       "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Moved from B2 to C on 2026-11-02, with the finding above."
+    },
+    {
+      "key": "CVE-2026-18495",
+      "aliases": [],
+      "library": "libtiff",
+      "package": "tiff",
+      "ecosystem": "Debian",
+      "title": "tiff2pdf truncates a BigTIFF strip byte count and overflows",
+      "summary": "A flaw was found in libtiff.",
+      "published": "2026-09-11",
+      "severity": 6.1,
+      "affected": "libtiff, as packaged; see the upstream record",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the tiff2pdf command-line tool on a crafted BigTIFF.",
+      "bucket": "N",
+      "finding": "In the tiff2pdf utility, and through a BigTIFF, which sillybos refuses by name in any case; no library call opening a file runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libtiff to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-18495"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "key": "CVE-2026-50811",
