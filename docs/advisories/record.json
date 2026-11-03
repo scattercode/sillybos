@@ -17,10 +17,10 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 105,
-    "refused_by_default": 36,
+    "records": 106,
+    "refused_by_default": 37,
     "by_bucket": {
-      "A": 28,
+      "A": 29,
       "B": 16,
       "B2": 3,
       "C": 17,
@@ -31,7 +31,7 @@
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 6,
-      "Pillow": 43,
+      "Pillow": 44,
       "libpng": 15,
       "libtiff": 18,
       "poppler": 16,
@@ -747,6 +747,41 @@
       "sources": [
         "https://github.com/advisories/GHSA-8g5g-8vmr-9782"
       ]
+    },
+    {
+      "key": "CVE-2026-112400",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A 60-byte GIF makes Pillow allocate gigabytes after a bomb error is caught",
+      "summary": "Pillow: GIF seek keeps rejected size after DecompressionBombError, allowing DoS",
+      "published": "2026-10-20",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "open",
+      "trigger": "Seeking to a later frame of a crafted GIF after catching the DecompressionBombError its size raised.",
+      "bucket": "A",
+      "finding": "A GIF is not one of the four formats a scan can be and is refused by name before Pillow sees it.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_format_a_scan_never_is"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Open with formats limited to the readers you mean to use, as open_checked does; a file of any other format is refused before Pillow sees it."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-65qm-jvmh-6pqg"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "triaged": "2026-11-01",
