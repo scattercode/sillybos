@@ -17,7 +17,7 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 79,
+    "records": 80,
     "refused_by_default": 22,
     "by_bucket": {
       "A": 12,
@@ -25,13 +25,13 @@
       "B2": 1,
       "C": 10,
       "D": 3,
-      "N": 37,
+      "N": 38,
       "U": 0
     },
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 5,
-      "Pillow": 25,
+      "Pillow": 26,
       "libpng": 15,
       "libtiff": 18,
       "poppler": 10,
@@ -817,6 +817,36 @@
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
       "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Moved from B2 to C on 2026-11-02, with the finding above."
+    },
+    {
+      "key": "CVE-2026-55380",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "GdImageFile.open accepts any dimensions without the bomb check",
+      "summary": "Pillow `GdImageFile._open()`: image dimensions accepted without `_decompression_bomb_check()`",
+      "published": "2026-07-06",
+      "severity": 7.5,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Calling PIL.GdImageFile.open directly on a GD 2.x file.",
+      "bucket": "N",
+      "finding": "GdImageFile is not registered with Image.open; only a direct call reaches it, and a GD file is in any case refused by sillybos as an unknown format.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Not a pre-decode matter: the flaw is in a call that opening a file never makes."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-phj9-mv4w-65pm",
+        "https://osv.dev/vulnerability/PYSEC-2026-2256"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "key": "CVE-2026-55379",
