@@ -17,7 +17,7 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 25,
+    "records": 26,
     "refused_by_default": 16,
     "by_bucket": {
       "A": 5,
@@ -25,11 +25,11 @@
       "B2": 0,
       "C": 0,
       "D": 0,
-      "N": 4,
+      "N": 5,
       "U": 0
     },
     "by_library": {
-      "OpenJPEG": 1,
+      "OpenJPEG": 2,
       "Pillow": 14,
       "libpng": 5,
       "libtiff": 5
@@ -870,6 +870,35 @@
       },
       "sources": [
         "https://osv.dev/vulnerability/DEBIAN-CVE-2024-13978"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2024-56827",
+      "aliases": [],
+      "library": "OpenJPEG",
+      "package": "openjpeg2",
+      "ecosystem": "Debian",
+      "title": "opj_decompress overruns a heap buffer with certain options (second report)",
+      "summary": "A flaw was found in the OpenJPEG project.",
+      "published": "2025-01-09",
+      "severity": 5.6,
+      "affected": "OpenJPEG, as packaged; see the upstream record",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the opj_decompress command-line tool with particular options on a crafted JPEG 2000 file.",
+      "bucket": "N",
+      "finding": "As CVE-2024-56826: the opj_decompress utility, not a library call opening a file; a JPEG 2000 file is refused by name in any case.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade OpenJPEG to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2024-56827"
       ],
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
