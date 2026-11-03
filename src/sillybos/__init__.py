@@ -42,6 +42,7 @@ from sillybos.policy import (
     TIFF_COMPRESSIONS,
     TIFF_PHOTOMETRICS,
     TIFF_SUBSAMPLINGS,
+    TIFF_TAGS,
     Policy,
 )
 
@@ -61,6 +62,7 @@ __all__ = [
     "TIFF_COMPRESSIONS",
     "TIFF_PHOTOMETRICS",
     "TIFF_SUBSAMPLINGS",
+    "TIFF_TAGS",
     "Facts",
     "Policy",
     "Refused",

@@ -56,6 +56,8 @@ chooses from it.
 
 ::: sillybos.TIFF_SUBSAMPLINGS
 
+::: sillybos.TIFF_TAGS
+
 ## With Pillow
 
 ::: sillybos.pillow
