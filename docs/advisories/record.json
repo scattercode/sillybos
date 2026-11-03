@@ -17,10 +17,10 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 112,
-    "refused_by_default": 40,
+    "records": 113,
+    "refused_by_default": 41,
     "by_bucket": {
-      "A": 33,
+      "A": 34,
       "B": 16,
       "B2": 3,
       "C": 18,
@@ -31,7 +31,7 @@
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 6,
-      "Pillow": 50,
+      "Pillow": 51,
       "libpng": 15,
       "libtiff": 18,
       "poppler": 16,
@@ -537,6 +537,41 @@
       "sources": [
         "https://github.com/advisories/GHSA-w889-685w-c8fh"
       ]
+    },
+    {
+      "key": "CVE-2026-112893",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A failed glyph load with a stroker active frees an invalid pointer",
+      "summary": "Pillow: Invalid free in FreeType glyph rendering when a stroker is active",
+      "published": "2026-10-21",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Drawing stroked text with a malformed font through ImageDraw and ImageFont.",
+      "bucket": "A",
+      "finding": "The carrier is a malformed font loaded through FreeType, drawn with a stroke width so that a failed glyph load reaches the stale pointer. Handed to the check, its first bytes are not one of the four formats a scan can be and it is refused as unknown, so the record claims that refusal, though a font is a program's asset that no image check is usually in front of. Neither Tetrak OCR nor sillybos imports ImageFont or ImageDraw.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_font_or_archive_is_refused_as_unknown"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Load only fonts you ship, never a font from outside; and if a file from outside could be one, run the check on it: a font is refused as unknown."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-j4m9-6w36-pw47"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-bucketed on 2026-11-03: the file that carries the trigger is one the check refuses, so the record claims it."
     },
     {
       "key": "CVE-2026-112892",
