@@ -17,13 +17,13 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 114,
+    "records": 115,
     "refused_by_default": 42,
     "by_bucket": {
       "A": 35,
       "B": 16,
       "B2": 3,
-      "C": 18,
+      "C": 19,
       "D": 3,
       "N": 39,
       "U": 0
@@ -31,7 +31,7 @@
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 6,
-      "Pillow": 52,
+      "Pillow": 53,
       "libpng": 15,
       "libtiff": 18,
       "poppler": 16,
@@ -878,6 +878,35 @@
       "sources": [
         "https://github.com/advisories/GHSA-22hg-r758-rrw9"
       ]
+    },
+    {
+      "key": "CVE-2026-112895",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "PdfParser recurses without bound on a cyclic page tree or trailer chain",
+      "summary": "Pillow: Unbounded recursion parsing a PDF page tree or trailer chain (incomplete fix for CVE-2026-42310)",
+      "published": "2026-10-20",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Appending to an existing PDF with Image.save(format=\"PDF\", append=True); Image.open never reads a PDF.",
+      "bucket": "C",
+      "finding": "The existing PDF is the input, so the check belongs in front of it: the format gate and pdfinfo's time limit apply. But the trigger is a /Kids cycle in the page tree, or a long chain of distinct /Prev offsets, in the object graph, which a bounded check does not parse and pdfinfo's summary does not show. Out of a pre-decode check's reach.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Run the check on a PDF before appending to it, for what it does see; append only to PDFs the program wrote itself; upgrade to a Pillow with the fix."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-p4wg-p73j-c528"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-read on 2026-11-03 against the question of what rides from an opened file into a save: the file is the input."
     },
     {
       "triaged": "2026-11-01",
