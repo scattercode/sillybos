@@ -17,13 +17,13 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 94,
+    "records": 95,
     "refused_by_default": 26,
     "by_bucket": {
       "A": 16,
       "B": 16,
       "B2": 3,
-      "C": 15,
+      "C": 16,
       "D": 3,
       "N": 41,
       "U": 0
@@ -31,7 +31,7 @@
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 5,
-      "Pillow": 35,
+      "Pillow": 36,
       "libpng": 15,
       "libtiff": 18,
       "poppler": 14,
@@ -113,6 +113,35 @@
       "sources": [
         "https://github.com/advisories/GHSA-g4qv-2jxx-769h"
       ]
+    },
+    {
+      "key": "CVE-2026-96640",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A shared page-tree graph makes Pillow's PDF append take disproportionate time",
+      "summary": "Pillow PDF append accepts malformed shared page-tree DAG causing resource exhaustion",
+      "published": "2026-10-22",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Appending to an existing PDF with Image.save(format=\"PDF\", append=True).",
+      "bucket": "C",
+      "finding": "The existing PDF is the input, so the check belongs in front of it: the format gate and pdfinfo's time limit apply. But the trigger is a page tree that repeats the same child at every level, in the object graph, which a bounded check does not parse and pdfinfo's summary does not show. Out of a pre-decode check's reach.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Run the check on a PDF before appending to it, for what it does see; append only to PDFs the program wrote itself; upgrade to a Pillow with the fix."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-mrfp-p49p-3hf2"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-read on 2026-11-03 against the question of what rides from an opened file into a save: the file is the input."
     },
     {
       "triaged": "2026-11-01",
