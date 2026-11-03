@@ -17,10 +17,10 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 86,
-    "refused_by_default": 24,
+    "records": 87,
+    "refused_by_default": 25,
     "by_bucket": {
-      "A": 14,
+      "A": 15,
       "B": 16,
       "B2": 1,
       "C": 13,
@@ -31,7 +31,7 @@
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 5,
-      "Pillow": 32,
+      "Pillow": 33,
       "libpng": 15,
       "libtiff": 18,
       "poppler": 10,
@@ -748,6 +748,42 @@
       },
       "sources": [
         "https://osv.dev/vulnerability/DEBIAN-CVE-2026-52490"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-59204",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A tiled JPEG 2000 grows Pillow's scratch buffer to a whole image",
+      "summary": "Pillow JPEG2000 tiled decode retains a growing scratch buffer and can be used for denial of service",
+      "published": "2026-07-20",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "open",
+      "trigger": "Image.open and load on a crafted tiled JPEG 2000 file with many small tiles.",
+      "bucket": "A",
+      "finding": "A JPEG 2000 file is refused by name before Pillow sees it.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_format_a_scan_never_is"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Refuse JPEG 2000 by name, as sillybos does by default."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-vjc4-5qp5-m44j",
+        "https://osv.dev/vulnerability/PYSEC-2026-3496"
       ],
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
