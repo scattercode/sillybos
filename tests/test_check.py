@@ -192,6 +192,53 @@ class TestHostileFiles:
         verdict = check(path, Policy(tiff_compressions=frozenset({"none", "ccitt", "lzw"})))
         assert verdict.reasons == ("a jpeg-compressed TIFF; the policy allows none, ccitt and lzw",)
 
+    def test_a_tiff_with_private_tags_under_a_policy_without_them(self, tmp_path: Path) -> None:
+        # CVE-2026-112902: DNGPrivateData and ActiveArea, carried from the
+        # opened file into libtiff's encoder on a save with the tag table.
+        data = corpus.tiff(
+            [(10, 10)], tags=[(700, 1, b"<x/>"), (50740, 1, b"\x01"), (50829, 4, b"\x00" * 16)]
+        )
+        path = corpus.write(tmp_path / "scan.tif", data)
+        assert check(path).ok
+        verdict = check(path, Policy(tiff_tags=frozenset({"standard", "metadata"})))
+        assert verdict.reasons == (
+            "a TIFF with private tag 50,740 (DNGPrivateData) and private tag 50,829 (ActiveArea); "
+            "the policy allows standard and metadata tags",
+        )
+        verdict = check(path, Policy(tiff_tags=frozenset({"standard"})))
+        assert verdict.reasons[0].startswith("a TIFF with metadata tag 700 (XMP), private tag")
+        assert verdict.facts is not None and verdict.facts.tags == (
+            ("metadata", 700),
+            ("private", 50740),
+            ("private", 50829),
+        )
+
+    def test_a_tiff_whose_colormap_does_not_fit_its_depth(self, tmp_path: Path) -> None:
+        # CVE-2026-112896: a 768-entry ColorMap on 16-bit samples over-reads
+        # in Pillow's encoder when the file is saved back with its metadata.
+        data = corpus.tiff([(10, 10)], layout=(1, 1, 16), tags=[(320, 3, b"\x00" * 1536)])
+        path = corpus.write(tmp_path / "scan.tif", data)
+        assert check(path).ok
+        verdict = check(path, Policy(allow_inconsistent_tiff_tags=False))
+        assert verdict.reasons == (
+            "a TIFF whose tags contradict each other: frame 1 has a ColorMap of 768 entries "
+            "for 16-bit samples, which need 196,608",
+        )
+
+    def test_a_tiff_with_a_floating_point_predictor_on_integer_samples(
+        self, tmp_path: Path
+    ) -> None:
+        # CVE-2026-112396: libtiff rejects the tag at encode time, and Pillow
+        # then wrote into a freed buffer when encoding to memory.
+        data = corpus.tiff([(10, 10)], compression=5, tags=[(317, 3, b"\x03\x00")])
+        path = corpus.write(tmp_path / "scan.tif", data)
+        assert check(path).ok
+        verdict = check(path, Policy(allow_inconsistent_tiff_tags=False))
+        assert verdict.reasons == (
+            "a TIFF whose tags contradict each other: frame 1 has a floating-point Predictor "
+            "on integer samples",
+        )
+
     def test_a_cielab_tiff(self, tmp_path: Path) -> None:
         path = corpus.write(tmp_path / "scan.tif", corpus.tiff([(10, 10)], layout=(8, 3, 8)))
         verdict = check(path)
@@ -555,6 +602,8 @@ class TestPolicy:
             ({"tiff_photometrics": frozenset()}, "at least one TIFF photometric"),
             ({"tiff_subsamplings": frozenset({"3x3"})}, "unknown TIFF subsampling"),
             ({"tiff_subsamplings": frozenset()}, "at least one TIFF subsampling"),
+            ({"tiff_tags": frozenset({"standard", "exotic"})}, "unknown TIFF tag kind"),
+            ({"tiff_tags": frozenset()}, "at least one TIFF tag kind"),
             ({"max_pages": 0}, "max_pages must be at least 1"),
             ({"max_side": 0}, "max_side must be at least 1"),
             ({"max_metadata_bytes": 0}, "max_metadata_bytes must be at least 1"),

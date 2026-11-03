@@ -108,6 +108,20 @@ def test_pdf_features_can_be_allowed(tmp_path: Path) -> None:
 
 
 @pytest.mark.skipif(shutil.which("pdfinfo") is None, reason="pdfinfo (poppler)")
+def test_tiff_tags_can_be_refused(tmp_path: Path) -> None:
+    scan = corpus.write(tmp_path / "scan.tif", corpus.tiff([(10, 10)], tags=[(50740, 1, b"\x01")]))
+    assert main([str(scan)]) == 0
+    assert main(["--tiff-tags", "standard,metadata", str(scan)]) == 1
+    assert main(["--tiff-tags", "private", str(scan)]) == 0
+
+
+def test_inconsistent_tiff_tags_can_be_refused(tmp_path: Path) -> None:
+    data = corpus.tiff([(10, 10)], compression=5, tags=[(317, 3, b"\x03\x00")])
+    scan = corpus.write(tmp_path / "scan.tif", data)
+    assert main([str(scan)]) == 0
+    assert main(["--no-inconsistent-tiff-tags", str(scan)]) == 1
+
+
 def test_pdf_image_codecs_can_be_refused(tmp_path: Path) -> None:
     scan = corpus.write(tmp_path / "scan.pdf", corpus.pdf_with("jbig2"))
     assert main([str(scan)]) == 0

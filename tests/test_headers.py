@@ -210,6 +210,55 @@ class TestTiff:
             read("tiff", data)
 
 
+class TestTiffTags:
+    def test_standard_tags_are_not_listed(self) -> None:
+        data = corpus.tiff([(10, 10)], compression=5, tags=[(270, 2, b"a scan\x00")])
+        header = read("tiff", data)
+        assert header.tags == ()
+        assert header.inconsistencies == ()
+
+    def test_metadata_and_private_tags_are_sorted_by_kind(self) -> None:
+        data = corpus.tiff(
+            [(10, 10)] * 2,
+            tags=[(700, 1, b"<x/>"), (50740, 1, b"\x01\x02"), (50829, 4, b"\x00" * 16)],
+        )
+        header = read("tiff", data)
+        assert header.tags == (("metadata", 700), ("private", 50740), ("private", 50829))
+
+    def test_a_colormap_that_fits_its_depth_is_consistent(self) -> None:
+        data = corpus.tiff([(10, 10)], layout=(3, 1, 8), tags=[(320, 3, b"\x00" * (2 * 3 * 256))])
+        assert read("tiff", data).inconsistencies == ()
+
+    def test_a_colormap_too_small_for_its_depth_is_inconsistent(self) -> None:
+        # CVE-2026-112896: 768 entries on 16-bit greyscale samples
+        data = corpus.tiff([(10, 10)], layout=(1, 1, 16), tags=[(320, 3, b"\x00" * (2 * 768))])
+        assert read("tiff", data).inconsistencies == (
+            "frame 1 has a ColorMap of 768 entries for 16-bit samples, which need 196,608",
+        )
+
+    def test_a_colormap_on_samples_too_deep_for_any_map_is_inconsistent(self) -> None:
+        data = corpus.tiff([(10, 10)], layout=(1, 1, 32), tags=[(320, 3, b"\x00" * 6)])
+        assert read("tiff", data).inconsistencies == (
+            "frame 1 has a ColorMap of 3 entries for 32-bit samples, which no map fits",
+        )
+
+    def test_a_floating_point_predictor_on_integer_samples_is_inconsistent(self) -> None:
+        # CVE-2026-112396: Predictor 3 with no SampleFormat (unsigned integer by default)
+        data = corpus.tiff([(10, 10)], compression=5, tags=[(317, 3, b"\x03\x00")])
+        assert read("tiff", data).inconsistencies == (
+            "frame 1 has a floating-point Predictor on integer samples",
+        )
+
+    def test_a_floating_point_predictor_on_floating_point_samples_is_fine(self) -> None:
+        data = corpus.tiff(
+            [(10, 10)],
+            compression=5,
+            layout=(1, 1, 32),
+            tags=[(317, 3, b"\x03\x00"), (339, 3, b"\x03\x00")],
+        )
+        assert read("tiff", data).inconsistencies == ()
+
+
 class TestTiffCompression:
     def test_no_tag_means_uncompressed(self) -> None:
         assert read("tiff", corpus.tiff([(10, 10)])).compression == "none"

@@ -36,6 +36,7 @@ from sillybos.policy import (
     TIFF_COMPRESSIONS,
     TIFF_PHOTOMETRICS,
     TIFF_SUBSAMPLINGS,
+    TIFF_TAGS,
     Policy,
 )
 
@@ -84,6 +85,12 @@ class Facts:
         codecs: Which of [sillybos.PDF_IMAGE_CODECS][] a PDF's images are
             coded with, by the filters named in the file. Empty for an
             image and for a PDF whose images use none of them.
+        tags: A TIFF's tags outside the standard set, as (kind, number)
+            with the kind a name from [sillybos.TIFF_TAGS][]
+            (`"metadata"` or `"private"`). Empty for the other formats
+            and for a TIFF of standard tags only.
+        inconsistencies: Each way a TIFF's tags contradict each other, in
+            a sentence. Empty when they agree, and for the other formats.
     """
 
     bytes: int
@@ -104,6 +111,8 @@ class Facts:
     subsampling: str | None = None
     features: tuple[str, ...] = ()
     codecs: tuple[str, ...] = ()
+    tags: tuple[tuple[str, int], ...] = ()
+    inconsistencies: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -257,6 +266,8 @@ def _facts(path: Path, fmt: str, f: headers.Reader, size: int, policy: Policy) -
         interlaced=header.interlaced,
         tile=header.tile,
         subsampling=header.subsampling,
+        tags=header.tags,
+        inconsistencies=header.inconsistencies,
     )
 
 
@@ -328,6 +339,15 @@ def _against_limits(facts: Facts, policy: Policy, fmt: str) -> list[str]:
         allowed = [name for name in TIFF_COMPRESSIONS if name in policy.tiff_compressions]
         reasons.append(
             f"a {facts.compression}-compressed TIFF; the policy allows {_listed(allowed)}"
+        )
+    refused_tags = [(kind, number) for kind, number in facts.tags if kind not in policy.tiff_tags]
+    if refused_tags:
+        found = _listed([f"{kind} tag {headers.tag_name(number)}" for kind, number in refused_tags])
+        allowed = [name for name in TIFF_TAGS if name in policy.tiff_tags]
+        reasons.append(f"a TIFF with {found}; the policy allows {_listed(allowed)} tags")
+    if facts.inconsistencies and not policy.allow_inconsistent_tiff_tags:
+        reasons.append(
+            "a TIFF whose tags contradict each other: " + "; ".join(facts.inconsistencies)
         )
     return reasons
 

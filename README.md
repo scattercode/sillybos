@@ -109,6 +109,8 @@ check(path, Policy(formats={"tiff", "pdf"}, max_pages=50))
 | `tiff_subsamplings` | 1x1, 2x1, 1x2, 2x2 | the same | Which chroma subsamplings a YCbCr TIFF may declare. The factor-of-four paths are where libtiff's most recent heap write was found (CVE-2026-4775) |
 | `tiff_compressions` | none, ccitt, lzw, jpeg, deflate, packbits | the same | How a TIFF may be compressed, by name. The other codecs in libtiff are where most of its flaws have been found (PixarLog most recently, CVE-2026-12912), and a scan never needs them. A code the library does not know is refused whatever the policy says, and every frame must use the same scheme |
 | `jpeg_frames` | baseline, extended, progressive | the same | How a JPEG's frame may be coded. Lossless, hierarchical and arithmetic frames are legal JPEG that no scanner writes and the decoder's least-exercised code; a lossless frame was the way into a heap overflow in Pillow's JPEG decoder (CVE-2026-112403) |
+| `tiff_tags` | standard, metadata, private | the same | Which kinds of tag a TIFF's directories may hold. Standard is the TIFF 6.0 set; metadata the registered blocks (XMP, IPTC, Photoshop, Exif, ICC, GPS, GeoTIFF); private everything else, the vendor and DNG tags a scan never carries. A read is not harmed by a private tag, so the default allows all three; a program that saves a file back as TIFF with its tag table carries every tag into libtiff's encoder, where a crafted one copied process memory into the output (CVE-2026-112902), and should allow standard and metadata only |
+| `allow_inconsistent_tiff_tags` | yes | yes | Pass a TIFF whose tags contradict each other: a ColorMap of the wrong size for the bit depth (CVE-2026-112896), a floating-point Predictor on integer samples (CVE-2026-112396). No scanner writes either; both reach an encoder that trusts the tag. Allowed by default because refusing a file that passed before is breaking; a policy for files from outside should refuse |
 | `allow_encrypted_pdf` | no | no | A scanned book is never encrypted |
 | `pdf_features` | none | none | Which of JavaScript, forms, attached files and launch actions a PDF may carry. Each makes a viewer do something other than draw the page, and a scanned book has none. Forms are read from `pdfinfo`'s report and attached files from `pdfdetach`'s; a launch action is found by its name in the file, since no poppler tool reports one; JavaScript is looked for both ways |
 | `pdf_image_codecs` | jpeg, jpx, jbig2, ccitt | the same | Which codecs a PDF's images may be coded with: JPEG, JPEG 2000 (OpenJPEG), JBIG2 and CCITT fax. Each hands the stream to a decoder of its own inside poppler, and the JBIG2 decoder is where several of its flaws have been (CVE-2025-32365, CVE-2026-93312, CVE-2026-93313). Scanners and the archives that derive PDFs from scans write all four, so both presets allow them; refuse one only when you know your source never writes it. Found by the filter's name in the file, not by `pdfimages -list`, which opens a JPX stream with OpenJPEG just to describe it |
@@ -180,8 +182,10 @@ prints one object per line for a pipeline; `-q` prints only refusals.
    layout (photometric interpretation and, for YCbCr, chroma subsampling,
    both of which the policy names; samples per pixel; bits per sample),
    all of which must be the same in every frame, since the decoder sizes
-   its buffers from the first, its tile size if it is tiled, and every
-   tag's data checked to lie inside the file; the chain is walked with a limit and a memory of where it has
+   its buffers from the first, its tile size if it is tiled, every
+   tag's data checked to lie inside the file, every tag sorted into
+   standard, metadata or private, and its ColorMap and Predictor checked
+   against its samples; the chain is walked with a limit and a memory of where it has
    been, so that one that loops or points off the end of the file is a
    refusal, not a hang. Every read is bounded and
    every offset is checked against the file's size. For a PDF,

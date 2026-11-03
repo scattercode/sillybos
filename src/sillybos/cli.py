@@ -54,6 +54,10 @@ def _policy(args: argparse.Namespace) -> Policy:
         changes["tiff_photometrics"] = frozenset(args.tiff_photometrics.split(","))
     if args.tiff_subsamplings:
         changes["tiff_subsamplings"] = frozenset(args.tiff_subsamplings.split(","))
+    if args.tiff_tags:
+        changes["tiff_tags"] = frozenset(args.tiff_tags.split(","))
+    if args.no_inconsistent_tiff_tags:
+        changes["allow_inconsistent_tiff_tags"] = False
     if args.pdf_features:
         changes["pdf_features"] = frozenset(args.pdf_features.split(","))
     if args.pdf_image_codecs:
@@ -144,6 +148,20 @@ def build_parser() -> argparse.ArgumentParser:
             "comma-separated TIFF compression schemes to allow, by name "
             "(default: none,ccitt,lzw,jpeg,deflate,packbits)"
         ),
+    )
+    parser.add_argument(
+        "--tiff-tags",
+        metavar="LIST",
+        help=(
+            "comma-separated kinds of TIFF tag to allow: standard, metadata, private "
+            "(default: all three)"
+        ),
+    )
+    parser.add_argument(
+        "--no-inconsistent-tiff-tags",
+        action="store_true",
+        help="refuse a TIFF whose tags contradict each other (a ColorMap of the wrong size, "
+        "a floating-point Predictor on integer samples)",
     )
     parser.add_argument(
         "--pdf-features",
