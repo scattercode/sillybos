@@ -17,7 +17,7 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 44,
+    "records": 45,
     "refused_by_default": 16,
     "by_bucket": {
       "A": 5,
@@ -25,13 +25,13 @@
       "B2": 1,
       "C": 7,
       "D": 1,
-      "N": 14,
+      "N": 15,
       "U": 0
     },
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 2,
-      "Pillow": 14,
+      "Pillow": 15,
       "libpng": 7,
       "libtiff": 11,
       "poppler": 6
@@ -1278,6 +1278,36 @@
       },
       "sources": [
         "https://osv.dev/vulnerability/DEBIAN-CVE-2025-8176"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-48379",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Saving a large DDS image overruns a heap buffer in Pillow's BCn encoder",
+      "summary": "Pillow vulnerability can cause write buffer overflow on BCn encoding",
+      "published": "2025-07-01",
+      "severity": 7.1,
+      "affected": "< 11.3.0",
+      "fixed": "11.3.0",
+      "reached_by": "save",
+      "trigger": "Image.save(..., format=\"DDS\") of an image larger than about 64 KB encoded, with default settings.",
+      "bucket": "N",
+      "finding": "On the DDS save path only; Image.open never runs the BCn encoder.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 11.3.0.",
+        "specific": "Not a pre-decode matter: the flaw is on a save path."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-xg8h-j46f-w952",
+        "https://osv.dev/vulnerability/PYSEC-2025-61"
       ],
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
