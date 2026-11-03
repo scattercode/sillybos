@@ -218,12 +218,11 @@ class TestHostileFiles:
         # in Pillow's encoder when the file is saved back with its metadata.
         data = corpus.tiff([(10, 10)], layout=(1, 1, 16), tags=[(320, 3, b"\x00" * 1536)])
         path = corpus.write(tmp_path / "scan.tif", data)
-        assert check(path).ok
-        verdict = check(path, Policy(allow_inconsistent_tiff_tags=False))
-        assert verdict.reasons == (
+        assert check(path).reasons == (
             "a TIFF whose tags contradict each other: frame 1 has a ColorMap of 768 entries "
             "for 16-bit samples, which need 196,608",
         )
+        assert check(path, Policy(allow_inconsistent_tiff_tags=True)).ok
 
     def test_a_tiff_with_a_floating_point_predictor_on_integer_samples(
         self, tmp_path: Path
@@ -232,12 +231,11 @@ class TestHostileFiles:
         # then wrote into a freed buffer when encoding to memory.
         data = corpus.tiff([(10, 10)], compression=5, tags=[(317, 3, b"\x03\x00")])
         path = corpus.write(tmp_path / "scan.tif", data)
-        assert check(path).ok
-        verdict = check(path, Policy(allow_inconsistent_tiff_tags=False))
-        assert verdict.reasons == (
+        assert check(path).reasons == (
             "a TIFF whose tags contradict each other: frame 1 has a floating-point Predictor "
             "on integer samples",
         )
+        assert check(path, Policy(allow_inconsistent_tiff_tags=True)).ok
 
     def test_a_cielab_tiff(self, tmp_path: Path) -> None:
         path = corpus.write(tmp_path / "scan.tif", corpus.tiff([(10, 10)], layout=(8, 3, 8)))
