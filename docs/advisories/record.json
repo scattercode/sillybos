@@ -17,13 +17,13 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 67,
+    "records": 68,
     "refused_by_default": 20,
     "by_bucket": {
       "A": 10,
       "B": 16,
       "B2": 1,
-      "C": 9,
+      "C": 10,
       "D": 3,
       "N": 28,
       "U": 0
@@ -32,7 +32,7 @@
       "FreeType": 4,
       "OpenJPEG": 5,
       "Pillow": 17,
-      "libpng": 14,
+      "libpng": 15,
       "libtiff": 15,
       "poppler": 10,
       "zlib": 2
@@ -731,6 +731,35 @@
       "sources": [
         "https://github.com/advisories/GHSA-cg4c-j43f-qcg7"
       ]
+    },
+    {
+      "key": "CVE-2026-40930",
+      "aliases": [],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "libpng's push-mode APNG parser misreads a discarded chunk as a header",
+      "summary": "LIBPNG is a reference library for use in applications that process PNG (Portable Network Graphics) raster image files.",
+      "published": "2026-06-04",
+      "severity": 5.4,
+      "affected": "libpng 1.8.0",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Feeding a crafted APNG to libpng's progressive (push) reader, which discards an inter-frame ancillary chunk without consuming it.",
+      "bucket": "C",
+      "finding": "The flaw is in how the progressive reader resynchronises after a chunk, not in any field the chunk declares; sillybos reads every chunk's length and type and refuses a malformed chain, but a well-formed chain with this content passes. Only in the push-mode API, which Pillow does not use. Out of a header check's reach.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libpng to a version that has the fix; the upstream record names it.",
+        "specific": "Decode in a boxed process; prefer the pull-mode reader, which Pillow uses."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-40930"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "key": "CVE-2026-10118",
