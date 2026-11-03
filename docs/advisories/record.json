@@ -6,7 +6,7 @@
     "B2": "Preventable only by a coarse policy on a PDF's contents",
     "C": "Needs decoding to detect; out of this library's reach by design",
     "D": "Reaches pdfinfo itself",
-    "N": "The check is not in the path: the file is not the input, or it is not an image or PDF",
+    "N": "The check is not in the path: no file carries the trigger",
     "U": "A reserved CVE with no text yet"
   },
   "reached_by": {
@@ -18,14 +18,14 @@
   },
   "counts": {
     "records": 95,
-    "refused_by_default": 26,
+    "refused_by_default": 30,
     "by_bucket": {
-      "A": 16,
+      "A": 20,
       "B": 16,
       "B2": 3,
       "C": 16,
       "D": 3,
-      "N": 41,
+      "N": 37,
       "U": 0
     },
     "by_library": {
@@ -1341,13 +1341,19 @@
       "fixed": "12.3.0",
       "reached_by": "api",
       "trigger": "Loading a BDF font file through BdfFontFile.",
-      "bucket": "N",
-      "finding": "In BdfFontFile, a converter a program imports and calls by name to compile a bitmap font; Image.open dispatches only to the registered image plugins, none of which is a font format or imports the font readers, and not even ImageFont imports this one. Not reached by opening an image.",
-      "refusal": null,
-      "verified_by": [],
+      "bucket": "A",
+      "finding": "The carrier is a BDF font, read by BdfFontFile, a converter a program imports and calls by name; no image plugin or ImageFont reaches it. Handed to the check, its first bytes are not one of the four formats a scan can be and it is refused as unknown, so the record claims that refusal, though a font is a program's asset that no image check is usually in front of. Neither Tetrak OCR nor sillybos imports it.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_font_or_archive_is_refused_as_unknown"
+      ],
       "protect": {
         "general": "Upgrade to Pillow 12.3.0.",
-        "specific": "Not a pre-decode matter: the flaw is in a call that opening a file never makes."
+        "specific": "Load only fonts you ship, never a font from outside; and if a file from outside could be one, run the check on it: a font is refused as unknown."
       },
       "sources": [
         "https://osv.dev/vulnerability/GHSA-45hq-cxwh-f6vc",
@@ -1355,7 +1361,7 @@
       ],
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
-      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-bucketed on 2026-11-03: the file that carries the trigger is one the check refuses, so the record claims it."
     },
     {
       "key": "CVE-2026-54060",
@@ -1371,13 +1377,19 @@
       "fixed": "12.3.0",
       "reached_by": "api",
       "trigger": "Compiling a loaded BDF or PCF font into an ImageFont.",
-      "bucket": "N",
-      "finding": "In FontFile.compile, run only by the BDF and PCF converters a program calls by name; Image.open dispatches only to the registered image plugins, none of which imports the font readers. Not reached by opening an image.",
-      "refusal": null,
-      "verified_by": [],
+      "bucket": "A",
+      "finding": "The carrier is a BDF or PCF font, compiled by FontFile.compile after one of the converters a program calls by name has read it. Handed to the check, its first bytes are not one of the four formats a scan can be and it is refused as unknown, so the record claims that refusal, though a font is a program's asset that no image check is usually in front of. Neither Tetrak OCR nor sillybos imports them.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_font_or_archive_is_refused_as_unknown"
+      ],
       "protect": {
         "general": "Upgrade to Pillow 12.3.0.",
-        "specific": "Not a pre-decode matter: the flaw is in a call that opening a file never makes."
+        "specific": "Load only fonts you ship, never a font from outside; and if a file from outside could be one, run the check on it: a font is refused as unknown."
       },
       "sources": [
         "https://osv.dev/vulnerability/GHSA-5x94-69rx-g8h2",
@@ -1385,7 +1397,7 @@
       ],
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
-      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-bucketed on 2026-11-03: the file that carries the trigger is one the check refuses, so the record claims it."
     },
     {
       "key": "CVE-2026-54059",
@@ -1401,13 +1413,19 @@
       "fixed": "12.3.0",
       "reached_by": "api",
       "trigger": "Loading a PCF font file through PcfFontFile, which Image.open never does.",
-      "bucket": "N",
-      "finding": "In PcfFontFile, a converter a program imports and calls by name to compile a bitmap font; Image.open dispatches only to the registered image plugins, none of which is a font format or imports the font readers, and not even ImageFont imports this one. Not reached by opening an image.",
-      "refusal": null,
-      "verified_by": [],
+      "bucket": "A",
+      "finding": "The carrier is a PCF font, read by PcfFontFile, a converter a program imports and calls by name; no image plugin or ImageFont reaches it. Handed to the check, its first bytes are not one of the four formats a scan can be and it is refused as unknown, so the record claims that refusal, though a font is a program's asset that no image check is usually in front of. Neither Tetrak OCR nor sillybos imports it.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_font_or_archive_is_refused_as_unknown"
+      ],
       "protect": {
         "general": "Upgrade to Pillow 12.3.0.",
-        "specific": "Not a pre-decode matter: the flaw is in a call that opening a file never makes."
+        "specific": "Load only fonts you ship, never a font from outside; and if a file from outside could be one, run the check on it: a font is refused as unknown."
       },
       "sources": [
         "https://osv.dev/vulnerability/GHSA-8v84-f9pq-wr9x",
@@ -1415,7 +1433,7 @@
       ],
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
-      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-bucketed on 2026-11-03: the file that carries the trigger is one the check refuses, so the record claims it."
     },
     {
       "triaged": "2026-11-01",
@@ -1622,13 +1640,19 @@
       "fixed": "12.2.0",
       "reached_by": "api",
       "trigger": "Drawing text with a crafted font through ImageFont.",
-      "bucket": "N",
-      "finding": "In text drawing, which Image.open never runs.",
-      "refusal": null,
-      "verified_by": [],
+      "bucket": "A",
+      "finding": "The carrier is a font whose glyphs advance by an enormous amount, loaded through ImageFont and drawn with. Handed to the check, its first bytes are not one of the four formats a scan can be and it is refused as unknown, so the record claims that refusal, though a font is a program's asset that no image check is usually in front of. Neither Tetrak OCR nor sillybos imports ImageFont.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_font_or_archive_is_refused_as_unknown"
+      ],
       "protect": {
         "general": "Upgrade to Pillow 12.2.0.",
-        "specific": "Not a pre-decode matter: the flaw is in a call that opening a file never makes."
+        "specific": "Load only fonts you ship, never a font from outside; and if a file from outside could be one, run the check on it: a font is refused as unknown."
       },
       "sources": [
         "https://osv.dev/vulnerability/GHSA-wjx4-4jcj-g98j",
@@ -1636,7 +1660,7 @@
       ],
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
-      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-bucketed on 2026-11-03: the file that carries the trigger is one the check refuses, so the record claims it."
     },
     {
       "key": "CVE-2026-6192",

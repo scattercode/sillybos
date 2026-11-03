@@ -156,7 +156,7 @@ answer to the question at the top of this page.
 | **B2** | Preventable only by a coarse policy on a PDF's contents: the codec of an image, found by its filter's name in the bytes (`pdf_image_codecs`). Not an embedded font: every searchable PDF carries one, so a policy on fonts has no user, and a flaw in the font program is C | The same as B, through the PDF path; note that the policy will be coarse |
 | **C** | Needs decoding to detect: a flaw in the pixel data, the entropy-coded segment, the font program | Out of this library's reach by design; say so and close. Updating the decoder is the fix |
 | **D** | Reaches `pdfinfo` itself | Check that the check still fails closed (a timeout or a non-zero exit is a refusal), and close |
-| **N** | The check is not in the path. Either the file is not the input (a tool's options, a size or coordinates the program chooses, an encoder run on the program's own image, a misuse of an API), or the input is not an image or PDF anyone would run the check on (a font, a tar archive). Not "our pipeline never calls this": a save path that carries a crafted file's metadata is in the path, below | Close |
+| **N** | The check is not in the path, because no file carries the trigger: a tool's options, a size or coordinates the program chooses, an encoder run on the program's own image, a misuse of an API. Not "our pipeline never calls this": a save path that carries a crafted file's metadata is in the path (below), and a font or an archive that carries one is A, because the format gate refuses it | Close |
 | **U** | A reserved CVE with no text yet | The job never opens an issue for one; it stays pending and is re-checked weekly. The bucket exists so a hand-filed issue can say so |
 
 The backfill ran 138 advisories through these: 70 N, 30 A, 17 B, 8 B2,
@@ -188,7 +188,11 @@ advisory, what rides across:
   cycle in the page tree is not a header field.
 
 A record in N should say which of the first kind it is, so that nobody
-reads "not reached" as "not reached by us".
+reads "not reached" as "not reached by us". And N is never "ignore":
+whenever a file carries the trigger and the check would refuse that file,
+the record is A and claims the refusal, even for a font or a tar archive
+that no image check is usually in front of. The claim costs a test, and
+someone who does hand the check such a file is protected.
 
 ## What a B finding becomes
 

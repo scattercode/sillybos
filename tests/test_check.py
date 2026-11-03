@@ -68,6 +68,32 @@ class TestHostileFiles:
         assert verdict.format is None
         assert verdict.reasons[0].startswith("is an unknown format")
 
+    @pytest.mark.parametrize(
+        ("what", "head"),
+        [
+            ("a PILfont", b"PILfont\n;;;;;;1;\nDATA\n" + b"\x00" * 64),
+            ("a BDF font", b"STARTFONT 2.1\nFONT -misc-fixed\n"),
+            ("a PCF font", b"\x01fcp" + b"\x00" * 60),
+            ("a TrueType font", b"\x00\x01\x00\x00\x00\x0c\x00\x80\x00\x03\x00\x20"),
+            ("an OpenType font", b"OTTO\x00\x0c\x00\x80\x00\x03\x00\x20"),
+            (
+                "a tar archive",
+                b"scan.jpg".ljust(100, b"\x00") + b"0000644\x00" * 7 + b"\x00" * 101 + b"ustar\x00",
+            ),
+            ("a GD2 image", b"gd2\x00\x00\x02\x00\x08\x00\x08"),
+        ],
+    )
+    def test_a_font_or_archive_is_refused_as_unknown(
+        self, tmp_path: Path, what: str, head: bytes
+    ) -> None:
+        # A file that carries a flaw's trigger is refused by the format gate
+        # whatever its format, so the records on fonts and archives claim it
+        # (CVE-2026-96641, CVE-2026-55379, CVE-2026-54059, CVE-2026-54060,
+        # CVE-2026-42308, CVE-2026-112893, CVE-2026-96642, CVE-2026-55380).
+        verdict = check(corpus.write(tmp_path / "file.bin", head))
+        assert verdict.format is None, what
+        assert verdict.reasons[0].startswith("is an unknown format"), what
+
     def test_an_empty_file(self, tmp_path: Path) -> None:
         verdict = check(corpus.write(tmp_path / "scan.png", b""))
         assert verdict.reasons == ("the file is empty",)

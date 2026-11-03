@@ -53,7 +53,7 @@ BUCKETS = {
     "B2": "Preventable only by a coarse policy on a PDF's contents",
     "C": "Needs decoding to detect; out of this library's reach by design",
     "D": "Reaches pdfinfo itself",
-    "N": "The check is not in the path: the file is not the input, or it is not an image or PDF",
+    "N": "The check is not in the path: no file carries the trigger",
     "U": "A reserved CVE with no text yet",
 }
 
