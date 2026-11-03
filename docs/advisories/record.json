@@ -17,7 +17,7 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 39,
+    "records": 40,
     "refused_by_default": 16,
     "by_bucket": {
       "A": 5,
@@ -25,14 +25,14 @@
       "B2": 0,
       "C": 6,
       "D": 0,
-      "N": 12,
+      "N": 13,
       "U": 0
     },
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 2,
       "Pillow": 14,
-      "libpng": 6,
+      "libpng": 7,
       "libtiff": 11,
       "poppler": 2
     }
@@ -805,6 +805,35 @@
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
       "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Moved from B2 to C on 2026-11-02, with the finding above."
+    },
+    {
+      "key": "CVE-2025-28164",
+      "aliases": [],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "libpng 1.6.43 to 1.6.46 leaks in png_create_read_struct under a sanitiser",
+      "summary": "Buffer Overflow vulnerability in libpng 1.6.43-1.6.46 allows a local attacker to cause a denial of service via png_create_read_struct() function.",
+      "published": "2026-01-27",
+      "severity": 5.5,
+      "affected": "libpng 1.6.43 to 1.6.46",
+      "fixed": "1.6.47",
+      "reached_by": "api",
+      "trigger": "Creating read structures repeatedly in a program built with AddressSanitizer; reported against the pngimage test program.",
+      "bucket": "N",
+      "finding": "A resource leak in setup code, reported from a test program under a sanitiser, not a flaw a crafted file triggers; nothing a header shows bears on it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to libpng 1.6.47.",
+        "specific": "Not a pre-decode matter: the flaw is in a call that opening a file never makes."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-28164"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "key": "CVE-2025-28162",
