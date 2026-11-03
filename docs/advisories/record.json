@@ -17,13 +17,13 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 84,
+    "records": 85,
     "refused_by_default": 23,
     "by_bucket": {
       "A": 13,
       "B": 16,
       "B2": 1,
-      "C": 12,
+      "C": 13,
       "D": 3,
       "N": 39,
       "U": 0
@@ -31,7 +31,7 @@
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 5,
-      "Pillow": 30,
+      "Pillow": 31,
       "libpng": 15,
       "libtiff": 18,
       "poppler": 10,
@@ -752,6 +752,36 @@
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
       "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-59200",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "PdfParser inflates a PDF stream without an upper bound",
+      "summary": "Pillow: Decompression Bomb DoS via PdfParser.PdfStream.decode()",
+      "published": "2026-07-20",
+      "severity": 7.5,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Opening an existing PDF with Pillow's PdfParser, as Image.save(append=True) does; Image.open never reads a PDF.",
+      "bucket": "C",
+      "finding": "The existing PDF is the input, so the check belongs in front of it: the format gate and pdfinfo's time limit apply. But the trigger is a FlateDecode stream whose expansion is unbounded, which pdfinfo never inflates, in the object graph, which a bounded check does not parse and pdfinfo's summary does not show. Out of a pre-decode check's reach.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Run the check on a PDF before appending to it, for what it does see; append only to PDFs the program wrote itself; upgrade to a Pillow with the fix."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-jjj6-mw9f-p565",
+        "https://osv.dev/vulnerability/PYSEC-2026-3495"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-read on 2026-11-03 against the question of what rides from an opened file into a save: the file is the input."
     },
     {
       "key": "CVE-2026-59198",
