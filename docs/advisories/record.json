@@ -17,23 +17,24 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 33,
+    "records": 38,
     "refused_by_default": 16,
     "by_bucket": {
       "A": 5,
       "B": 16,
       "B2": 0,
-      "C": 1,
+      "C": 6,
       "D": 0,
       "N": 11,
       "U": 0
     },
     "by_library": {
-      "FreeType": 1,
+      "FreeType": 4,
       "OpenJPEG": 2,
       "Pillow": 14,
       "libpng": 5,
-      "libtiff": 11
+      "libtiff": 11,
+      "poppler": 2
     }
   },
   "records": [
@@ -549,6 +550,122 @@
       ]
     },
     {
+      "key": "CVE-2026-95512",
+      "aliases": [],
+      "library": "FreeType",
+      "package": "freetype",
+      "ecosystem": "Debian",
+      "title": "A CID-keyed font makes FreeType allocate and decrypt without end",
+      "summary": "A flaw was found in FreeType, specifically within its CID font loader.",
+      "published": "2026-10-02",
+      "severity": 5.5,
+      "affected": "FreeType, as packaged; see the upstream record",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Rendering a PDF whose embedded CID-keyed font repeats subroutine data across many font dictionaries.",
+      "bucket": "C",
+      "finding": "Reached by rendering, through an embedded CID-keyed font; nothing is filtered. A time limit on the renderer bounds the cost. Embedded fonts are not unusual: every searchable PDF carries one for its text layer, Tetrak OCR's own output included (all thirty-eight PDFs in its checkouts), so a policy refusing fonts, which pdffonts could support, would refuse the very files the check exists to protect. A flaw in the font program is out of this library's reach; the boxed process is the defence.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade FreeType to a version that has the fix; the upstream record names it.",
+        "specific": "Render in a boxed process with a time limit."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-95512"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Moved from B2 to C on 2026-11-02, with the finding above."
+    },
+    {
+      "key": "CVE-2026-102620",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "Converting an embedded TrueType font overflows an integer in poppler",
+      "summary": "A vulnerability was determined in Freedesktop Poppler 26.06.0/26.07.0/26.08.0.",
+      "published": "2026-09-29",
+      "severity": null,
+      "affected": "poppler 26.06.0 through 26.08.0",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Rendering a PDF whose embedded TrueType font makes FoFiTrueType::cvtSfnts overflow.",
+      "bucket": "C",
+      "finding": "Reached by rendering, through an embedded TrueType font that poppler converts, as CVE-2026-93314; nothing is filtered. Embedded fonts are not unusual: every searchable PDF carries one for its text layer, Tetrak OCR's own output included (all thirty-eight PDFs in its checkouts), so a policy refusing fonts, which pdffonts could support, would refuse the very files the check exists to protect. A flaw in the font program, in poppler's own parser here is out of this library's reach; the boxed process is the defence.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade poppler to a version that has the fix; the upstream record names it.",
+        "specific": "Render in a boxed process."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-102620"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Moved from B2 to C on 2026-11-02, with the finding above."
+    },
+    {
+      "key": "CVE-2026-93314",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "An embedded TrueType font's segment count overflows an integer in poppler",
+      "summary": "A vulnerability was determined in Freedesktop Poppler 26.07.0.",
+      "published": "2026-09-18",
+      "severity": null,
+      "affected": "poppler 26.07.0",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Rendering a PDF whose embedded TrueType font declares a crafted segCnt in its cmap.",
+      "bucket": "C",
+      "finding": "Reached by rendering, through an embedded TrueType font that poppler converts; nothing is filtered. Embedded fonts are not unusual: every searchable PDF carries one for its text layer, Tetrak OCR's own output included (all thirty-eight PDFs in its checkouts), so a policy refusing fonts, which pdffonts could support, would refuse the very files the check exists to protect. A flaw in the font program, in poppler's own parser here is out of this library's reach; the boxed process is the defence.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade poppler to a version that has the fix; the upstream record names it.",
+        "specific": "Render in a boxed process."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-93314"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Moved from B2 to C on 2026-11-02, with the finding above."
+    },
+    {
+      "key": "CVE-2026-50811",
+      "aliases": [],
+      "library": "FreeType",
+      "package": "freetype",
+      "ecosystem": "Debian",
+      "title": "FreeType over-reads variation design coordinates",
+      "summary": "An out-of-bounds read vulnerability exists in FreeType 2.14.3 and versions before commit 5a280ecde6f324de0d226261036e736e0cb49a71 in src/truetype/ttgxvar.c, in the TT_Get_Var_Design implementation used by FT_Get_Var_Design_Coordinates",
+      "published": "2026-07-07",
+      "severity": 6.5,
+      "affected": "FreeType 2.14.3 and earlier commits",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Rendering a PDF whose embedded variable font makes FreeType call TT_Get_Var_Design with crafted data.",
+      "bucket": "C",
+      "finding": "Reached by rendering, through an embedded variable font; nothing is filtered. Embedded fonts are not unusual: every searchable PDF carries one for its text layer, Tetrak OCR's own output included (all thirty-eight PDFs in its checkouts), so a policy refusing fonts, which pdffonts could support, would refuse the very files the check exists to protect. A flaw in the font program is out of this library's reach; the boxed process is the defence.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade FreeType to a version that has the fix; the upstream record names it.",
+        "specific": "Render in a boxed process."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-50811"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Moved from B2 to C on 2026-11-02, with the finding above."
+    },
+    {
       "triaged": "2026-11-01",
       "checked": "2026-11-01",
       "notes": null,
@@ -659,6 +776,35 @@
       "sources": [
         "https://github.com/advisories/GHSA-cm99-m826-vgg7"
       ]
+    },
+    {
+      "key": "CVE-2026-23865",
+      "aliases": [],
+      "library": "FreeType",
+      "package": "freetype",
+      "ecosystem": "Debian",
+      "title": "An OpenType variable font's variation tables over-read in FreeType",
+      "summary": "An integer overflow in the tt_var_load_item_variation_store function of the Freetype library in versions 2.13.2 and 2.13.3 may allow for an out of bounds read operation when parsing HVAR/VVAR/MVAR tables in OpenType variable fonts.",
+      "published": "2026-03-02",
+      "severity": 5.3,
+      "affected": "FreeType 2.13.2 and 2.13.3",
+      "fixed": "2.14.2",
+      "reached_by": "open",
+      "trigger": "Rendering a PDF whose embedded OpenType variable font carries crafted HVAR, VVAR or MVAR tables.",
+      "bucket": "C",
+      "finding": "Reached by rendering, through an embedded variable font, as CVE-2025-27363; nothing is filtered. Embedded fonts are not unusual: every searchable PDF carries one for its text layer, Tetrak OCR's own output included (all thirty-eight PDFs in its checkouts), so a policy refusing fonts, which pdffonts could support, would refuse the very files the check exists to protect. A flaw in the font program is out of this library's reach; the boxed process is the defence.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to FreeType 2.14.2.",
+        "specific": "Render in a boxed process; an image-only PDF carries no font."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-23865"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Moved from B2 to C on 2026-11-02, with the finding above."
     },
     {
       "triaged": "2026-11-01",
