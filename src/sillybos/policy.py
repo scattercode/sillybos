@@ -205,9 +205,9 @@ class Policy:
             CVE-2026-112896), or a floating-point Predictor on integer
             samples (CVE-2026-112396). No scanner writes either; both are
             what a crafted file carries to reach an encoder that trusts
-            the tag. The default allows them, because refusing a file
-            that passed before is a breaking change; a policy for files
-            from outside should not.
+            the tag, so the default refuses them, malformed by design or
+            by accident. A policy for a source known to write such files
+            can allow them.
         allow_encrypted_pdf: Pass a PDF that `pdfinfo` reports as
             encrypted. A scanned book never is, so the default refuses.
         pdf_features: Which of [PDF_FEATURES][sillybos.PDF_FEATURES] a PDF may carry:
@@ -261,7 +261,7 @@ class Policy:
         default_factory=lambda: frozenset({"none", "ccitt", "lzw", "jpeg", "deflate", "packbits"})
     )
     tiff_tags: frozenset[str] = field(default_factory=lambda: frozenset(TIFF_TAGS))
-    allow_inconsistent_tiff_tags: bool = True
+    allow_inconsistent_tiff_tags: bool = False
     allow_encrypted_pdf: bool = False
     pdf_features: frozenset[str] = frozenset()
     pdf_image_codecs: frozenset[str] = field(default_factory=lambda: frozenset(PDF_IMAGE_CODECS))
