@@ -322,12 +322,14 @@ def pdf(
     sizes: list[tuple[float, float]] | None = None,
     catalog: str = "",
     objects: list[bytes] | None = None,
+    page: str = "",
 ) -> bytes:
     """A minimal but well-formed PDF: ``pages`` empty pages of the given size, with an xref.
 
-    ``catalog`` is appended inside the catalogue dictionary and ``objects``
-    are added after the pages, numbered from ``pages + 3``, so a test can
-    give the document a feature a scan never has (see :func:`pdf_with`).
+    ``catalog`` is appended inside the catalogue dictionary, ``page`` inside
+    every page's, and ``objects`` are added after the pages, numbered from
+    ``pages + 3``, so a test can give the document a feature a scan never
+    has (see :func:`pdf_with`).
     """
     per_page = sizes or [(width_pts, height_pts)] * pages
     extra = objects or []
@@ -337,7 +339,7 @@ def pdf(
         f"<< /Type /Pages /Kids [{kids}] /Count {pages} >>".encode(),
     ]
     for w, h in per_page:
-        parts.append(f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {w:g} {h:g}] >>".encode())
+        parts.append(f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {w:g} {h:g}] {page} >>".encode())
     parts.extend(extra)
     objects = parts
     out = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
@@ -361,6 +363,16 @@ def write(path: Path, data: bytes) -> Path:
     return path
 
 
+IMAGE_FILTERS = {
+    "jpeg": "DCTDecode",
+    "jpx": "JPXDecode",
+    "jbig2": "JBIG2Decode",
+    "escaped-jbig2": "JBIG#32Decode",
+    "ccitt": "CCITTFaxDecode",
+}
+"""The PDF filter that :func:`pdf_with` gives an image, by the codec's name."""
+
+
 def pdf_with(feature: str, pages: int = 1) -> bytes:
     """A one-page PDF carrying one of the features a scanned book never has.
 
@@ -369,8 +381,27 @@ def pdf_with(feature: str, pages: int = 1) -> bytes:
     ``escaped-launch`` likewise; ``document-javascript`` is a script in the
     document's name tree, which is what every poppler reports; ``forms`` is an
     AcroForm with one text field; ``attachments`` is one embedded file.
+
+    ``jpeg``, ``jpx``, ``jbig2`` and ``ccitt`` draw one image coded with that
+    filter on the first page, its stream sixteen zero bytes that no decoder
+    is asked to read; ``escaped-jbig2`` is the JBIG2 one with the filter's
+    name written in ``#xx`` escapes.
     """
     first = pages + 3
+    if feature in IMAGE_FILTERS:
+        data = b"\x00" * 16
+        image = (
+            "<< /Type /XObject /Subtype /Image /Width 8 /Height 8 /ColorSpace /DeviceGray "
+            f"/BitsPerComponent 1 /Filter /{IMAGE_FILTERS[feature]} /Length {len(data)} >>\nstream\n"
+        )
+        return pdf(
+            pages,
+            page=f"/Resources << /XObject << /Im0 {first} 0 R >> >> /Contents {first + 1} 0 R",
+            objects=[
+                image.encode() + data + b"\nendstream",
+                b"<< /Length 30 >>\nstream\nq 100 0 0 100 0 0 cm /Im0 Do Q\nendstream",
+            ],
+        )
     if feature == "document-javascript":
         return pdf(
             pages,

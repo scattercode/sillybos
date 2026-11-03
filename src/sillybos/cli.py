@@ -56,6 +56,8 @@ def _policy(args: argparse.Namespace) -> Policy:
         changes["tiff_subsamplings"] = frozenset(args.tiff_subsamplings.split(","))
     if args.pdf_features:
         changes["pdf_features"] = frozenset(args.pdf_features.split(","))
+    if args.pdf_image_codecs:
+        changes["pdf_image_codecs"] = frozenset(args.pdf_image_codecs.split(","))
     if args.any_name:
         changes["name_must_match"] = False
     return dataclasses.replace(base, **changes) if changes else base
@@ -149,6 +151,14 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "comma-separated PDF features to allow, from "
             "javascript,forms,attachments,launch (default: none)"
+        ),
+    )
+    parser.add_argument(
+        "--pdf-image-codecs",
+        metavar="LIST",
+        help=(
+            "comma-separated codecs a PDF's images may be coded with, from "
+            "jpeg,jpx,jbig2,ccitt (default: all four)"
         ),
     )
     parser.add_argument(

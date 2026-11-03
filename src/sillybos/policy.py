@@ -89,6 +89,16 @@ draw the page: JavaScript, an interactive form, attached (embedded) files, and
 a launch action that runs a program. A scanned book has none of them, so the
 default policy refuses them all; a policy names the ones it will pass."""
 
+PDF_IMAGE_CODECS: tuple[str, ...] = ("jpeg", "jpx", "jbig2", "ccitt")
+"""Every codec a PDF's images can be coded with that hands the stream to a
+decoder of its own inside poppler, by name: DCT (JPEG), JPX (JPEG 2000,
+through OpenJPEG), JBIG2 and CCITT fax. Scanners, and the archives that
+derive PDFs from scans, write all four, so the default allows them all; a
+policy that knows its source never writes one refuses it by name. Each is
+found by its filter's name in the file, not by listing the images:
+`pdfimages -list` opens a JPX stream with OpenJPEG to describe it, which is
+the decoder's code the check exists to keep from the file."""
+
 MIB = 1024 * 1024
 
 
@@ -184,6 +194,17 @@ class Policy:
             since no poppler tool reports one, so an action hidden in a
             compressed stream is not seen; JavaScript is looked for both
             ways.
+        pdf_image_codecs: Which of [PDF_IMAGE_CODECS][sillybos.PDF_IMAGE_CODECS] a PDF's
+            images may be coded with: JPEG, JPEG 2000, JBIG2 and CCITT.
+            Each hands the stream to a decoder of its own inside poppler,
+            and the JBIG2 decoder is where several of its flaws have been
+            (CVE-2025-32365, CVE-2026-93312, CVE-2026-93313). Scanners and
+            the archives that derive PDFs from scans write all four, so the
+            default allows them all; refuse one only when you know your
+            source never writes it. Each is found by its filter's name in
+            the file, the way a launch action is, so a filter named only
+            through an indirect reference inside a compressed object
+            stream is not seen.
         pdfinfo_timeout: Seconds to give `pdfinfo` before giving up on a
             PDF, which is then refused. A crafted file can make a parser
             loop; a limit turns that into one file's failure.
@@ -215,6 +236,7 @@ class Policy:
     )
     allow_encrypted_pdf: bool = False
     pdf_features: frozenset[str] = frozenset()
+    pdf_image_codecs: frozenset[str] = field(default_factory=lambda: frozenset(PDF_IMAGE_CODECS))
     pdfinfo_timeout: float = 30.0
 
     def __post_init__(self) -> None:
@@ -260,6 +282,12 @@ class Policy:
         if unknown:
             raise ValueError(
                 f"unknown PDF feature(s) {sorted(unknown)}; the features are {', '.join(PDF_FEATURES)}"
+            )
+        unknown = set(self.pdf_image_codecs) - set(PDF_IMAGE_CODECS)
+        if unknown:
+            raise ValueError(
+                f"unknown PDF image codec(s) {sorted(unknown)}; "
+                f"the codecs are {', '.join(PDF_IMAGE_CODECS)}"
             )
         for name in (
             "max_bytes",

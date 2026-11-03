@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
-from sillybos import DEFAULT, STRICT, Policy, Refused, check, require
+from sillybos import DEFAULT, PDF_IMAGE_CODECS, STRICT, Policy, Refused, check, require
 from tests import corpus
 
 needs_pdfinfo = pytest.mark.skipif(shutil.which("pdfinfo") is None, reason="pdfinfo (poppler)")
@@ -360,6 +360,43 @@ class TestPdf:
     def test_a_plain_pdf_carries_no_features(self, tmp_path: Path) -> None:
         verdict = check(corpus.write(tmp_path / "plain.pdf", corpus.pdf(1)))
         assert verdict.ok and verdict.facts is not None and verdict.facts.features == ()
+        assert verdict.facts.codecs == ()
+
+    @pytest.mark.parametrize(
+        ("feature", "codec", "words"),
+        [
+            ("jpeg", "jpeg", "JPEG"),
+            ("jpx", "jpx", "JPEG 2000"),
+            ("jbig2", "jbig2", "JBIG2"),
+            ("escaped-jbig2", "jbig2", "JBIG2"),
+            ("ccitt", "ccitt", "CCITT"),
+        ],
+    )
+    def test_an_image_codec_passes_by_default_and_is_refused_by_name(
+        self, tmp_path: Path, feature: str, codec: str, words: str
+    ) -> None:
+        path = corpus.write(tmp_path / "scan.pdf", corpus.pdf_with(feature))
+
+        verdict = check(path)
+
+        assert verdict.ok and verdict.facts is not None and verdict.facts.codecs == (codec,)
+        assert check(path, STRICT).ok
+        refused = check(path, Policy(pdf_image_codecs=frozenset(PDF_IMAGE_CODECS) - {codec}))
+        assert not refused.ok
+        assert refused.reasons[0].startswith(
+            f"a PDF with images coded as {words}; the policy allows "
+        )
+
+    def test_a_jbig2_pdf_under_a_policy_that_refuses_it(self, tmp_path: Path) -> None:
+        path = corpus.write(tmp_path / "scan.pdf", corpus.pdf_with("jbig2"))
+        verdict = check(path, Policy(pdf_image_codecs=frozenset({"jpeg", "jpx", "ccitt"})))
+        assert verdict.reasons == (
+            "a PDF with images coded as JBIG2; the policy allows JPEG, JPEG 2000 and CCITT",
+        )
+        assert check(path, Policy(pdf_image_codecs=frozenset())).reasons == (
+            "a PDF with images coded as JBIG2; "
+            "the policy allows none of the image codecs a PDF can carry",
+        )
 
     @pytest.mark.parametrize(
         ("feature", "found", "words"),
@@ -430,6 +467,7 @@ class TestPolicy:
             ({"max_png_bit_depth": 12}, "must be 1, 2, 4, 8 or 16"),
             ({"pdfinfo_timeout": 0}, "must be positive"),
             ({"pdf_features": frozenset({"macros"})}, "unknown PDF feature"),
+            ({"pdf_image_codecs": frozenset({"webp"})}, "unknown PDF image codec"),
         ],
     )
     def test_refuses_an_impossible_policy(self, changes: dict[str, object], reason: str) -> None:

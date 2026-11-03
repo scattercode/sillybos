@@ -36,11 +36,14 @@ code touches it. So:
   `sillybos/pillow.py`, which is the optional extra.
 - A PDF is asked about through `pdfinfo` and `pdfdetach` in a subprocess
   with a timeout. Never add a PDF parser as a dependency, and never read a
-  PDF's objects with code here. The one thing this code does read from a
-  PDF's bytes is the *name* of a launch action, by a bounded search for
-  its spelling (`pdf.py`, `_has_launch_action`), because no poppler tool
-  reports one; a search for bytes is not a parser, and it must stay that
-  way.
+  PDF's objects with code here. The only things this code reads from a
+  PDF's bytes are *names*, by a bounded search for their spellings
+  (`pdf.py`, `_names_in`): a launch action, because no poppler tool
+  reports one, and the filters its images are coded with (DCT, JPX, JBIG2,
+  CCITT), because the tool that would list them, `pdfimages -list`, opens
+  a JPX stream with OpenJPEG just to describe it. A search for bytes is
+  not a parser, and it must stay that way; never add `pdfimages` to the
+  tools the check runs.
 - The library has **no runtime dependencies**, and `[project] dependencies`
   stays `[]`. Everything else goes in an extra.
 - Every read of a file is bounded by a constant or by the policy, and every

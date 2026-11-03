@@ -17,6 +17,14 @@ written with undone, and no parsing. JavaScript is looked for both ways,
 because poppler before 26 reports only document-level scripts and not one
 attached to an open-document action.
 
+The codec of each image is found the same way, by the name of its filter
+(`/JBIG2Decode`, `/JPXDecode`, `/DCTDecode`, `/CCITTFaxDecode`). A stream's
+dictionary cannot be hidden inside a compressed object stream, so the name
+is in plain bytes unless the filter is given through an indirect reference.
+`pdfimages -list` would report the codecs too, but it opens a JPX stream
+with OpenJPEG to describe it, which is exactly the decoder's code this
+check exists to keep from the file, so it is never run.
+
 `pdfinfo` and `pdfdetach` come with poppler (`brew install poppler`, `apt
 install poppler-utils`), which anything that renders PDFs in Python already
 needs. Without them, a PDF cannot be checked, and [PdfInfoMissing][sillybos.pdf.PdfInfoMissing]
@@ -46,12 +54,12 @@ def _name_pattern(name: str) -> re.Pattern[bytes]:
     """A pattern for the PDF name `/name`, however its letters are escaped.
 
     A name in a PDF may write any character as `#` and two hex digits, so
-    `/Launch` may appear as `/L#61unch`. The pattern matches each letter
-    either way, and requires a delimiter after the name so that `/Launcher`
-    is not `/Launch`.
+    `/Launch` may appear as `/L#61unch` and `/JBIG2Decode` as `/JBIG#32Decode`.
+    The pattern matches each letter and digit either way, and requires a
+    delimiter after the name so that `/Launcher` is not `/Launch`.
     """
     letters = "".join(
-        f"(?:{re.escape(c)}|#{ord(c):02x}|#{ord(c):02X})" if c.isalpha() else re.escape(c)
+        f"(?:{re.escape(c)}|#{ord(c):02x}|#{ord(c):02X})" if c.isalnum() else re.escape(c)
         for c in name
     )
     return re.compile(rf"/{letters}(?![A-Za-z0-9#])".encode())
@@ -59,6 +67,20 @@ def _name_pattern(name: str) -> re.Pattern[bytes]:
 
 _LAUNCH = _name_pattern("Launch")
 _JAVASCRIPT_NAMES = (_name_pattern("JavaScript"), _name_pattern("JS"))
+
+
+def _any_name(*names: str) -> re.Pattern[bytes]:
+    """A pattern for any of several PDF names, each however its letters are escaped."""
+    return re.compile(b"|".join(_name_pattern(name).pattern for name in names))
+
+
+_CODEC_NAMES: tuple[tuple[str, re.Pattern[bytes]], ...] = (
+    # The abbreviations are the ones an inline image may use.
+    ("jpeg", _any_name("DCTDecode", "DCT")),
+    ("jpx", _any_name("JPXDecode")),
+    ("jbig2", _any_name("JBIG2Decode")),
+    ("ccitt", _any_name("CCITTFaxDecode", "CCF")),
+)
 _SCAN_CHUNK = 1024 * 1024
 _SCAN_OVERLAP = 32  # longer than the longest escaped spelling of the name
 
@@ -90,6 +112,9 @@ class PdfHeader:
         features: Which of [sillybos.PDF_FEATURES][] the file carries, in
             that order. Attached files and launch actions are only looked
             for when the page count is within the limit.
+        codecs: Which of [sillybos.PDF_IMAGE_CODECS][] the file's images
+            are coded with, in that order, by the filters named in it.
+            Looked for in the same pass as the launch action.
     """
 
     pages: int
@@ -99,6 +124,7 @@ class PdfHeader:
     max_pixels: int | None
     max_side: int | None
     features: tuple[str, ...] = ()
+    codecs: tuple[str, ...] = ()
 
 
 def _pdfinfo(args: list[str], path: Path, timeout: float) -> str:
@@ -155,8 +181,12 @@ def _has_launch_action(path: Path) -> bool:
     return _names_in(path, _LAUNCH)[0]
 
 
-def _features(summary: str, path: Path, policy: Policy, *, within_limit: bool) -> tuple[str, ...]:
+def _contents(
+    summary: str, path: Path, policy: Policy, *, within_limit: bool
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """The features the file carries and the codecs its images use, as two tuples."""
     found = []
+    codecs: list[str] = []
     if _JAVASCRIPT.search(summary):
         found.append("javascript")
     form = _FORM.search(summary)
@@ -167,12 +197,14 @@ def _features(summary: str, path: Path, policy: Policy, *, within_limit: bool) -
         count = _ATTACHMENTS.search(listing)
         if count is not None and int(count.group(1)) > 0:
             found.append("attachments")
-        scripted, script, launch = _names_in(path, *_JAVASCRIPT_NAMES, _LAUNCH)
+        hits = _names_in(path, *_JAVASCRIPT_NAMES, _LAUNCH, *(p for _, p in _CODEC_NAMES))
+        scripted, script, launch = hits[:3]
         if (scripted or script) and "javascript" not in found:
             found.insert(0, "javascript")
         if launch:
             found.append("launch")
-    return tuple(found)
+        codecs = [name for (name, _), hit in zip(_CODEC_NAMES, hits[3:], strict=True) if hit]
+    return tuple(found), tuple(codecs)
 
 
 def _pixels(points: str, dpi: int) -> float:
@@ -205,8 +237,8 @@ def pdf(path: Path, policy: Policy) -> PdfHeader:
     width = round(_pixels(first.group(2), policy.render_dpi))
     height = round(_pixels(first.group(3), policy.render_dpi))
     if pages > policy.max_pages:
-        features = _features(summary, path, policy, within_limit=False)
-        return PdfHeader(pages, encrypted, width, height, None, None, features)
+        features, codecs = _contents(summary, path, policy, within_limit=False)
+        return PdfHeader(pages, encrypted, width, height, None, None, features, codecs)
     listing = _pdfinfo(["-f", "1", "-l", str(pages)], path, policy.pdfinfo_timeout)
     sides = [
         (_pixels(w, policy.render_dpi), _pixels(h, policy.render_dpi))
@@ -214,7 +246,7 @@ def pdf(path: Path, policy: Policy) -> PdfHeader:
     ]
     if not sides:
         raise HeaderError("pdfinfo reported no page sizes")
-    features = _features(summary, path, policy, within_limit=True)
+    features, codecs = _contents(summary, path, policy, within_limit=True)
     max_pixels = round(max(w * h for w, h in sides))
     max_side = round(max(max(w, h) for w, h in sides))
-    return PdfHeader(pages, encrypted, width, height, max_pixels, max_side, features)
+    return PdfHeader(pages, encrypted, width, height, max_pixels, max_side, features, codecs)
