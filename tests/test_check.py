@@ -94,6 +94,22 @@ class TestHostileFiles:
         assert verdict.format is None, what
         assert verdict.reasons[0].startswith("is an unknown format"), what
 
+    @pytest.mark.parametrize(
+        ("name", "data"),
+        [
+            ("scan.png", corpus.png(0, 10)),
+            ("scan.tif", corpus.tiff([(10, 0)])),
+            ("scan.jpg", corpus.jpeg(0, 10)),
+        ],
+    )
+    def test_an_image_with_a_zero_dimension(self, tmp_path: Path, name: str, data: bytes) -> None:
+        # CVE-2026-112392: a zero-size image dereferences a null pointer in
+        # Pillow's rank filters. A file whose header gives a zero width or
+        # height is refused under every policy, before Pillow sees it.
+        verdict = check(corpus.write(tmp_path / name, data))
+        assert not verdict.ok
+        assert "zero width or height" in verdict.reasons[0], verdict.reasons
+
     def test_an_empty_file(self, tmp_path: Path) -> None:
         verdict = check(corpus.write(tmp_path / "scan.png", b""))
         assert verdict.reasons == ("the file is empty",)
