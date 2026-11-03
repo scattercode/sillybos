@@ -17,14 +17,14 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 42,
+    "records": 43,
     "refused_by_default": 16,
     "by_bucket": {
       "A": 5,
       "B": 16,
       "B2": 1,
       "C": 7,
-      "D": 0,
+      "D": 1,
       "N": 13,
       "U": 0
     },
@@ -34,7 +34,7 @@
       "Pillow": 14,
       "libpng": 7,
       "libtiff": 11,
-      "poppler": 4
+      "poppler": 5
     }
   },
   "records": [
@@ -1015,6 +1015,35 @@
         "https://github.com/advisories/GHSA-hfc7-ph9c-wcww",
         "https://osv.dev/vulnerability/CVE-2025-64720"
       ]
+    },
+    {
+      "key": "CVE-2025-43718",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "Deeply nested PDF metadata exhausts poppler's stack",
+      "summary": "Poppler 24.06.1 through 25.x before 25.04.0 allows stack consumption and a SIGSEGV via deeply nested structures within the metadata (such as GTS_PDFEVersion) of a PDF document, e.g., a regular expression for a long pdfsubver string.",
+      "published": "2025-10-01",
+      "severity": 2.9,
+      "affected": "poppler 24.06.1 through 25.03",
+      "fixed": "25.04.0",
+      "reached_by": "open",
+      "trigger": "A PDF whose metadata (for example a long GTS_PDFEVersion string) drives deep recursion in poppler's regular-expression matching.",
+      "bucket": "D",
+      "finding": "In Catalog::getMetadata and the dictionary lookup beneath it, which pdfinfo may run while reporting the metadata. A crash in pdfinfo is a non-zero exit and so a refusal: the check fails closed.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to poppler 25.04.0.",
+        "specific": "Render PDFs in a boxed process with memory and time limits (see Decoding in a box); nothing read before decoding can see this."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-43718"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "key": "CVE-2025-9900",
