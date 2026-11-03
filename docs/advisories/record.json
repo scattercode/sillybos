@@ -17,7 +17,7 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 70,
+    "records": 71,
     "refused_by_default": 20,
     "by_bucket": {
       "A": 10,
@@ -25,13 +25,13 @@
       "B2": 1,
       "C": 10,
       "D": 3,
-      "N": 30,
+      "N": 31,
       "U": 0
     },
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 5,
-      "Pillow": 19,
+      "Pillow": 20,
       "libpng": 15,
       "libtiff": 15,
       "poppler": 10,
@@ -785,6 +785,36 @@
       },
       "sources": [
         "https://osv.dev/vulnerability/DEBIAN-CVE-2026-10118"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-42310",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Pillow's PdfParser loops for ever on a cyclic trailer",
+      "summary": "Pillow has a PDF Parsing Trailer Infinite Loop (DoS)",
+      "published": "2026-05-04",
+      "severity": 5.5,
+      "affected": "< 12.2.0",
+      "fixed": "12.2.0",
+      "reached_by": "api",
+      "trigger": "Opening an existing PDF with Pillow's PdfParser, which Image.save(append=True) does; Image.open does not read PDFs.",
+      "bucket": "N",
+      "finding": "PdfParser runs only when a PDF is appended to; opening a file never runs it. A PDF handed to poppler is checked by pdfinfo with a time limit instead.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 12.2.0.",
+        "specific": "Not a pre-decode matter: the flaw is in a call that opening a file never makes."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-r73j-pqj5-w3x7",
+        "https://osv.dev/vulnerability/PYSEC-2026-2874"
       ],
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
