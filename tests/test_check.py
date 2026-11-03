@@ -68,6 +68,48 @@ class TestHostileFiles:
         assert verdict.format is None
         assert verdict.reasons[0].startswith("is an unknown format")
 
+    @pytest.mark.parametrize(
+        ("what", "head"),
+        [
+            ("a PILfont", b"PILfont\n;;;;;;1;\nDATA\n" + b"\x00" * 64),
+            ("a BDF font", b"STARTFONT 2.1\nFONT -misc-fixed\n"),
+            ("a PCF font", b"\x01fcp" + b"\x00" * 60),
+            ("a TrueType font", b"\x00\x01\x00\x00\x00\x0c\x00\x80\x00\x03\x00\x20"),
+            ("an OpenType font", b"OTTO\x00\x0c\x00\x80\x00\x03\x00\x20"),
+            (
+                "a tar archive",
+                b"scan.jpg".ljust(100, b"\x00") + b"0000644\x00" * 7 + b"\x00" * 101 + b"ustar\x00",
+            ),
+            ("a GD2 image", b"gd2\x00\x00\x02\x00\x08\x00\x08"),
+        ],
+    )
+    def test_a_font_or_archive_is_refused_as_unknown(
+        self, tmp_path: Path, what: str, head: bytes
+    ) -> None:
+        # A file that carries a flaw's trigger is refused by the format gate
+        # whatever its format, so the records on fonts and archives claim it
+        # (CVE-2026-96641, CVE-2026-55379, CVE-2026-54059, CVE-2026-54060,
+        # CVE-2026-42308, CVE-2026-112893, CVE-2026-96642, CVE-2026-55380).
+        verdict = check(corpus.write(tmp_path / "file.bin", head))
+        assert verdict.format is None, what
+        assert verdict.reasons[0].startswith("is an unknown format"), what
+
+    @pytest.mark.parametrize(
+        ("name", "data"),
+        [
+            ("scan.png", corpus.png(0, 10)),
+            ("scan.tif", corpus.tiff([(10, 0)])),
+            ("scan.jpg", corpus.jpeg(0, 10)),
+        ],
+    )
+    def test_an_image_with_a_zero_dimension(self, tmp_path: Path, name: str, data: bytes) -> None:
+        # CVE-2026-112392: a zero-size image dereferences a null pointer in
+        # Pillow's rank filters. A file whose header gives a zero width or
+        # height is refused under every policy, before Pillow sees it.
+        verdict = check(corpus.write(tmp_path / name, data))
+        assert not verdict.ok
+        assert "zero width or height" in verdict.reasons[0], verdict.reasons
+
     def test_an_empty_file(self, tmp_path: Path) -> None:
         verdict = check(corpus.write(tmp_path / "scan.png", b""))
         assert verdict.reasons == ("the file is empty",)
@@ -140,6 +182,15 @@ class TestHostileFiles:
         assert check(path, Policy(tiff_compressions=frozenset({"zstd"}))).ok
         verdict = check(path, Policy(tiff_compressions=frozenset({"lzw"})))
         assert verdict.reasons == ("a zstd-compressed TIFF; the policy allows lzw",)
+
+    def test_a_jpeg_compressed_tiff_under_a_policy_without_jpeg(self, tmp_path: Path) -> None:
+        # CVE-2026-112897: short JPEG strips in a TIFF return uninitialised
+        # memory as pixels. The default allows JPEG in a TIFF, since scanners
+        # write it; a policy without it refuses the file before libtiff sees it.
+        path = corpus.write(tmp_path / "scan.tif", corpus.tiff([(10, 10)], compression=7))
+        assert check(path).ok
+        verdict = check(path, Policy(tiff_compressions=frozenset({"none", "ccitt", "lzw"})))
+        assert verdict.reasons == ("a jpeg-compressed TIFF; the policy allows none, ccitt and lzw",)
 
     def test_a_cielab_tiff(self, tmp_path: Path) -> None:
         path = corpus.write(tmp_path / "scan.tif", corpus.tiff([(10, 10)], layout=(8, 3, 8)))
@@ -231,6 +282,22 @@ class TestHostileFiles:
         verdict = check(path, Policy(png_colour_types=frozenset({"greyscale", "rgb"})))
         assert verdict.reasons == ("a palette PNG; the policy allows greyscale and rgb",)
 
+    def test_a_palette_png_with_an_empty_palette(self, tmp_path: Path) -> None:
+        # CVE-2026-112898: a palette image with no entries, used as the palette
+        # for Image.quantize, returns uninitialised stack memory as pixels; an
+        # 80-byte PNG with an empty PLTE is one. The reader does not open the
+        # PLTE, so the default passes it; a scans-only policy refuses the file.
+        data = corpus.png(10, 10, colour=3, extra=corpus.png_chunk(b"PLTE", 0))
+        path = corpus.write(tmp_path / "scan.png", data)
+        assert check(path).ok
+        scans_only = Policy(
+            png_colour_types=frozenset({"greyscale", "rgb", "greyscale-alpha", "rgba"})
+        )
+        verdict = check(path, scans_only)
+        assert verdict.reasons == (
+            "a palette PNG; the policy allows greyscale, rgb, greyscale-alpha and rgba",
+        )
+
     def test_a_sixteen_bit_png_is_strict_only_by_default(self, tmp_path: Path) -> None:
         path = corpus.write(tmp_path / "scan.png", corpus.png(10, 10, colour=0, depth=16))
         assert check(path).ok
@@ -254,6 +321,35 @@ class TestHostileFiles:
             .reasons[0]
             .startswith("a JPEG colour profile")
         )
+
+    def test_a_jpeg_profile_that_fills_the_encoder_buffer(self, tmp_path: Path) -> None:
+        # CVE-2026-96778: a 65,498-byte profile fills Pillow's 64 KB JPEG
+        # output buffer exactly, and a comment written after it overflows.
+        # Both ride from the opened file into a save that keeps the profile.
+        # The profile is the measured block; a ceiling under it refuses the file.
+        data = corpus.jpeg(10, 10, before_sof=corpus.jpeg_profile(65_498) + corpus.jpeg_padding(1))
+        path = corpus.write(tmp_path / "scan.jpg", data)
+        assert check(path).ok
+        verdict = check(path, Policy(max_metadata_bytes=65_000))
+        assert verdict.reasons == ("a JPEG colour profile of 65,498 bytes; the limit is 65,000",)
+
+    def test_a_png_text_chunk_under_a_lower_ceiling(self, tmp_path: Path) -> None:
+        # CVE-2026-112891: a comment carried from an opened file is copied in
+        # quadratic time when the image is saved as a GIF. From a file it can
+        # only come through a PNG text chunk, whose size the reader measures.
+        data = corpus.png(10, 10, extra=corpus.png_chunk(b"tEXt", 1_000_000))
+        path = corpus.write(tmp_path / "scan.png", data)
+        assert check(path).ok
+        verdict = check(path, Policy(max_metadata_bytes=65_536))
+        assert verdict.reasons == ("a PNG tEXt chunk of 1,000,000 bytes; the limit is 65,536",)
+
+    def test_an_animated_png_that_declares_too_many_frames(self, tmp_path: Path) -> None:
+        # CVE-2026-112894: Pillow's PDF writer takes time proportional to the
+        # square of the frame count it reads from the file before seeking any
+        # frame. The acTL count is read here and bounded by max_pages.
+        data = corpus.png(10, 10, frames=2**31 - 1)
+        verdict = check(corpus.write(tmp_path / "scan.png", data))
+        assert verdict.reasons == ("2,147,483,647 pages; the limit is 500",)
 
     def test_a_tiff_tag_over_the_limit(self, tmp_path: Path) -> None:
         data = corpus.tiff([(10, 10)], tags=[(34377, 7, b"\x00" * 4_194_305)])

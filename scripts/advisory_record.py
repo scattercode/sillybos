@@ -53,7 +53,7 @@ BUCKETS = {
     "B2": "Preventable only by a coarse policy on a PDF's contents",
     "C": "Needs decoding to detect; out of this library's reach by design",
     "D": "Reaches pdfinfo itself",
-    "N": "Not reached by opening a file",
+    "N": "The check is not in the path: no file carries the trigger",
     "U": "A reserved CVE with no text yet",
 }
 
@@ -274,6 +274,10 @@ def proposals(proposed_dir: Path = PROPOSED_DIR, tests_dir: Path = TESTS_DIR) ->
     return lines
 
 
+UNCONFIRMED = "not yet confirmed by a person"
+"""What a proposal's ``notes`` says until it is promoted; ``promote`` rewrites it."""
+
+
 def promote(
     keys: list[str],
     today: str,
@@ -282,6 +286,9 @@ def promote(
     tests_dir: Path = TESTS_DIR,
 ) -> list[str]:
     """Confirm proposals: validate each strictly, date it today, move it into the record.
+
+    A note saying the record is not yet confirmed by a person becomes one
+    saying when it was.
 
     Returns the problems that stopped any of them; empty when all moved.
     """
@@ -294,6 +301,10 @@ def promote(
         record = load(source)
         record["triaged"] = today
         record["checked"] = today
+        if isinstance(record.get("notes"), str):
+            record["notes"] = record["notes"].replace(
+                UNCONFIRMED, f"confirmed by a person on {today}"
+            )
         target = record_dir / source.name
         found = problems(record, target, tests_dir)
         if target.exists():

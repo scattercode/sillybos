@@ -1,12 +1,12 @@
 {
-  "generated": "2026-11-02",
+  "generated": "2026-11-03",
   "buckets": {
     "A": "Already refused by an existing check",
     "B": "Preventable from a header field our readers can see",
     "B2": "Preventable only by a coarse policy on a PDF's contents",
     "C": "Needs decoding to detect; out of this library's reach by design",
     "D": "Reaches pdfinfo itself",
-    "N": "Not reached by opening a file",
+    "N": "The check is not in the path: no file carries the trigger",
     "U": "A reserved CVE with no text yet"
   },
   "reached_by": {
@@ -17,24 +17,57 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 23,
-    "refused_by_default": 16,
+    "records": 120,
+    "refused_by_default": 44,
     "by_bucket": {
-      "A": 5,
+      "A": 39,
       "B": 16,
-      "B2": 0,
-      "C": 0,
-      "D": 0,
-      "N": 2,
+      "B2": 3,
+      "C": 19,
+      "D": 3,
+      "N": 40,
       "U": 0
     },
     "by_library": {
-      "Pillow": 14,
-      "libpng": 5,
-      "libtiff": 4
+      "FreeType": 4,
+      "OpenJPEG": 6,
+      "Pillow": 58,
+      "libpng": 15,
+      "libtiff": 18,
+      "poppler": 16,
+      "zlib": 3
     }
   },
   "records": [
+    {
+      "key": "CVE-2026-107080",
+      "aliases": [],
+      "library": "OpenJPEG",
+      "package": "openjpeg2",
+      "ecosystem": "Debian",
+      "title": "OpenJPEG's wavelet encoder reads and writes out of bounds",
+      "summary": "OpenJPEG 2.4.0 through 2.5.4, and git master through commit 8314119b, contains an out-of-bounds read and write in opj_dwt_encode_and_deinterleave_v() in src/lib/openjp2/dwt.c.",
+      "published": "2026-10-26",
+      "severity": 6.5,
+      "affected": "OpenJPEG 2.4.0 through 2.5.4",
+      "fixed": null,
+      "reached_by": "save",
+      "trigger": "Encoding a JPEG 2000 image that reaches opj_dwt_encode_and_deinterleave_v.",
+      "bucket": "N",
+      "finding": "In the encoder's wavelet transform, run on whatever image the program chooses to encode as JPEG 2000; no file carries the trigger, and a JPEG 2000 file handed to the check is refused by name in any case.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade OpenJPEG to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: the flaw is on a save path."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-107080"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-read on 2026-11-03: no file carries the trigger."
+    },
     {
       "triaged": "2026-11-01",
       "checked": "2026-11-01",
@@ -71,6 +104,76 @@
       "sources": [
         "https://github.com/advisories/GHSA-5x8w-8jj5-q52h"
       ]
+    },
+    {
+      "key": "GHSA-78g4-xqwv-q3g8",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Pillow's bundled OpenJPEG carries an unreleased heap-overflow fix",
+      "summary": "Pillow: Bundled libopenjp2 2.5.4 in all wheels since 11.1.0 carries OSV-2025-219 heap-buffer-overflow write reachable from Image.open().load()",
+      "published": "2026-10-22",
+      "severity": 8.1,
+      "affected": ">= 11.1.0 (bundled libopenjp2 2.5.4)",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Image.open and load on a crafted JPEG 2000 file with a Pillow wheel from 11.1.0 onward, whose bundled libopenjp2 2.5.4 lacks the upstream fix for OSV-2025-219.",
+      "bucket": "A",
+      "finding": "A JPEG 2000 file is refused by name before Pillow sees it. A patched system OpenJPEG does not help a wheel that bundles its own, which is one more reason to refuse the format by name rather than trust the decoder's version.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_format_a_scan_never_is"
+      ],
+      "protect": {
+        "general": "Upgrade Pillow to a version that has the fix; the upstream record names it.",
+        "specific": "Refuse JPEG 2000 by name, as sillybos does by default."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-78g4-xqwv-q3g8"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-96778",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A JPEG comment after a full ICC profile overflows Pillow's JPEG encoder",
+      "summary": "Pillow: Heap buffer overflow writing JPEG comment after ICC profile fills buffer",
+      "published": "2026-10-22",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "save",
+      "trigger": "Image.save(format=\"JPEG\") of an image carrying a large ICC profile and a comment.",
+      "bucket": "A",
+      "finding": "The comment rides from the opened file into a JPEG save on its own, and the profile does when the program passes it, which is the documented way to keep colour. The profile has to fill the encoder's 64 KB buffer, so it is about 65,498 bytes, and it is the block the reader measures: the default ceiling of 4 MiB lets it through, and a ceiling under 65 KB refuses the file. Tetrak OCR's access copy does not pass the profile, so it is not reached there.",
+      "refusal": {
+        "check": "max_metadata_bytes",
+        "default": false,
+        "setting": "Policy(max_metadata_bytes=65_000)"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_jpeg_profile_that_fills_the_encoder_buffer"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Set max_metadata_bytes under 65 KB where no colour profile that large has a use, or do not pass icc_profile when re-saving a file from outside; upgrade to Pillow 12.3.0."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-g7cr-3p24-7wf7"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-read on 2026-11-03 against the question of what rides from an opened file into a save: the file is the input."
     },
     {
       "triaged": "2026-11-01",
@@ -111,6 +214,35 @@
       ]
     },
     {
+      "key": "CVE-2026-96640",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A shared page-tree graph makes Pillow's PDF append take disproportionate time",
+      "summary": "Pillow PDF append accepts malformed shared page-tree DAG causing resource exhaustion",
+      "published": "2026-10-22",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Appending to an existing PDF with Image.save(format=\"PDF\", append=True).",
+      "bucket": "C",
+      "finding": "The existing PDF is the input, so the check belongs in front of it: the format gate and pdfinfo's time limit apply. But the trigger is a page tree that repeats the same child at every level, in the object graph, which a bounded check does not parse and pdfinfo's summary does not show. Out of a pre-decode check's reach.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Run the check on a PDF before appending to it, for what it does see; append only to PDFs the program wrote itself; upgrade to a Pillow with the fix."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-mrfp-p49p-3hf2"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-read on 2026-11-03 against the question of what rides from an opened file into a save: the file is the input."
+    },
+    {
       "triaged": "2026-11-01",
       "checked": "2026-11-01",
       "notes": null,
@@ -147,6 +279,41 @@
       "sources": [
         "https://github.com/advisories/GHSA-v9pv-5gc8-w2m6"
       ]
+    },
+    {
+      "key": "CVE-2026-96638",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A kilobyte BMP makes Pillow's run-length decoder allocate gigabytes",
+      "summary": "Pillow: BMP RLE decoder memory-amplification DoS via unbounded delta escape / absolute mode",
+      "published": "2026-10-22",
+      "severity": 6.5,
+      "affected": "<= 13.0.0",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Image.open and load on a crafted run-length-encoded BMP.",
+      "bucket": "A",
+      "finding": "A BMP is not one of the four formats a scan can be and is refused by name before Pillow sees it.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_format_a_scan_never_is"
+      ],
+      "protect": {
+        "general": "Upgrade Pillow to a version that has the fix; the upstream record names it.",
+        "specific": "Open with formats limited to the readers you mean to use, as open_checked does; a file of any other format is refused before Pillow sees it."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-24rc-8hj2-v98c"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "triaged": "2026-11-01",
@@ -224,6 +391,144 @@
       ]
     },
     {
+      "key": "CVE-2026-96644",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A wide, short metafile over-reads the heap in Pillow's Windows renderer",
+      "summary": "Pillow: Heap over-read in WMF/EMF rendering via 16-bit dimension truncation (Windows builds)",
+      "published": "2026-10-21",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "open",
+      "trigger": "Image.open and load on a crafted WMF or EMF file on a Windows build of Pillow.",
+      "bucket": "A",
+      "finding": "A Windows metafile is not one of the four formats a scan can be and is refused before Pillow sees it.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_an_unknown_format"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Open with formats limited to the readers you mean to use, as open_checked does; a file of any other format is refused before Pillow sees it."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-9v9v-9qvf-h2hj",
+        "https://osv.dev/vulnerability/PYSEC-2026-4343"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-96642",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A negative size in a tar header spins Pillow's TarIO for ever",
+      "summary": "Pillow: TarIO negative size field causes infinite CPU-spin loop",
+      "published": "2026-10-21",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Opening a tar archive with PIL.TarIO.",
+      "bucket": "A",
+      "finding": "The carrier is a tar archive with a negative size in a member's header, opened through PIL.TarIO, which a program calls by name to read an image out of an archive. Handed to the check, a tar archive is not one of the four formats and is refused as unknown, so the record claims that refusal. Neither Tetrak OCR nor sillybos imports TarIO.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_font_or_archive_is_refused_as_unknown"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Unpack archives yourself, with the standard library, and run the check on each file that comes out; a tar handed to the check is refused as unknown."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-3j72-p6qg-6xp7",
+        "https://osv.dev/vulnerability/PYSEC-2026-4341"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-bucketed on 2026-11-03: the file that carries the trigger is one the check refuses, so the record claims it."
+    },
+    {
+      "key": "CVE-2026-96641",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A PILfont's negative glyph advance makes a signed integer wrap",
+      "summary": "Pillow: Reachable undefined behavior in native integer operations, potentially leading to denial of service or logic integrity compromise",
+      "published": "2026-10-21",
+      "severity": 6.5,
+      "affected": "12.3.0",
+      "fixed": "13.0.0",
+      "reached_by": "api",
+      "trigger": "Measuring text with a crafted PILfont through ImageFont.",
+      "bucket": "A",
+      "finding": "The carrier is a PILfont, Pillow's own bitmap font format, whose glyph advance is a signed 16-bit field; a crafted one carries -32,768 and a string of 65,537 characters measured with it wraps the width. Handed to the check, its first bytes are not one of the four formats a scan can be and it is refused as unknown, so the record claims that refusal, though a font is a program's asset that no image check is usually in front of. Neither Tetrak OCR nor sillybos imports ImageFont. Pillow 13.0.0 raises OverflowError instead; on an older Pillow a width above the characters measured times 32,767 is the wrapped value.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_font_or_archive_is_refused_as_unknown"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 13.0.0, which raises OverflowError (\"Width too small\") where 12.3.0 returned a wrapped width.",
+        "specific": "Load only fonts you ship, never a font from outside; and if a file from outside could be one, run the check on it: a font is refused as unknown."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-4rm8-3hmm-39fg",
+        "https://osv.dev/vulnerability/PYSEC-2026-4340"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Checked on 2026-11-03: the carrier is a font file, not an image. The fix is present in 13.0.0, checked with the advisory's reproducer on 2026-11-03; the first release carrying it was not confirmed. Re-bucketed on 2026-11-03: the file that carries the trigger is one the check refuses, so the record claims it."
+    },
+    {
+      "key": "CVE-2026-114501",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Arrow export leaks heap memory when PILLOW_ALIGNMENT is above 1",
+      "summary": "Pillow: Arrow export leaks stale heap memory when PILLOW_ALIGNMENT > 1",
+      "published": "2026-10-21",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Exporting an image to Arrow with PILLOW_ALIGNMENT set above 1.",
+      "bucket": "N",
+      "finding": "A memory leak in the Arrow export, a call the program makes on an image it already holds, under a build-time alignment setting; no file carries the trigger, and the effect is lost memory, not a file's doing.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Not a pre-decode matter: the flaw is in a call that opening a file never makes."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-654x-cwwv-5j9c",
+        "https://osv.dev/vulnerability/PYSEC-2026-4336"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-read on 2026-11-03: no file carries the trigger."
+    },
+    {
       "triaged": "2026-11-01",
       "checked": "2026-11-01",
       "notes": null,
@@ -299,6 +604,246 @@
       ]
     },
     {
+      "key": "CVE-2026-112898",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Image.quantize with an empty palette returns uninitialised stack memory",
+      "summary": "Pillow: Image.quantize() with empty palette leaks uninitialized stack memory",
+      "published": "2026-10-21",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Image.quantize(palette=...) with a palette image that has no palette.",
+      "bucket": "A",
+      "finding": "The trigger is a palette image with no entries, handed to Image.quantize as the palette, and a file can carry it: an 80-byte PNG with an empty PLTE chunk, opened with Image.open, is one of the three ways the upstream report names (a colour-mapped TGA with no entries is another, refused by name; Image.new is the third). The program has to let a file from outside be the palette image. The reader does not open the PLTE, so the default passes such a file; a scans-only policy without palette PNGs refuses it before Pillow sees it. Refusing an empty PLTE by default, as the PNG specification's one-to-256 entries would justify, would be a new default refusal and so a breaking change for a later release.",
+      "refusal": {
+        "check": "png_colour_types",
+        "default": false,
+        "setting": "Policy(png_colour_types=frozenset({\"greyscale\", \"rgb\", \"greyscale-alpha\", \"rgba\"}))"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_palette_png_with_an_empty_palette"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Never let a file from outside be the palette image for quantize; where it must be, run the check on it under a policy without palette PNGs; upgrade to Pillow 12.3.0."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-rfgq-q3w2-pmv2"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-bucketed on 2026-11-03: a file can carry the empty palette, and a setting refuses it."
+    },
+    {
+      "key": "CVE-2026-112894",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Saving a multi-frame image as a PDF takes quadratic time",
+      "summary": "Pillow: Quadratic-time DoS in PDF save_all (PdfParser.next_object_id)",
+      "published": "2026-10-21",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "save",
+      "trigger": "Image.save(format=\"PDF\", save_all=True) of an image with many frames.",
+      "bucket": "A",
+      "finding": "The frame count comes from the opened file: a TIFF's frame chain, which the reader walks, or an animated PNG's acTL count, which it reads. max_pages bounds both, and the default of 500 keeps the quadratic cost small; the 125-byte animated PNG that declares two billion frames is refused on the count alone.",
+      "refusal": {
+        "check": "max_pages",
+        "default": true,
+        "setting": "max_pages"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_an_animated_png_that_declares_too_many_frames",
+        "tests/test_check.py::TestHostileFiles::test_a_tiff_with_ten_thousand_frames"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Keep max_pages at what a document needs; sillybos reads the declared frame count before Pillow does."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-jg86-v3jv-hrpm"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-read on 2026-11-03 against the question of what rides from an opened file into a save: the file is the input."
+    },
+    {
+      "key": "CVE-2026-112893",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A failed glyph load with a stroker active frees an invalid pointer",
+      "summary": "Pillow: Invalid free in FreeType glyph rendering when a stroker is active",
+      "published": "2026-10-21",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Drawing stroked text with a malformed font through ImageDraw and ImageFont.",
+      "bucket": "A",
+      "finding": "The carrier is a malformed font loaded through FreeType, drawn with a stroke width so that a failed glyph load reaches the stale pointer. Handed to the check, its first bytes are not one of the four formats a scan can be and it is refused as unknown, so the record claims that refusal, though a font is a program's asset that no image check is usually in front of. Neither Tetrak OCR nor sillybos imports ImageFont or ImageDraw.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_font_or_archive_is_refused_as_unknown"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Load only fonts you ship, never a font from outside; and if a file from outside could be one, run the check on it: a font is refused as unknown."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-j4m9-6w36-pw47"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-bucketed on 2026-11-03: the file that carries the trigger is one the check refuses, so the record claims it."
+    },
+    {
+      "key": "CVE-2026-112892",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A tiny MSP file expands without bound in Pillow's run-length decoder",
+      "summary": "Pillow: MSP RLE decoder expands a tiny file into unbounded memory",
+      "published": "2026-10-21",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "open",
+      "trigger": "Image.open and load on a crafted Microsoft Paint (MSP) file.",
+      "bucket": "A",
+      "finding": "An MSP file is not one of the four formats a scan can be; sillybos does not know the format and refuses it as unknown before Pillow sees it.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_an_unknown_format"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Open with formats limited to the readers you mean to use, as open_checked does; a file of any other format is refused before Pillow sees it."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-gg2r-wvfm-q9rx"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-112891",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Saving a GIF with a long comment copies it in quadratic time",
+      "summary": "Pillow: Quadratic GIF comment copying during save",
+      "published": "2026-10-21",
+      "severity": null,
+      "affected": "12.3.0",
+      "fixed": null,
+      "reached_by": "save",
+      "trigger": "Image.save(format=\"GIF\") of an image carrying a long comment.",
+      "bucket": "A",
+      "finding": "The comment rides from the opened file into a GIF save on its own. From a file it can only come through a PNG text chunk, since a JPEG comment segment is at most 65,533 bytes by format, too short to matter, and a GIF is refused by name. The chunk is a block the reader measures: the default ceiling of 4 MiB allows a comment long enough to cost tens of seconds, and a lower ceiling bounds it.",
+      "refusal": {
+        "check": "max_metadata_bytes",
+        "default": false,
+        "setting": "Policy(max_metadata_bytes=65_536)"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_png_text_chunk_under_a_lower_ceiling"
+      ],
+      "protect": {
+        "general": "Upgrade Pillow to a version that has the fix; the upstream record names it.",
+        "specific": "Set max_metadata_bytes to what a scan carries, tens of kilobytes, where images from outside are re-saved as GIF; upgrade to a Pillow with the fix."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-fc9g-5qg7-mf45"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-read on 2026-11-03 against the question of what rides from an opened file into a save: the file is the input."
+    },
+    {
+      "key": "CVE-2026-112406",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "PdfParser.rewrite_pages loops for ever on a page-tree Parent cycle",
+      "summary": "Pillow: Infinite loop in PdfParser.rewrite_pages on page tree Parent cycle",
+      "published": "2026-10-21",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Appending to an existing PDF with Image.save(format=\"PDF\", append=True).",
+      "bucket": "C",
+      "finding": "The existing PDF is the input, so the check belongs in front of it: the format gate and pdfinfo's time limit apply. But the trigger is a /Parent cycle among page-tree nodes, in the object graph, which a bounded check does not parse and pdfinfo's summary does not show. Out of a pre-decode check's reach.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Run the check on a PDF before appending to it, for what it does see; append only to PDFs the program wrote itself; upgrade to a Pillow with the fix."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-f2g6-542v-9j58"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-read on 2026-11-03 against the question of what rides from an opened file into a save: the file is the input."
+    },
+    {
+      "key": "CVE-2026-112401",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A GIF's comments are concatenated in quadratic time in Image.open",
+      "summary": "Pillow: Quadratic GIF comment concatenation allows DoS in Image.open()",
+      "published": "2026-10-21",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "open",
+      "trigger": "Image.open on a crafted GIF with many comment blocks.",
+      "bucket": "A",
+      "finding": "A GIF is refused by name before Pillow sees it.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_format_a_scan_never_is"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Open with formats limited to the readers you mean to use, as open_checked does; a file of any other format is refused before Pillow sees it."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-74r2-7ff9-mjj2"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
       "triaged": "2026-11-01",
       "checked": "2026-11-01",
       "notes": null,
@@ -369,7 +914,7 @@
     {
       "triaged": "2026-11-01",
       "checked": "2026-11-01",
-      "notes": null,
+      "notes": " Re-read on 2026-11-03 against the question of what rides from an opened file into a save: the file is the input.",
       "key": "CVE-2026-112391",
       "aliases": [
         "GHSA-254f-3936-288h"
@@ -385,13 +930,13 @@
       "fixed": "13.0.0",
       "reached_by": "save",
       "trigger": "Image.save(..., format=\"PDF\", append=True) onto an attacker-controlled existing PDF.",
-      "bucket": "N",
-      "finding": "Reached only through Pillow's PDF append path, which Image.open never runs.",
+      "bucket": "C",
+      "finding": "The existing PDF is the input, so the check belongs in front of it: the format gate and pdfinfo's time limit apply. But the trigger is a value nested thousands of levels deep in the Root object's own dictionary, in the object graph, which a bounded check does not parse and pdfinfo's summary does not show. Out of a pre-decode check's reach.",
       "refusal": null,
       "verified_by": [],
       "protect": {
         "general": "Upgrade to Pillow 13.0.0. Do not append to PDFs you did not make.",
-        "specific": "Not a pre-decode matter."
+        "specific": "Run the check on a PDF before appending to it, for what it does see; append only to PDFs the program wrote itself; upgrade to a Pillow with the fix."
       },
       "sources": [
         "https://github.com/advisories/GHSA-254f-3936-288h"
@@ -433,6 +978,105 @@
       "sources": [
         "https://github.com/advisories/GHSA-22hg-r758-rrw9"
       ]
+    },
+    {
+      "key": "CVE-2026-112899",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Loading an EPS at a scale lets Ghostscript render past the bomb limit",
+      "summary": "Pillow: EPS load(scale) lets Ghostscript render past the decompression bomb limit",
+      "published": "2026-10-20",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "open",
+      "trigger": "Image.open on an EPS file, then load(scale=n) with n above 1.",
+      "bucket": "A",
+      "finding": "A PostScript file is refused by name before Pillow sees it; nothing from outside should reach the EPS reader or Ghostscript.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_renamed_postscript_file"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Refuse PostScript by name, as sillybos does by default."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-vx6w-vv9f-6gvg"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-112897",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A TIFF with short JPEG strips returns uninitialised memory as pixels",
+      "summary": "Pillow: TiffDecode returns uninitialized memory as pixels for short JPEG strips",
+      "published": "2026-10-20",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "open",
+      "trigger": "Opening and loading a small crafted JPEG-compressed TIFF whose strips hold less data than a strip needs.",
+      "bucket": "A",
+      "finding": "The carrier is a JPEG-compressed TIFF whose strip byte counts are short, and the shortfall only shows when a strip is decoded, which no header check does. But the compression is in the header, and a policy without jpeg in tiff_compressions refuses the file before libtiff sees it. The default allows JPEG in a TIFF, since scanners write it, so the setting is what closes this, at the cost of refusing real JPEG-in-TIFF scans.",
+      "refusal": {
+        "check": "tiff_compressions",
+        "default": false,
+        "setting": "Policy(tiff_compressions=frozenset({\"none\", \"ccitt\", \"lzw\", \"deflate\", \"packbits\"}))"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_jpeg_compressed_tiff_under_a_policy_without_jpeg"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Where the source never writes JPEG-in-TIFF, take jpeg out of tiff_compressions; otherwise upgrade Pillow and render in a boxed process."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-q45j-58j2-45rg"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-bucketed on 2026-11-03: the carrier is refused by a setting."
+    },
+    {
+      "key": "CVE-2026-112895",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "PdfParser recurses without bound on a cyclic page tree or trailer chain",
+      "summary": "Pillow: Unbounded recursion parsing a PDF page tree or trailer chain (incomplete fix for CVE-2026-42310)",
+      "published": "2026-10-20",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Appending to an existing PDF with Image.save(format=\"PDF\", append=True); Image.open never reads a PDF.",
+      "bucket": "C",
+      "finding": "The existing PDF is the input, so the check belongs in front of it: the format gate and pdfinfo's time limit apply. But the trigger is a /Kids cycle in the page tree, or a long chain of distinct /Prev offsets, in the object graph, which a bounded check does not parse and pdfinfo's summary does not show. Out of a pre-decode check's reach.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Run the check on a PDF before appending to it, for what it does see; append only to PDFs the program wrote itself; upgrade to a Pillow with the fix."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-p4wg-p73j-c528"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-read on 2026-11-03 against the question of what rides from an opened file into a save: the file is the input."
     },
     {
       "triaged": "2026-11-01",
@@ -509,6 +1153,41 @@
       ]
     },
     {
+      "key": "CVE-2026-112400",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A 60-byte GIF makes Pillow allocate gigabytes after a bomb error is caught",
+      "summary": "Pillow: GIF seek keeps rejected size after DecompressionBombError, allowing DoS",
+      "published": "2026-10-20",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "open",
+      "trigger": "Seeking to a later frame of a crafted GIF after catching the DecompressionBombError its size raised.",
+      "bucket": "A",
+      "finding": "A GIF is not one of the four formats a scan can be and is refused by name before Pillow sees it.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_format_a_scan_never_is"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Open with formats limited to the readers you mean to use, as open_checked does; a file of any other format is refused before Pillow sees it."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-65qm-jvmh-6pqg"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
       "triaged": "2026-11-01",
       "checked": "2026-11-01",
       "notes": null,
@@ -547,6 +1226,1066 @@
       ]
     },
     {
+      "key": "CVE-2026-112405",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "An IPTC file with no recognisable header drives Image.merge into a null pointer",
+      "summary": "Pillow: NULL pointer dereference in Image.merge via an unvalidated band 0",
+      "published": "2026-10-19",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "open",
+      "trigger": "Image.open and load on a crafted IPTC file; the IPTC plugin has no magic-byte check, so any bytes can reach it.",
+      "bucket": "A",
+      "finding": "The flaw depends on Pillow trying the IPTC reader on a file with no header to recognise. sillybos names the format from the first bytes and refuses what it cannot name, and open_checked passes Pillow only the JPEG, PNG and TIFF readers, so the IPTC plugin is never tried.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_an_unknown_format"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Open with formats limited to the readers you mean to use, as open_checked does; a file of any other format is refused before Pillow sees it."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-cp9v-662q-vvx9",
+        "https://osv.dev/vulnerability/PYSEC-2026-4333"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-112402",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Image.transform frees twice when an oversized transform runs out of memory",
+      "summary": "Pillow: Double free in ImagingScaleAffine on calloc failure via Image.transform",
+      "published": "2026-10-19",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Image.transform with an output size too large to allocate.",
+      "bucket": "N",
+      "finding": "The trigger is the output size the program passes to Image.transform, and it has to be absurd: a one-row output hundreds of millions of pixels wide, so that the small per-column table is the allocation that fails while the image still fits, on a worker with an address-space limit. No file carries it. What the check bounds is any size a program derives from the file: with max_side at 30,000 the table is 120 KB and never fails, and a PDF page is bounded at render_dpi. Tetrak OCR never calls transform; its turns go through transpose, as does Pillow's EXIF handling, and its resizes are to sizes computed from the image. Pillow's rotate reaches transform only for angles that are not right angles, and the upstream report says rotate is not affected.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Derive transform sizes from the image's size, which the check bounds, and clip any size that comes from outside; upgrade to Pillow 12.3.0."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-7mwm-ghpf-9vrm",
+        "https://osv.dev/vulnerability/PYSEC-2026-4331"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-read on 2026-11-03: what the file contributes, and what the check bounds."
+    },
+    {
+      "key": "CVE-2026-112397",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A zero-width PPM image crashes Pillow's morphology code",
+      "summary": "Pillow: Out-of-bounds access in _imagingmorph on a zero-width image",
+      "published": "2026-10-19",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Image.open on a PPM or PGM file declaring a width of 0, then ImageMorph.MorphOp.apply on it.",
+      "bucket": "A",
+      "finding": "A PPM file is not one of the four formats a scan can be and is refused as an unknown format; a zero dimension is refused in the formats sillybos does read. The crash itself is in a morphology call opening a file never makes.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_an_unknown_format",
+        "tests/test_check.py::TestHostileFiles::test_an_image_with_a_zero_dimension"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Open with formats limited to the readers you mean to use, as open_checked does."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-58r4-6rv3-gfh8",
+        "https://osv.dev/vulnerability/PYSEC-2026-4329"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-112394",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Pillow's 2- and 4-bit palette unpackers read past the buffer",
+      "summary": "Pillow: P;2L and P;4L decoders may read 1 to 3 bytes past the passed buffer size",
+      "published": "2026-10-19",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "open",
+      "trigger": "Loading an image whose raw tile uses the P;2L or P;4L unpacker with a width that leaves the line size and the unpacker's stride disagreeing.",
+      "bucket": "A",
+      "finding": "Which unpacker a tile uses is decided inside Pillow from the format's own header, but the carrier is a palette image at 2 or 4 bits, and the header check sees the colour type and the depth: a scans-only policy (png_colour_types without palette, tiff_photometrics without palette) refuses it before Pillow sees it. The default allows palette images, so the setting is what closes this.",
+      "refusal": {
+        "check": "png_colour_types",
+        "default": false,
+        "setting": "Policy(png_colour_types=frozenset({\"greyscale\", \"rgb\", \"greyscale-alpha\", \"rgba\"})); tiff_photometrics without palette for a TIFF"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_palette_png_under_a_scans_only_policy"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "A scanner never writes a palette image: refuse palette PNGs and TIFFs by policy where the source is scans; upgrade Pillow."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-4558-3h8r-v8xp",
+        "https://osv.dev/vulnerability/PYSEC-2026-4327"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-bucketed on 2026-11-03: the carrier is refused by the same setting as CVE-2025-64505."
+    },
+    {
+      "key": "CVE-2026-112392",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A rank filter on a zero-size image dereferences a null pointer",
+      "summary": "Pillow: NULL dereference in ImagingExpand via rank filters on zero-size images",
+      "published": "2026-10-19",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Applying a median, minimum, maximum or rank filter to an image with zero width or height.",
+      "bucket": "A",
+      "finding": "The trigger is an image with a zero width or height, handed to a rank filter. A file whose header gives a zero dimension is refused under every policy before Pillow sees it, so from a file the image cannot come; only an image the program makes itself (Image.new with a zero side, or a crop to nothing) reaches the filter. The check claims the refusal for the file.",
+      "refusal": {
+        "check": "dimensions",
+        "default": true,
+        "setting": "none: a zero dimension is refused under every policy"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_an_image_with_a_zero_dimension"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Run the check on files from outside, which refuses a zero dimension; and never filter an image whose size the program has reduced to nothing."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-27h8-gf7j-v5hc",
+        "https://osv.dev/vulnerability/PYSEC-2026-4326"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-bucketed on 2026-11-03: the file that carries the trigger is refused."
+    },
+    {
+      "key": "CVE-2026-107705",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "A long password overflows the stack when poppler opens an AESV3 PDF",
+      "summary": "Poppler 0.42.0 through 26.10.0 contains a stack-based buffer overflow in Decrypt::revision6Hash() that allows attackers controlling the password to overwrite stack memory when opening AESV3/R6 encrypted PDFs.",
+      "published": "2026-10-08",
+      "severity": null,
+      "affected": "poppler 0.42.0 through 26.10.0",
+      "fixed": null,
+      "reached_by": "api",
+      "trigger": "Opening an encrypted (AESV3, revision 6) PDF with a password longer than 127 bytes supplied by the caller.",
+      "bucket": "A",
+      "finding": "The over-long input is the password the caller supplies, but the file has to be an encrypted PDF (AESV3, revision 6) for it to reach the flaw, and an encrypted PDF is refused by default before poppler is asked to open it; the check's own pdfinfo run supplies no password. A policy that allows encrypted PDFs and a program that passes passwords from outside is the only path.",
+      "refusal": {
+        "check": "allow_encrypted_pdf",
+        "default": true,
+        "setting": "allow_encrypted_pdf"
+      },
+      "verified_by": [
+        "tests/test_pdf.py::test_an_encrypted_pdf_is_refused_unless_allowed"
+      ],
+      "protect": {
+        "general": "Upgrade poppler to a version that has the fix; the upstream record names it.",
+        "specific": "Keep allow_encrypted_pdf off, as it is by default; where it must be on, bound the password's length before passing it; upgrade poppler."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-107705"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-bucketed on 2026-11-03: the file that carries the trigger is refused by default."
+    },
+    {
+      "key": "CVE-2026-95512",
+      "aliases": [],
+      "library": "FreeType",
+      "package": "freetype",
+      "ecosystem": "Debian",
+      "title": "A CID-keyed font makes FreeType allocate and decrypt without end",
+      "summary": "A flaw was found in FreeType, specifically within its CID font loader.",
+      "published": "2026-10-02",
+      "severity": 5.5,
+      "affected": "FreeType, as packaged; see the upstream record",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Rendering a PDF whose embedded CID-keyed font repeats subroutine data across many font dictionaries.",
+      "bucket": "C",
+      "finding": "Reached by rendering, through an embedded CID-keyed font; nothing is filtered. A time limit on the renderer bounds the cost. Embedded fonts are not unusual: every searchable PDF carries one for its text layer, Tetrak OCR's own output included (all thirty-eight PDFs in its checkouts), so a policy refusing fonts, which pdffonts could support, would refuse the very files the check exists to protect. A flaw in the font program is out of this library's reach; the boxed process is the defence.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade FreeType to a version that has the fix; the upstream record names it.",
+        "specific": "Render in a boxed process with a time limit."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-95512"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Moved from B2 to C on 2026-11-02, with the finding above."
+    },
+    {
+      "key": "CVE-2026-102621",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "A clipping path overflows an integer in poppler's Splash renderer",
+      "summary": "A vulnerability was identified in Freedesktop Poppler up to 26.08.0.",
+      "published": "2026-09-29",
+      "severity": null,
+      "affected": "poppler up to 26.08.0",
+      "fixed": "26.09.0",
+      "reached_by": "open",
+      "trigger": "Rendering a PDF whose clipping path makes SplashClip::clipToPath overflow.",
+      "bucket": "C",
+      "finding": "Page content that only the renderer evaluates; out of a pre-decode check's reach.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to poppler 26.09.0.",
+        "specific": "Render PDFs in a boxed process with memory and time limits (see Decoding in a box); nothing read before decoding can see this."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-102621"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-102620",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "Converting an embedded TrueType font overflows an integer in poppler",
+      "summary": "A vulnerability was determined in Freedesktop Poppler 26.06.0/26.07.0/26.08.0.",
+      "published": "2026-09-29",
+      "severity": null,
+      "affected": "poppler 26.06.0 through 26.08.0",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Rendering a PDF whose embedded TrueType font makes FoFiTrueType::cvtSfnts overflow.",
+      "bucket": "C",
+      "finding": "Reached by rendering, through an embedded TrueType font that poppler converts, as CVE-2026-93314; nothing is filtered. Embedded fonts are not unusual: every searchable PDF carries one for its text layer, Tetrak OCR's own output included (all thirty-eight PDFs in its checkouts), so a policy refusing fonts, which pdffonts could support, would refuse the very files the check exists to protect. A flaw in the font program, in poppler's own parser here is out of this library's reach; the boxed process is the defence.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade poppler to a version that has the fix; the upstream record names it.",
+        "specific": "Render in a boxed process."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-102620"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Moved from B2 to C on 2026-11-02, with the finding above."
+    },
+    {
+      "key": "CVE-2026-93653",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "A tiling pattern near the int32 boundary spins poppler's Splash renderer",
+      "summary": "A denial of service flaw was found in Poppler's Splash backend.",
+      "published": "2026-09-18",
+      "severity": 5.5,
+      "affected": "poppler, as packaged; see the upstream record",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Rendering a PDF whose tiling pattern geometry drives an enormous repeat count.",
+      "bucket": "C",
+      "finding": "Page content that only the renderer evaluates; nothing a header or pdfinfo shows. A time limit on the renderer turns it into one file's failure.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade poppler to a version that has the fix; the upstream record names it.",
+        "specific": "Render PDFs in a boxed process with memory and time limits (see Decoding in a box); nothing read before decoding can see this."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-93653"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-93314",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "An embedded TrueType font's segment count overflows an integer in poppler",
+      "summary": "A vulnerability was determined in Freedesktop Poppler 26.07.0.",
+      "published": "2026-09-18",
+      "severity": null,
+      "affected": "poppler 26.07.0",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Rendering a PDF whose embedded TrueType font declares a crafted segCnt in its cmap.",
+      "bucket": "C",
+      "finding": "Reached by rendering, through an embedded TrueType font that poppler converts; nothing is filtered. Embedded fonts are not unusual: every searchable PDF carries one for its text layer, Tetrak OCR's own output included (all thirty-eight PDFs in its checkouts), so a policy refusing fonts, which pdffonts could support, would refuse the very files the check exists to protect. A flaw in the font program, in poppler's own parser here is out of this library's reach; the boxed process is the defence.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade poppler to a version that has the fix; the upstream record names it.",
+        "specific": "Render in a boxed process."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-93314"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Moved from B2 to C on 2026-11-02, with the finding above."
+    },
+    {
+      "key": "CVE-2026-93313",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "A JBIG2 code table overflows an integer in poppler",
+      "summary": "A vulnerability was found in Freedesktop Poppler 26.07.0.",
+      "published": "2026-09-18",
+      "severity": null,
+      "affected": "poppler 26.07.0",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Rendering a PDF page whose JBIG2 stream carries a crafted code table segment.",
+      "bucket": "B2",
+      "finding": "Reached by rendering a page whose image is a JBIG2 stream. The image's filter is named in its stream dictionary, which cannot be hidden inside a compressed object stream, so a bounded search of the bytes finds /JBIG2Decode and the policy can refuse the codec by name (pdf_image_codecs). The default allows it: scanners and the archives that derive PDFs from scans write JBIG2 (five of the seven PDFs in Tetrak OCR's corpus). pdfimages -list would report the codec too, but it opens a JPX stream with OpenJPEG just to describe it, so the library does not run it.",
+      "refusal": {
+        "check": "pdf_image_codecs",
+        "default": false,
+        "setting": "Policy(pdf_image_codecs={\"jpeg\", \"jpx\", \"ccitt\"})"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestPdf::test_a_jbig2_pdf_under_a_policy_that_refuses_it"
+      ],
+      "protect": {
+        "general": "Upgrade poppler to a version that has the fix; the upstream record names it.",
+        "specific": "If nothing you handle is JBIG2-coded, say so in the policy: sillybos --pdf-image-codecs jpeg,jpx,ccitt. Otherwise render in a boxed process."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-93313"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. The policy field was named on 2026-11-02."
+    },
+    {
+      "key": "CVE-2026-93312",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "poppler's JBIG2Stream::rewind dereferences a null pointer",
+      "summary": "A flaw has been found in Freedesktop Poppler 26.07.0.",
+      "published": "2026-09-18",
+      "severity": null,
+      "affected": "poppler 26.07.0",
+      "fixed": "26.08.0",
+      "reached_by": "open",
+      "trigger": "Rendering a PDF page whose image is a crafted JBIG2 stream.",
+      "bucket": "B2",
+      "finding": "Reached by rendering a page whose image is a JBIG2 stream. The image's filter is named in its stream dictionary, which cannot be hidden inside a compressed object stream, so a bounded search of the bytes finds /JBIG2Decode and the policy can refuse the codec by name (pdf_image_codecs). The default allows it: scanners and the archives that derive PDFs from scans write JBIG2 (five of the seven PDFs in Tetrak OCR's corpus). pdfimages -list would report the codec too, but it opens a JPX stream with OpenJPEG just to describe it, so the library does not run it.",
+      "refusal": {
+        "check": "pdf_image_codecs",
+        "default": false,
+        "setting": "Policy(pdf_image_codecs={\"jpeg\", \"jpx\", \"ccitt\"})"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestPdf::test_a_jbig2_pdf_under_a_policy_that_refuses_it"
+      ],
+      "protect": {
+        "general": "Upgrade to poppler 26.08.0.",
+        "specific": "If nothing you handle is JBIG2-coded, say so in the policy: sillybos --pdf-image-codecs jpeg,jpx,ccitt. Otherwise render in a boxed process."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-93312"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. The policy field was named on 2026-11-02."
+    },
+    {
+      "key": "CVE-2026-93311",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "A sampled function's BitsPerSample overflows an integer in poppler",
+      "summary": "A vulnerability was detected in Freedesktop Poppler 26.07.0.",
+      "published": "2026-09-18",
+      "severity": null,
+      "affected": "poppler 26.07.0",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Rendering a PDF whose Type 0 (sampled) function declares a crafted BitsPerSample.",
+      "bucket": "C",
+      "finding": "A function dictionary is page content that only the renderer evaluates; no header or pdfinfo report shows it. Out of a pre-decode check's reach.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade poppler to a version that has the fix; the upstream record names it.",
+        "specific": "Render PDFs in a boxed process with memory and time limits (see Decoding in a box); nothing read before decoding can see this."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-93311"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-18495",
+      "aliases": [],
+      "library": "libtiff",
+      "package": "tiff",
+      "ecosystem": "Debian",
+      "title": "tiff2pdf truncates a BigTIFF strip byte count and overflows",
+      "summary": "A flaw was found in libtiff.",
+      "published": "2026-09-11",
+      "severity": 6.1,
+      "affected": "libtiff, as packaged; see the upstream record",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the tiff2pdf command-line tool on a crafted BigTIFF.",
+      "bucket": "N",
+      "finding": "In the tiff2pdf utility, and through a BigTIFF, which sillybos refuses by name in any case; no library call opening a file runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libtiff to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-18495"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-85091",
+      "aliases": [],
+      "library": "zlib",
+      "package": "zlib",
+      "ecosystem": "Debian",
+      "title": "zlib's gz_vacate overflows a heap buffer after a stalled gzwrite",
+      "summary": "zlib versions 1.3.1.2 through 1.3.2 contain a heap buffer overflow vulnerability in the gz_vacate() function when processing non-blocking gzwrite() operations with stale external buffer pointers.",
+      "published": "2026-09-03",
+      "severity": null,
+      "affected": "zlib 1.3.1.2 through 1.3.2",
+      "fixed": null,
+      "reached_by": "save",
+      "trigger": "Calling gzprintf or gzvprintf after a non-blocking gzwrite stalled.",
+      "bucket": "N",
+      "finding": "In zlib's gz file layer (gzwrite, gzprintf), on a non-blocking descriptor whose write stalled. No image file is the input, and nothing in the image stack calls that layer: libpng and libtiff use the raw deflate stream, Pillow's wheel references none of the gz write functions, and Python's zlib module has no gz API. Only a program that writes .gz files through zlib's own file functions, on a non-blocking descriptor, is in the path.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade zlib to a version that has the fix; the upstream record names it.",
+        "specific": "Not reached through an image: only a program's own gzwrite on a non-blocking descriptor; upgrade zlib."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-85091"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Checked on 2026-11-03 that nothing in the image stack calls zlib's gz write layer."
+    },
+    {
+      "key": "CVE-2026-52491",
+      "aliases": [],
+      "library": "libtiff",
+      "package": "tiff",
+      "ecosystem": "Debian",
+      "title": "The thumbnail tool's main allows arbitrary code execution",
+      "summary": "An issue in libtiff 85f2ac8e0b01cb7db2bbecf4a3b891bdbef67938 allows an attacker to execute arbitrary code via the libtiff/tools/thumbnail.c: main() component",
+      "published": "2026-08-25",
+      "severity": 8.4,
+      "affected": "libtiff, as packaged; see the upstream record",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running LibTIFF's thumbnail command-line tool with crafted input.",
+      "bucket": "N",
+      "finding": "In tools/thumbnail.c, a command-line tool; no library call opening a file runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libtiff to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-52491"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-52492",
+      "aliases": [],
+      "library": "libtiff",
+      "package": "tiff",
+      "ecosystem": "Debian",
+      "title": "rgb2ycbcr undersizes a strip buffer and overflows it",
+      "summary": "An integer overflow in the libtiff rgb2ycbcr utility's cvtRaster() function when computing strip buffer sizes can result in an undersized heap allocation and subsequent heap-based buffer overflow during YCbCr conversion of a crafted TIFF...",
+      "published": "2026-08-24",
+      "severity": 7.8,
+      "affected": "libtiff, as packaged; see the upstream record",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the rgb2ycbcr command-line tool on a crafted TIFF.",
+      "bucket": "N",
+      "finding": "In the rgb2ycbcr utility; no library call opening a file runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libtiff to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-52492"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-52490",
+      "aliases": [],
+      "library": "libtiff",
+      "package": "tiff",
+      "ecosystem": "Debian",
+      "title": "tiffcrop's option parsing allows arbitrary code execution",
+      "summary": "An issue in libtiff 85f2ac8e0b01cb7db2bbecf4a3b891bdbef67938 allows an attacker to execute arbitrary code via the process_command_opts() function in tools/tiffcrop.c",
+      "published": "2026-08-24",
+      "severity": 9.8,
+      "affected": "libtiff, as packaged; see the upstream record",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the tiffcrop command-line tool with crafted options.",
+      "bucket": "N",
+      "finding": "In tools/tiffcrop.c, a command-line tool; no library call opening a file runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libtiff to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-52490"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-59204",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A tiled JPEG 2000 grows Pillow's scratch buffer to a whole image",
+      "summary": "Pillow JPEG2000 tiled decode retains a growing scratch buffer and can be used for denial of service",
+      "published": "2026-07-20",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "open",
+      "trigger": "Image.open and load on a crafted tiled JPEG 2000 file with many small tiles.",
+      "bucket": "A",
+      "finding": "A JPEG 2000 file is refused by name before Pillow sees it.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_format_a_scan_never_is"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Refuse JPEG 2000 by name, as sillybos does by default."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-vjc4-5qp5-m44j",
+        "https://osv.dev/vulnerability/PYSEC-2026-3496"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-59200",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "PdfParser inflates a PDF stream without an upper bound",
+      "summary": "Pillow: Decompression Bomb DoS via PdfParser.PdfStream.decode()",
+      "published": "2026-07-20",
+      "severity": 7.5,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Opening an existing PDF with Pillow's PdfParser, as Image.save(append=True) does; Image.open never reads a PDF.",
+      "bucket": "C",
+      "finding": "The existing PDF is the input, so the check belongs in front of it: the format gate and pdfinfo's time limit apply. But the trigger is a FlateDecode stream whose expansion is unbounded, which pdfinfo never inflates, in the object graph, which a bounded check does not parse and pdfinfo's summary does not show. Out of a pre-decode check's reach.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Run the check on a PDF before appending to it, for what it does see; append only to PDFs the program wrote itself; upgrade to a Pillow with the fix."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-jjj6-mw9f-p565",
+        "https://osv.dev/vulnerability/PYSEC-2026-3495"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-read on 2026-11-03 against the question of what rides from an opened file into a save: the file is the input."
+    },
+    {
+      "key": "CVE-2026-59198",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Pillow's TGA run-length encoder copies heap bytes into the file it writes",
+      "summary": "Pillow TGA RLE encoder can serialize up to ~57 KB of adjacent heap data into generated images",
+      "published": "2026-07-20",
+      "severity": 6.5,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "save",
+      "trigger": "Image.save(format=\"TGA\", compression=\"tga_rle\") of a mode-1 image.",
+      "bucket": "N",
+      "finding": "What rides from the opened file is its mode and its width, and nothing crafted: any bilevel image of any width over-reads once the program saves it as TGA with run-length compression, a choice no scan pipeline makes. A bilevel scan is exactly a mode-1 image, so a policy refusing them would refuse every scan; max_side bounds the over-read's window, which is seven eighths of the width. The file is not the input in any sense a check could act on.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Do not save images from outside as run-length TGA; upgrade to Pillow 12.3.0. The check's max_side bounds how far past the row buffer the encoder reads."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-fj7v-r99m-22gq",
+        "https://osv.dev/vulnerability/PYSEC-2026-3494"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-read on 2026-11-03 against what rides from an opened file into a save."
+    },
+    {
+      "key": "CVE-2026-54058",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A McIdas AREA file's row stride over-reads Pillow's memory map",
+      "summary": "Pillow: Out-of-bounds read via attacker-controlled row stride on Pillow's mmap path (McIdas AREA files)",
+      "published": "2026-07-20",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "open",
+      "trigger": "Image.open on a McIdas AREA file, from a filename, whose tile declares a stride shorter than a row.",
+      "bucket": "A",
+      "finding": "A McIdas file is not one of the four formats a scan can be; sillybos does not know the format and refuses it as unknown before Pillow sees it. The same mmap path serves uncompressed TIFF, but the record names only McIdas as reaching the flaw.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_an_unknown_format"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Open with formats limited to the readers you mean to use, as open_checked does; an unknown format is refused."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-62p4-gmf7-7g93",
+        "https://osv.dev/vulnerability/PYSEC-2026-3493"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-59205",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "An output image of the wrong mode corrupts the heap in ImageCms transforms",
+      "summary": "Pillow: Controlled heap out-of-bounds write in Pillow `ImageCmsTransform.apply()` via output mode mismatch",
+      "published": "2026-07-14",
+      "severity": 7.5,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "ImageCmsTransform.apply with an output image whose mode does not match the transform's.",
+      "bucket": "N",
+      "finding": "The mismatch is between two objects the program builds: a transform declared for one mode and an output image it allocates in another, passed together to apply. Nothing from a file sets either. The two routes a file's image takes into colour management both close it: profileToProfile builds the transform from the image's own mode and lets apply allocate the output in the transform's mode, and applyTransform refuses an image whose mode is not the transform's input mode before anything runs. An embedded profile from the file only builds the transform; it does not choose a mode. Checked against Pillow 13.0.0, whose C layer now refuses the mismatch outright. Neither Tetrak OCR nor sillybos imports ImageCms.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Let profileToProfile or applyTransform allocate the output image; never pass an output image of your own to apply; upgrade to Pillow 12.3.0."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-9hw9-ch79-4vh6",
+        "https://osv.dev/vulnerability/PYSEC-2026-3453"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Validated on 2026-11-03 that a file's contents cannot cause the mismatch."
+    },
+    {
+      "key": "CVE-2026-59203",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A negative byte count in an EPS file loops Image.open for ever",
+      "summary": "Pillow EpsImagePlugin negative %%BeginBinary byte count causes infinite loop denial of service",
+      "published": "2026-07-14",
+      "severity": 5.3,
+      "affected": ">= 12.0.0, <= 12.2.0",
+      "fixed": "12.3.0",
+      "reached_by": "open",
+      "trigger": "Image.open on an EPS file whose %%BeginBinary directive carries a negative byte count; the loop is in Image.open itself, before any load.",
+      "bucket": "A",
+      "finding": "A PostScript file is refused by name before Pillow sees it: the first bytes say what it is, whatever its name. This is the EPS reader October's command-execution flaw was also in.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_renamed_postscript_file"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Refuse PostScript by name, as sillybos does by default, and never hand Pillow an EPS from outside."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-pg7v-jwj7-p798",
+        "https://osv.dev/vulnerability/PYSEC-2026-3452"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-59199",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Coordinates near the 32-bit limit write out of bounds in Pillow's paste and crop",
+      "summary": "Pillow: Heap out-of-bounds write `Image.paste()` / `Image.crop()` via signed coordinate overflow",
+      "published": "2026-07-14",
+      "severity": 7.5,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Image.paste or Image.crop with coordinates the program supplies near the signed 32-bit limits.",
+      "bucket": "N",
+      "finding": "The trigger is the box the program passes to paste, crop or alpha_composite, with a coordinate within a few pixels of the signed 32-bit limit; the opened file only scales the write, by its width. No header shows what a program will later pass. What the check does is bound the geometry: with max_side at 30,000 by default, a box a program derives from the image's own size, as Tetrak OCR's tile crops are, stays five orders of magnitude below the wrap point. A box taken from anywhere else, a request or a file's metadata, is out of its reach, and the program must clip it to the image itself.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Derive boxes from the image's size, which the check bounds, and clip any box that comes from outside to the image before passing it to Pillow; upgrade to Pillow 12.3.0."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-6r8x-57c9-28j4",
+        "https://osv.dev/vulnerability/PYSEC-2026-3451"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-read on 2026-11-03: what the file contributes, and what the check bounds."
+    },
+    {
+      "key": "CVE-2026-59197",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A huge rank-filter size writes out of bounds in ImagingExpand",
+      "summary": "Pillow: Heap out-of-bounds write in `ImageFilter.RankFilter` via integer overflow in `ImagingExpand`",
+      "published": "2026-07-14",
+      "severity": 8.2,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "image.filter(ImageFilter.MedianFilter(n)) with an enormous odd n.",
+      "bucket": "N",
+      "finding": "In the filter API, called with a size the program chooses; opening a file never runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Not a pre-decode matter: the flaw is in a call that opening a file never makes."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-xj96-63gp-2gmr",
+        "https://osv.dev/vulnerability/PYSEC-2026-3454"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-50811",
+      "aliases": [],
+      "library": "FreeType",
+      "package": "freetype",
+      "ecosystem": "Debian",
+      "title": "FreeType over-reads variation design coordinates",
+      "summary": "An out-of-bounds read vulnerability exists in FreeType 2.14.3 and versions before commit 5a280ecde6f324de0d226261036e736e0cb49a71 in src/truetype/ttgxvar.c, in the TT_Get_Var_Design implementation used by FT_Get_Var_Design_Coordinates",
+      "published": "2026-07-07",
+      "severity": 6.5,
+      "affected": "FreeType 2.14.3 and earlier commits",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Rendering a PDF whose embedded variable font makes FreeType call TT_Get_Var_Design with crafted data.",
+      "bucket": "C",
+      "finding": "Reached by rendering, through an embedded variable font; nothing is filtered. Embedded fonts are not unusual: every searchable PDF carries one for its text layer, Tetrak OCR's own output included (all thirty-eight PDFs in its checkouts), so a policy refusing fonts, which pdffonts could support, would refuse the very files the check exists to protect. A flaw in the font program is out of this library's reach; the boxed process is the defence.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade FreeType to a version that has the fix; the upstream record names it.",
+        "specific": "Render in a boxed process."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-50811"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Moved from B2 to C on 2026-11-02, with the finding above."
+    },
+    {
+      "key": "CVE-2026-55798",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Pillow's Windows viewer builds a shell command from an unescaped path",
+      "summary": "Pillow: WindowsViewer.get_command() OS command injection via unescaped shell path",
+      "published": "2026-07-06",
+      "severity": 4.5,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Image.show() on Windows with a file path containing shell metacharacters.",
+      "bucket": "N",
+      "finding": "In ImageShow, reached only when a program calls Image.show to open a desktop viewer on the machine running Python; opening a file never runs it, and a page that shows a scan in a browser serves its bytes without it. The viewer builds its shell command from the temporary file it writes, not from the scan's name, so the input is the path quoting, not the file's contents.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Not a pre-decode matter: the flaw is in a call that opening a file never makes."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-4x4j-2g7c-83w6",
+        "https://osv.dev/vulnerability/PYSEC-2026-2257"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-55380",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "GdImageFile.open accepts any dimensions without the bomb check",
+      "summary": "Pillow `GdImageFile._open()`: image dimensions accepted without `_decompression_bomb_check()`",
+      "published": "2026-07-06",
+      "severity": 7.5,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Calling PIL.GdImageFile.open directly on a GD 2.x file.",
+      "bucket": "A",
+      "finding": "A GD file is not one of the four formats a scan can be; the check does not know it and refuses it as unknown. It is reached only by calling GdImageFile.open by name, which Image.open never does.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_an_unknown_format"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Refuse what is not an image a scan can be, as sillybos does by default; GdImageFile.open is a direct call that bypasses Image.open's registry."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-phj9-mv4w-65pm",
+        "https://osv.dev/vulnerability/PYSEC-2026-2256"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-read on 2026-11-03 against the question of what rides from an opened file into a save: the file is the input."
+    },
+    {
+      "key": "CVE-2026-55379",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A BDF font's bounding box bypasses Pillow's decompression-bomb check",
+      "summary": "Pillow `BdfFontFile`: `Image.new()` called without `_decompression_bomb_check()` — bomb protection bypass via font loading",
+      "published": "2026-07-06",
+      "severity": 7.5,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Loading a BDF font file through BdfFontFile.",
+      "bucket": "A",
+      "finding": "The carrier is a BDF font, read by BdfFontFile, a converter a program imports and calls by name; no image plugin or ImageFont reaches it. Handed to the check, its first bytes are not one of the four formats a scan can be and it is refused as unknown, so the record claims that refusal, though a font is a program's asset that no image check is usually in front of. Neither Tetrak OCR nor sillybos imports it.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_font_or_archive_is_refused_as_unknown"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Load only fonts you ship, never a font from outside; and if a file from outside could be one, run the check on it: a font is refused as unknown."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-45hq-cxwh-f6vc",
+        "https://osv.dev/vulnerability/PYSEC-2026-2255"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-bucketed on 2026-11-03: the file that carries the trigger is one the check refuses, so the record claims it."
+    },
+    {
+      "key": "CVE-2026-54060",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "FontFile.compile assembles a bitmap without the bomb check",
+      "summary": "Pillow: `FontFile.compile()`: `Image.new()` called without `_decompression_bomb_check()`",
+      "published": "2026-07-06",
+      "severity": 7.5,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Compiling a loaded BDF or PCF font into an ImageFont.",
+      "bucket": "A",
+      "finding": "The carrier is a BDF or PCF font, compiled by FontFile.compile after one of the converters a program calls by name has read it. Handed to the check, its first bytes are not one of the four formats a scan can be and it is refused as unknown, so the record claims that refusal, though a font is a program's asset that no image check is usually in front of. Neither Tetrak OCR nor sillybos imports them.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_font_or_archive_is_refused_as_unknown"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Load only fonts you ship, never a font from outside; and if a file from outside could be one, run the check on it: a font is refused as unknown."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-5x94-69rx-g8h2",
+        "https://osv.dev/vulnerability/PYSEC-2026-2254"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-bucketed on 2026-11-03: the file that carries the trigger is one the check refuses, so the record claims it."
+    },
+    {
+      "key": "CVE-2026-54059",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A PCF font's glyph sizes bypass Pillow's decompression-bomb check",
+      "summary": "Pillow `PcfFontFile._load_bitmaps()`: `Image.frombytes()` called without `_decompression_bomb_check()` — bomb protection bypass via PCF font loading",
+      "published": "2026-07-06",
+      "severity": 7.5,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Loading a PCF font file through PcfFontFile, which Image.open never does.",
+      "bucket": "A",
+      "finding": "The carrier is a PCF font, read by PcfFontFile, a converter a program imports and calls by name; no image plugin or ImageFont reaches it. Handed to the check, its first bytes are not one of the four formats a scan can be and it is refused as unknown, so the record claims that refusal, though a font is a program's asset that no image check is usually in front of. Neither Tetrak OCR nor sillybos imports it.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_font_or_archive_is_refused_as_unknown"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Load only fonts you ship, never a font from outside; and if a file from outside could be one, run the check on it: a font is refused as unknown."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-8v84-f9pq-wr9x",
+        "https://osv.dev/vulnerability/PYSEC-2026-2253"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-bucketed on 2026-11-03: the file that carries the trigger is one the check refuses, so the record claims it."
+    },
+    {
       "triaged": "2026-11-01",
       "checked": "2026-11-01",
       "notes": null,
@@ -582,6 +2321,290 @@
       "sources": [
         "https://github.com/advisories/GHSA-cg4c-j43f-qcg7"
       ]
+    },
+    {
+      "key": "CVE-2026-40930",
+      "aliases": [],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "libpng's push-mode APNG parser misreads a discarded chunk as a header",
+      "summary": "LIBPNG is a reference library for use in applications that process PNG (Portable Network Graphics) raster image files.",
+      "published": "2026-06-04",
+      "severity": 5.4,
+      "affected": "libpng 1.8.0",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Feeding a crafted APNG to libpng's progressive (push) reader, which discards an inter-frame ancillary chunk without consuming it.",
+      "bucket": "C",
+      "finding": "The flaw is in how the progressive reader resynchronises after a chunk, not in any field the chunk declares; sillybos reads every chunk's length and type and refuses a malformed chain, but a well-formed chain with this content passes. Only in the push-mode API, which Pillow does not use. Out of a header check's reach.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libpng to a version that has the fix; the upstream record names it.",
+        "specific": "Decode in a boxed process; prefer the pull-mode reader, which Pillow uses."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-40930"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-10118",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "A tiling pattern overflows an allocation in poppler's Splash renderer",
+      "summary": "A flaw was found in Poppler's Splash backend.",
+      "published": "2026-06-01",
+      "severity": 7.8,
+      "affected": "poppler, as packaged; see the upstream record",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Rendering a PDF page whose tiling pattern makes tilingPatternFill compute an undersized allocation.",
+      "bucket": "C",
+      "finding": "In the renderer's pattern filling; the pattern is page content that no header or pdfinfo report shows. Out of a pre-decode check's reach.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade poppler to a version that has the fix; the upstream record names it.",
+        "specific": "Render PDFs in a boxed process with memory and time limits (see Decoding in a box); nothing read before decoding can see this."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-10118"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-42311",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "PSD tile extents overflow Pillow's bounds check and write out of bounds",
+      "summary": "Pillow has an OOB Write with Invalid PSD Tile Extents (Integer Overflow)",
+      "published": "2026-05-04",
+      "severity": null,
+      "affected": ">= 10.3.0, < 12.2.0",
+      "fixed": "12.2.0",
+      "reached_by": "open",
+      "trigger": "Image.open on a Photoshop (PSD) file with tile dimensions chosen to wrap the extent sum.",
+      "bucket": "A",
+      "finding": "A Photoshop file is refused by name before Pillow sees it, as for CVE-2026-25990, whose fix this bypassed.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_format_a_scan_never_is"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.2.0.",
+        "specific": "Open with formats limited to the readers you mean to use, as open_checked does."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-pwv6-vv43-88gr",
+        "https://osv.dev/vulnerability/PYSEC-2026-2252"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-42310",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Pillow's PdfParser loops for ever on a cyclic trailer",
+      "summary": "Pillow has a PDF Parsing Trailer Infinite Loop (DoS)",
+      "published": "2026-05-04",
+      "severity": 5.5,
+      "affected": "< 12.2.0",
+      "fixed": "12.2.0",
+      "reached_by": "api",
+      "trigger": "Opening an existing PDF with Pillow's PdfParser, which Image.save(append=True) does; Image.open does not read PDFs.",
+      "bucket": "C",
+      "finding": "The existing PDF is the input, so the check belongs in front of it: the format gate and pdfinfo's time limit apply. But the trigger is a trailer whose /Prev pointer forms a cycle, in the object graph, which a bounded check does not parse and pdfinfo's summary does not show. Out of a pre-decode check's reach.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 12.2.0.",
+        "specific": "Run the check on a PDF before appending to it, for what it does see; append only to PDFs the program wrote itself; upgrade to a Pillow with the fix."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-r73j-pqj5-w3x7",
+        "https://osv.dev/vulnerability/PYSEC-2026-2874"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-read on 2026-11-03 against the question of what rides from an opened file into a save: the file is the input."
+    },
+    {
+      "key": "CVE-2026-42309",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Nested coordinate lists overrun a heap buffer in Pillow's drawing",
+      "summary": "Pillow has a heap buffer overflow with nested list coordinates",
+      "published": "2026-05-04",
+      "severity": 5.5,
+      "affected": ">= 11.2.1, < 12.2.0",
+      "fixed": "12.2.0",
+      "reached_by": "api",
+      "trigger": "Passing nested lists as coordinates to ImageDraw or ImagePath.",
+      "bucket": "N",
+      "finding": "In the drawing APIs, which Image.open never runs.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 12.2.0.",
+        "specific": "Not a pre-decode matter: the flaw is in a call that opening a file never makes."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-5xmw-vc9v-4wf2",
+        "https://osv.dev/vulnerability/PYSEC-2026-2251"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-42308",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A font with huge glyph advances overflows Pillow's position counter",
+      "summary": "Pillow has an integer overflow when processing fonts",
+      "published": "2026-05-04",
+      "severity": 5.5,
+      "affected": "< 12.2.0",
+      "fixed": "12.2.0",
+      "reached_by": "api",
+      "trigger": "Drawing text with a crafted font through ImageFont.",
+      "bucket": "A",
+      "finding": "The carrier is a font whose glyphs advance by an enormous amount, loaded through ImageFont and drawn with. Handed to the check, its first bytes are not one of the four formats a scan can be and it is refused as unknown, so the record claims that refusal, though a font is a program's asset that no image check is usually in front of. Neither Tetrak OCR nor sillybos imports ImageFont.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_font_or_archive_is_refused_as_unknown"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.2.0.",
+        "specific": "Load only fonts you ship, never a font from outside; and if a file from outside could be one, run the check on it: a font is refused as unknown."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-wjx4-4jcj-g98j",
+        "https://osv.dev/vulnerability/PYSEC-2026-165"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-bucketed on 2026-11-03: the file that carries the trigger is one the check refuses, so the record claims it."
+    },
+    {
+      "key": "CVE-2026-6192",
+      "aliases": [],
+      "library": "OpenJPEG",
+      "package": "openjpeg2",
+      "ecosystem": "Debian",
+      "title": "OpenJPEG's encoder overflows an integer in opj_pi_initialise_encode",
+      "summary": "A vulnerability was identified in uclouvain openjpeg up to 2.5.4.",
+      "published": "2026-04-13",
+      "severity": null,
+      "affected": "OpenJPEG up to 2.5.4",
+      "fixed": null,
+      "reached_by": "save",
+      "trigger": "Encoding a JPEG 2000 image with crafted parameters.",
+      "bucket": "N",
+      "finding": "In the encoder's packet iterator; decoding never runs it, and a JPEG 2000 file is refused by name in any case.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade OpenJPEG to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: the flaw is on a save path."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-6192"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-40192",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A FITS file's gzip stream expands without limit in Pillow",
+      "summary": "FITS GZIP decompression bomb in Pillow",
+      "published": "2026-04-13",
+      "severity": 7.5,
+      "affected": ">= 10.3.0, < 12.2.0",
+      "fixed": "12.2.0",
+      "reached_by": "open",
+      "trigger": "Image.open on a FITS file whose GZIP-compressed data expands far beyond the image it declares.",
+      "bucket": "A",
+      "finding": "A FITS file is not one of the four formats a scan can be; sillybos does not know the format and refuses it as unknown before Pillow sees it. The advisory's own workaround is Image.open's formats parameter, which open_checked sets from the policy.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_an_unknown_format"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.2.0.",
+        "specific": "Open with formats limited to the readers you mean to use, as open_checked does."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-whj4-6x5x-4v2j",
+        "https://osv.dev/vulnerability/PYSEC-2026-2250"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-34757",
+      "aliases": [],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "Passing a libpng getter's pointer back to its setter reads freed memory",
+      "summary": "LIBPNG is a reference library for use in applications that read, create, and manipulate PNG (Portable Network Graphics) raster image files.",
+      "published": "2026-04-09",
+      "severity": 4.4,
+      "affected": "libpng 1.0.9 to before 1.6.57",
+      "fixed": "1.6.57",
+      "reached_by": "api",
+      "trigger": "Calling png_set_PLTE, png_set_tRNS or png_set_hIST with the pointer the matching getter returned.",
+      "bucket": "N",
+      "finding": "A misuse of the setter API by the caller, not a crafted file; Pillow does not do it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to libpng 1.6.57.",
+        "specific": "Not a pre-decode matter: the flaw is in a call that opening a file never makes."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-34757"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "triaged": "2026-11-01",
@@ -622,6 +2645,35 @@
       ]
     },
     {
+      "key": "CVE-2026-33416",
+      "aliases": [],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "png_set_tRNS and png_set_PLTE share one buffer between two structs",
+      "summary": "LIBPNG is a reference library for use in applications that read, create, and manipulate PNG (Portable Network Graphics) raster image files.",
+      "published": "2026-03-26",
+      "severity": 7.5,
+      "affected": "libpng 1.2.1 through 1.6.55",
+      "fixed": "1.6.56",
+      "reached_by": "api",
+      "trigger": "A libpng caller that sets the palette or transparency on a png_info it then frees separately from the png_struct.",
+      "bucket": "N",
+      "finding": "A lifetime flaw between the setter APIs and the caller's own frees, not something a crafted file causes on its own; reading a PNG through Pillow does not call these setters.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to libpng 1.6.56.",
+        "specific": "Not a pre-decode matter: the flaw is in a call that opening a file never makes."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-33416"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
       "triaged": "2026-11-01",
       "checked": "2026-11-01",
       "notes": null,
@@ -657,6 +2709,332 @@
       "sources": [
         "https://github.com/advisories/GHSA-cm99-m826-vgg7"
       ]
+    },
+    {
+      "key": "CVE-2026-3713",
+      "aliases": [],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "The pnm2png contributed tool overruns a heap buffer",
+      "summary": "A flaw has been found in pnggroup libpng up to 1.6.55.",
+      "published": "2026-03-08",
+      "severity": null,
+      "affected": "libpng up to 1.6.55 (contrib/pngminus only)",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running contrib/pngminus/pnm2png with a crafted width or height.",
+      "bucket": "N",
+      "finding": "A contributed tool under contrib/, not the library; no library call runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libpng to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-3713"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-23865",
+      "aliases": [],
+      "library": "FreeType",
+      "package": "freetype",
+      "ecosystem": "Debian",
+      "title": "An OpenType variable font's variation tables over-read in FreeType",
+      "summary": "An integer overflow in the tt_var_load_item_variation_store function of the Freetype library in versions 2.13.2 and 2.13.3 may allow for an out of bounds read operation when parsing HVAR/VVAR/MVAR tables in OpenType variable fonts.",
+      "published": "2026-03-02",
+      "severity": 5.3,
+      "affected": "FreeType 2.13.2 and 2.13.3",
+      "fixed": "2.14.2",
+      "reached_by": "open",
+      "trigger": "Rendering a PDF whose embedded OpenType variable font carries crafted HVAR, VVAR or MVAR tables.",
+      "bucket": "C",
+      "finding": "Reached by rendering, through an embedded variable font, as CVE-2025-27363; nothing is filtered. Embedded fonts are not unusual: every searchable PDF carries one for its text layer, Tetrak OCR's own output included (all thirty-eight PDFs in its checkouts), so a policy refusing fonts, which pdffonts could support, would refuse the very files the check exists to protect. A flaw in the font program is out of this library's reach; the boxed process is the defence.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to FreeType 2.14.2.",
+        "specific": "Render in a boxed process; an image-only PDF carries no font."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-23865"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Moved from B2 to C on 2026-11-02, with the finding above."
+    },
+    {
+      "key": "CVE-2025-61145",
+      "aliases": [],
+      "library": "libtiff",
+      "package": "tiff",
+      "ecosystem": "Debian",
+      "title": "tiffcrop frees memory twice",
+      "summary": "libtiff up to v4.7.1 was discovered to contain a double free via the component tools/tiffcrop.c.",
+      "published": "2026-02-23",
+      "severity": 5.0,
+      "affected": "libtiff up to 4.7.1",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the tiffcrop command-line tool on a crafted TIFF.",
+      "bucket": "N",
+      "finding": "In tools/tiffcrop.c, a command-line tool; no library call opening a file runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libtiff to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-61145"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-61144",
+      "aliases": [],
+      "library": "libtiff",
+      "package": "tiff",
+      "ecosystem": "Debian",
+      "title": "tiffcrop overruns the stack in readSeparateStripsIntoBuffer",
+      "summary": "libtiff up to v4.7.1 was discovered to contain a stack overflow via the readSeparateStripsIntoBuffer function.",
+      "published": "2026-02-23",
+      "severity": 7.3,
+      "affected": "libtiff up to 4.7.1",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the tiffcrop command-line tool on a crafted TIFF.",
+      "bucket": "N",
+      "finding": "readSeparateStripsIntoBuffer is tiffcrop's, in tools/; no library call opening a file runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libtiff to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-61144"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-61143",
+      "aliases": [],
+      "library": "libtiff",
+      "package": "tiff",
+      "ecosystem": "Debian",
+      "title": "libtiff dereferences a null pointer while opening a file",
+      "summary": "libtiff up to v4.7.1 was discovered to contain a NULL pointer dereference via the component libtiff/tif_open.c.",
+      "published": "2026-02-23",
+      "severity": 5.5,
+      "affected": "libtiff up to 4.7.1",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Opening a crafted TIFF that reaches a null pointer in tif_open.c.",
+      "bucket": "C",
+      "finding": "In TIFFOpen's own setup, before any tag that a header check could judge; the upstream record names no field. Out of a pre-decode check's reach, and a crash on open costs one file in a boxed process.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libtiff to a version that has the fix; the upstream record names it.",
+        "specific": "Decode in a boxed process (see Decoding in a box)."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-61143"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-27171",
+      "aliases": [],
+      "library": "zlib",
+      "package": "zlib",
+      "ecosystem": "Debian",
+      "title": "zlib's crc32_combine can spin on a shift loop",
+      "summary": "zlib before 1.3.2 allows CPU consumption via crc32_combine64 and crc32_combine_gen64 because x2nmodp can do right shifts within a loop that has no termination condition.",
+      "published": "2026-02-18",
+      "severity": 5.5,
+      "affected": "zlib before 1.3.2",
+      "fixed": "1.3.2",
+      "reached_by": "api",
+      "trigger": "Calling crc32_combine64 or crc32_combine_gen64 with particular lengths.",
+      "bucket": "N",
+      "finding": "In the CRC-combining helpers, which inflating a PNG's or TIFF's data never calls; not reached by opening a file.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to zlib 1.3.2.",
+        "specific": "Not a pre-decode matter: the flaw is in a call that opening a file never makes."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-27171"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-25990",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A crafted PSD file writes out of bounds when Pillow loads it",
+      "summary": "Pillow affected by out-of-bounds write when loading PSD images",
+      "published": "2026-02-11",
+      "severity": null,
+      "affected": ">= 10.3.0, < 12.1.1",
+      "fixed": "12.1.1",
+      "reached_by": "open",
+      "trigger": "Image.open on a Photoshop (PSD) file with crafted layer data, then loading it.",
+      "bucket": "A",
+      "finding": "A Photoshop file is not one of the four formats a scan can be and is refused by name before Pillow sees it; the advisory's own workaround is Image.open's formats parameter, which open_checked sets from the policy.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_format_a_scan_never_is"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.1.1.",
+        "specific": "Open with formats limited to the readers you mean to use, as open_checked does; sillybos refuses a Photoshop file by name by default."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-cfh3-3jmp-rvhc",
+        "https://osv.dev/vulnerability/PYSEC-2026-2249"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-25646",
+      "aliases": [],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "png_set_quantize loops for ever on some palettes",
+      "summary": "LIBPNG is a reference library for use in applications that read, create, and manipulate PNG (Portable Network Graphics) raster image files.",
+      "published": "2026-02-10",
+      "severity": 8.1,
+      "affected": "libpng before 1.6.55",
+      "fixed": "1.6.55",
+      "reached_by": "api",
+      "trigger": "A libpng caller that asks for quantizing (png_set_quantize) with no histogram, on a palette with more than twice the display's colours; Pillow does not call it.",
+      "bucket": "N",
+      "finding": "Only a caller that requests quantizing reaches it, and Pillow does not. For a caller that does, a scans-only policy without palette PNGs would keep the file away (the png_colour_types setting).",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to libpng 1.6.55.",
+        "specific": "If your libpng caller quantizes, keep png_colour_types to greyscale and rgb."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-25646"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-28164",
+      "aliases": [],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "libpng 1.6.43 to 1.6.46 leaks in png_create_read_struct under a sanitiser",
+      "summary": "Buffer Overflow vulnerability in libpng 1.6.43-1.6.46 allows a local attacker to cause a denial of service via png_create_read_struct() function.",
+      "published": "2026-01-27",
+      "severity": 5.5,
+      "affected": "libpng 1.6.43 to 1.6.46",
+      "fixed": "1.6.47",
+      "reached_by": "api",
+      "trigger": "Creating read structures repeatedly in a program built with AddressSanitizer; reported against the pngimage test program.",
+      "bucket": "N",
+      "finding": "A resource leak in setup code, reported from a test program under a sanitiser, not a flaw a crafted file triggers; nothing a header shows bears on it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to libpng 1.6.47.",
+        "specific": "Not a pre-decode matter: the flaw is in a call that opening a file never makes."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-28164"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-28162",
+      "aliases": [],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "libpng's pngimage test program leaks memory",
+      "summary": "Buffer Overflow vulnerability in libpng 1.6.43-1.6.46 allows a local attacker to cause a denial of service via the pngimage with AddressSanitizer (ASan), the program leaks memory in various locations, eventually leading to high memory us...",
+      "published": "2026-01-27",
+      "severity": 5.5,
+      "affected": "libpng 1.6.43 to 1.6.46",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the pngimage test program under AddressSanitizer.",
+      "bucket": "N",
+      "finding": "A test program, not the library; no library call opening a file runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libpng to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-28162"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-22801",
+      "aliases": [],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "libpng's simplified write truncates a row stride and over-reads",
+      "summary": "LIBPNG is a reference library for use in applications that read, create, and manipulate PNG (Portable Network Graphics) raster image files.",
+      "published": "2026-01-12",
+      "severity": 7.8,
+      "affected": "libpng 1.6.26 to 1.6.53",
+      "fixed": "1.6.54",
+      "reached_by": "save",
+      "trigger": "Writing an image through png_write_image_16bit or png_write_image_8bit with a negative or over-large row stride.",
+      "bucket": "N",
+      "finding": "On the write path only; reading a PNG never runs the simplified write functions.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to libpng 1.6.54.",
+        "specific": "Not a pre-decode matter: the flaw is on a save path."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-22801"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "triaged": "2026-11-01",
@@ -697,6 +3075,35 @@
       ]
     },
     {
+      "key": "CVE-2026-22184",
+      "aliases": [],
+      "library": "zlib",
+      "package": "zlib",
+      "ecosystem": "Debian",
+      "title": "zlib's untgz demonstration overruns a global buffer",
+      "summary": "zlib versions up to and including 1.3.1.2 include a global buffer overflow in the untgz utility located under contrib/untgz.",
+      "published": "2026-01-07",
+      "severity": 7.8,
+      "affected": "zlib up to 1.3.1.2 (contrib/untgz only)",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the contrib/untgz demonstration utility with an over-long archive name.",
+      "bucket": "N",
+      "finding": "A standalone demonstration under contrib/, which the zlib library does not contain; no library call runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade zlib to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-22184"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
       "triaged": "2026-11-01",
       "checked": "2026-11-01",
       "notes": "Cited from the policy's own notes (policy.py), written from the advisory at the time; the OSV record was unreachable when this entry was made and its fields should be filled in.",
@@ -733,6 +3140,70 @@
         "https://github.com/advisories/GHSA-9mpm-9pxh-mg4f",
         "https://osv.dev/vulnerability/CVE-2025-66293"
       ]
+    },
+    {
+      "key": "CVE-2025-64506",
+      "aliases": [],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "libpng's simplified 8-bit write over-reads its row buffer",
+      "summary": "LIBPNG is a reference library for use in applications that read, create, and manipulate PNG (Portable Network Graphics) raster image files.",
+      "published": "2025-11-25",
+      "severity": 6.1,
+      "affected": "libpng 1.6.0 to before 1.6.51",
+      "fixed": "1.6.51",
+      "reached_by": "save",
+      "trigger": "Writing an 8-bit image through libpng's simplified write API with convert_to_8bit set.",
+      "bucket": "N",
+      "finding": "On the write path only; reading a PNG never runs png_write_image_8bit.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to libpng 1.6.51.",
+        "specific": "Not a pre-decode matter: the flaw is on a save path."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-64506"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-64505",
+      "aliases": [],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "Out-of-range palette indices over-read libpng's quantize table",
+      "summary": "LIBPNG is a reference library for use in applications that read, create, and manipulate PNG (Portable Network Graphics) raster image files.",
+      "published": "2025-11-25",
+      "severity": 6.1,
+      "affected": "libpng before 1.6.51",
+      "fixed": "1.6.51",
+      "reached_by": "api",
+      "trigger": "Reading a palette PNG with out-of-range indices through a libpng caller that has asked for quantizing (png_set_quantize); Pillow does not.",
+      "bucket": "A",
+      "finding": "A palette PNG. Under a scans-only policy (png_colour_types without palette) the file is refused before libpng sees it; the default policy allows palette PNGs, so the setting is what closes this.",
+      "refusal": {
+        "check": "png_colour_types",
+        "default": false,
+        "setting": "png_colour_types"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_palette_png_under_a_scans_only_policy"
+      ],
+      "protect": {
+        "general": "Upgrade to libpng 1.6.51.",
+        "specific": "Keep png_colour_types to greyscale and rgb for scans, as the policy table suggests; a scanner never writes a palette image."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-64505"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "triaged": "2026-11-01",
@@ -811,6 +3282,64 @@
       ]
     },
     {
+      "key": "CVE-2025-52885",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "poppler's structure tree holds dangling pointers after a vector resize",
+      "summary": "Poppler ia a library for rendering PDF files, and examining or modifying their structure.",
+      "published": "2025-10-10",
+      "severity": null,
+      "affected": "poppler before 25.10.0",
+      "fixed": "25.10.0",
+      "reached_by": "open",
+      "trigger": "A tagged PDF whose structure tree makes poppler resize the vector that refToParentMap points into.",
+      "bucket": "D",
+      "finding": "In StructTreeRoot, parsed when a tool reads the structure of a tagged file; pdfinfo may do so for a tagged document. A crash in pdfinfo is a refusal (fails closed); in the renderer, nothing a header shows distinguishes the file.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to poppler 25.10.0.",
+        "specific": "Render PDFs in a boxed process with memory and time limits (see Decoding in a box); nothing read before decoding can see this."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-52885"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-43718",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "Deeply nested PDF metadata exhausts poppler's stack",
+      "summary": "Poppler 24.06.1 through 25.x before 25.04.0 allows stack consumption and a SIGSEGV via deeply nested structures within the metadata (such as GTS_PDFEVersion) of a PDF document, e.g., a regular expression for a long pdfsubver string.",
+      "published": "2025-10-01",
+      "severity": 2.9,
+      "affected": "poppler 24.06.1 through 25.03",
+      "fixed": "25.04.0",
+      "reached_by": "open",
+      "trigger": "A PDF whose metadata (for example a long GTS_PDFEVersion string) drives deep recursion in poppler's regular-expression matching.",
+      "bucket": "D",
+      "finding": "In Catalog::getMetadata and the dictionary lookup beneath it, which pdfinfo may run while reporting the metadata. A crash in pdfinfo is a non-zero exit and so a refusal: the check fails closed.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to poppler 25.04.0.",
+        "specific": "Render PDFs in a boxed process with memory and time limits (see Decoding in a box); nothing read before decoding can see this."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-43718"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
       "key": "CVE-2025-9900",
       "aliases": [],
       "library": "libtiff",
@@ -843,7 +3372,548 @@
       ],
       "triaged": "2026-11-02",
       "checked": "2026-11-02",
-      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; not yet confirmed by a person."
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-02."
+    },
+    {
+      "key": "CVE-2025-9165",
+      "aliases": [],
+      "library": "libtiff",
+      "package": "tiff",
+      "ecosystem": "Debian",
+      "title": "tiffcmp leaks memory",
+      "summary": "A flaw has been found in LibTIFF 4.7.0.",
+      "published": "2025-08-19",
+      "severity": null,
+      "affected": "LibTIFF 4.7.0",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the tiffcmp command-line tool on crafted TIFFs.",
+      "bucket": "N",
+      "finding": "In tools/tiffcmp.c, a command-line tool; no library call opening a file runs it. The upstream record doubts the flaw is real.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libtiff to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-9165"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-8961",
+      "aliases": [],
+      "library": "libtiff",
+      "package": "tiff",
+      "ecosystem": "Debian",
+      "title": "tiffcrop corrupts memory in main",
+      "summary": "A weakness has been identified in LibTIFF 4.7.0.",
+      "published": "2025-08-14",
+      "severity": null,
+      "affected": "LibTIFF 4.7.0",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the tiffcrop command-line tool with crafted arguments.",
+      "bucket": "N",
+      "finding": "In tiffcrop.c, a command-line tool; no library call opening a file runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libtiff to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-8961"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-8851",
+      "aliases": [],
+      "library": "libtiff",
+      "package": "tiff",
+      "ecosystem": "Debian",
+      "title": "tiffcrop overruns a stack buffer in readSeparateStripsetoBuffer",
+      "summary": "A vulnerability was determined in LibTIFF up to 4.5.1.",
+      "published": "2025-08-11",
+      "severity": null,
+      "affected": "LibTIFF up to 4.5.1",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the tiffcrop command-line tool on a crafted TIFF.",
+      "bucket": "N",
+      "finding": "In tools/tiffcrop.c, a command-line tool; no library call opening a file runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libtiff to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-8851"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-50952",
+      "aliases": [],
+      "library": "OpenJPEG",
+      "package": "openjpeg2",
+      "ecosystem": "Debian",
+      "title": "OpenJPEG dereferences a null pointer in the wavelet transform",
+      "summary": "openjpeg v 2.5.0 was discovered to contain a NULL pointer dereference via the component /openjp2/dwt.c.",
+      "published": "2025-08-07",
+      "severity": 6.5,
+      "affected": "OpenJPEG 2.5.0",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Decoding a crafted JPEG 2000 codestream that reaches openjp2/dwt.c.",
+      "bucket": "A",
+      "finding": "A JPEG 2000 file is refused by name before any decoder sees it. Inside a PDF, a JPX image stream still reaches OpenJPEG when poppler renders the page; the default allows it, and a policy that knows its source refuses it by name (pdf_image_codecs without jpx). pdfimages -list would show the stream too, but it opens it with OpenJPEG just to describe it, so the library never runs that tool.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_format_a_scan_never_is"
+      ],
+      "protect": {
+        "general": "Upgrade OpenJPEG to a version that has the fix; the upstream record names it.",
+        "specific": "Refuse JPEG 2000 by name, as sillybos does by default; for a JPX stream inside a PDF, refuse the codec with pdf_image_codecs if the source never uses it, and render in a boxed process in any case."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-50952"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-8534",
+      "aliases": [],
+      "library": "libtiff",
+      "package": "tiff",
+      "ecosystem": "Debian",
+      "title": "tiff2ps dereferences a null pointer in PS_Lvl2page",
+      "summary": "A vulnerability classified as problematic was found in libtiff 4.6.0.",
+      "published": "2025-08-05",
+      "severity": null,
+      "affected": "libtiff 4.6.0",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the tiff2ps command-line tool on a crafted TIFF.",
+      "bucket": "N",
+      "finding": "In tools/tiff2ps.c, a command-line tool; no library call opening a file runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libtiff to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-8534"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-54874",
+      "aliases": [],
+      "library": "OpenJPEG",
+      "package": "openjpeg2",
+      "ecosystem": "Debian",
+      "title": "A short JP2 stream makes OpenJPEG write out of bounds in opj_jp2_read_header",
+      "summary": "OpenJPEG is an open-source JPEG 2000 codec.",
+      "published": "2025-08-05",
+      "severity": 9.8,
+      "affected": "OpenJPEG 2.5.1 through 2.5.3",
+      "fixed": "2.5.4",
+      "reached_by": "open",
+      "trigger": "Opening a JPEG 2000 file whose stream ends before the header is complete.",
+      "bucket": "A",
+      "finding": "A JPEG 2000 file is not one of the four formats a scan can be and is refused by name before any decoder sees it. Inside a PDF, a JPX image stream still reaches OpenJPEG when poppler renders the page; the default allows it, and a policy that knows its source refuses it by name (pdf_image_codecs without jpx). pdfimages -list would show the stream too, but it opens it with OpenJPEG just to describe it, so the library never runs that tool.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_format_a_scan_never_is"
+      ],
+      "protect": {
+        "general": "Upgrade to OpenJPEG 2.5.4.",
+        "specific": "Refuse JPEG 2000 by name, as sillybos does by default; for a JPX stream inside a PDF, refuse the codec with pdf_image_codecs if the source never uses it, and render in a boxed process in any case."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-54874"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-50420",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "pdfseparate recurses without limit on a crafted PDF",
+      "summary": "An issue in the pdfseparate utility of freedesktop poppler v25.04.0 allows attackers to cause an infinite recursion via supplying a crafted PDF file.",
+      "published": "2025-08-04",
+      "severity": 6.5,
+      "affected": "poppler 25.04.0",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running poppler's pdfseparate utility on a crafted PDF.",
+      "bucket": "N",
+      "finding": "Reported against the pdfseparate utility; pdfinfo and the renderer are not named. If the recursion were in shared parsing code, pdfinfo's time limit would turn it into a refusal.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade poppler to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-50420"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2024-13978",
+      "aliases": [],
+      "library": "libtiff",
+      "package": "tiff",
+      "ecosystem": "Debian",
+      "title": "tiff2pdf dereferences a null pointer",
+      "summary": "A vulnerability was found in LibTIFF up to 4.7.0.",
+      "published": "2025-08-01",
+      "severity": null,
+      "affected": "LibTIFF up to 4.7.0",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the tiff2pdf command-line tool on a crafted TIFF.",
+      "bucket": "N",
+      "finding": "In tools/tiff2pdf.c, a command-line tool; no library call opening a file runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libtiff to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2024-13978"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-8177",
+      "aliases": [],
+      "library": "libtiff",
+      "package": "tiff",
+      "ecosystem": "Debian",
+      "title": "The thumbnail tool overruns a buffer in setrow",
+      "summary": "A vulnerability was found in LibTIFF up to 4.7.0.",
+      "published": "2025-07-26",
+      "severity": 7.8,
+      "affected": "LibTIFF up to 4.7.0",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running LibTIFF's thumbnail command-line tool on a crafted TIFF.",
+      "bucket": "N",
+      "finding": "In tools/thumbnail.c, a command-line tool; no library call opening a file runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libtiff to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-8177"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-8176",
+      "aliases": [],
+      "library": "libtiff",
+      "package": "tiff",
+      "ecosystem": "Debian",
+      "title": "tiffmedian uses memory after freeing it",
+      "summary": "A vulnerability was found in LibTIFF up to 4.7.0.",
+      "published": "2025-07-26",
+      "severity": 7.8,
+      "affected": "LibTIFF up to 4.7.0",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the tiffmedian command-line tool on a crafted TIFF.",
+      "bucket": "N",
+      "finding": "In tools/tiffmedian.c, a command-line tool; no library call opening a file runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libtiff to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-8176"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-52886",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "poppler's 32-bit reference count can overflow into a use-after-free",
+      "summary": "Poppler is a PDF rendering library.",
+      "published": "2025-07-02",
+      "severity": 5.9,
+      "affected": "poppler before 25.06.0",
+      "fixed": "25.06.0",
+      "reached_by": "open",
+      "trigger": "A PDF that makes poppler take more than 2^32 references to one object.",
+      "bucket": "D",
+      "finding": "In the object reference counting that every poppler tool shares, pdfinfo included. A file that overflowed it would crash pdfinfo, and a non-zero exit is a refusal, so the check fails closed; within max_bytes, that many references is impractical.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to poppler 25.06.0.",
+        "specific": "Render PDFs in a boxed process with memory and time limits (see Decoding in a box); nothing read before decoding can see this."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-52886"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-48379",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Saving a large DDS image overruns a heap buffer in Pillow's BCn encoder",
+      "summary": "Pillow vulnerability can cause write buffer overflow on BCn encoding",
+      "published": "2025-07-01",
+      "severity": 7.1,
+      "affected": "< 11.3.0",
+      "fixed": "11.3.0",
+      "reached_by": "save",
+      "trigger": "Image.save(..., format=\"DDS\") of an image larger than about 64 KB encoded, with default settings.",
+      "bucket": "N",
+      "finding": "On the DDS save path only; Image.open never runs the BCn encoder.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 11.3.0.",
+        "specific": "Not a pre-decode matter: the flaw is on a save path."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-xg8h-j46f-w952",
+        "https://osv.dev/vulnerability/PYSEC-2025-61"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-43903",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "poppler accepts a forged adbe.pkcs7.sha1 signature",
+      "summary": "NSSCryptoSignBackend.cc in Poppler before 25.04.0 does not verify the adbe.pkcs7.sha1 signatures on documents, resulting in potential signature forgeries.",
+      "published": "2025-04-18",
+      "severity": 3.3,
+      "affected": "poppler before 25.04.0",
+      "fixed": "25.04.0",
+      "reached_by": "api",
+      "trigger": "Asking poppler to verify a document signature (pdfsig or the signature API).",
+      "bucket": "N",
+      "finding": "Signature verification is a separate call that rendering and pdfinfo never make; a forged signature does not reach a pipeline that only renders pages.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to poppler 25.04.0.",
+        "specific": "Not a pre-decode matter. If signatures are verified, use poppler 25.04.0 or later."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-43903"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-32365",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "A JBIG2 stream in a PDF reads out of bounds in poppler's JBIG2Bitmap::combine",
+      "summary": "Poppler before 25.04.0 allows crafted input files to trigger out-of-bounds reads in the JBIG2Bitmap::combine function in JBIG2Stream.cc because of a misplaced isOk check.",
+      "published": "2025-04-05",
+      "severity": 7.1,
+      "affected": "poppler before 25.04.0",
+      "fixed": "25.04.0",
+      "reached_by": "open",
+      "trigger": "Rendering a PDF page whose image is a crafted JBIG2 stream.",
+      "bucket": "B2",
+      "finding": "Reached by rendering a page whose image is a JBIG2 stream. The image's filter is named in its stream dictionary, which cannot be hidden inside a compressed object stream, so a bounded search of the bytes finds /JBIG2Decode and the policy can refuse the codec by name (pdf_image_codecs). The default allows it: scanners and the archives that derive PDFs from scans write JBIG2 (five of the seven PDFs in Tetrak OCR's corpus). pdfimages -list would report the codec too, but it opens a JPX stream with OpenJPEG just to describe it, so the library does not run it.",
+      "refusal": {
+        "check": "pdf_image_codecs",
+        "default": false,
+        "setting": "Policy(pdf_image_codecs={\"jpeg\", \"jpx\", \"ccitt\"})"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestPdf::test_a_jbig2_pdf_under_a_policy_that_refuses_it"
+      ],
+      "protect": {
+        "general": "Upgrade to poppler 25.04.0.",
+        "specific": "If nothing you handle is JBIG2-coded, say so in the policy: sillybos --pdf-image-codecs jpeg,jpx,ccitt. Otherwise render in a boxed process."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-32365"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. The policy field was named on 2026-11-02."
+    },
+    {
+      "key": "CVE-2025-32364",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "A PostScript calculator function in a PDF divides by INT_MIN and crashes poppler",
+      "summary": "A floating-point exception in the PSStack::roll function of Poppler before 25.04.0 can cause an application to crash when handling malformed inputs associated with INT_MIN.",
+      "published": "2025-04-05",
+      "severity": 5.5,
+      "affected": "poppler before 25.04.0",
+      "fixed": "25.04.0",
+      "reached_by": "open",
+      "trigger": "Rendering a PDF whose Type 4 (PostScript calculator) function stream makes PSStack::roll handle INT_MIN.",
+      "bucket": "C",
+      "finding": "The function stream is content that only the renderer evaluates; nothing in the structure pdfinfo reports, or in any header, shows it. Out of a pre-decode check's reach.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to poppler 25.04.0.",
+        "specific": "Render PDFs in a boxed process with memory and time limits (see Decoding in a box); nothing read before decoding can see this."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-32364"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-27363",
+      "aliases": [],
+      "library": "FreeType",
+      "package": "freetype",
+      "ecosystem": "Debian",
+      "title": "A variable TrueType font embedded in a PDF overruns a FreeType heap buffer",
+      "summary": "An out of bounds write exists in FreeType versions 2.13.0 and below (newer versions of FreeType are not vulnerable) when attempting to parse font subglyph structures related to TrueType GX and variable font files.",
+      "published": "2025-03-11",
+      "severity": 8.1,
+      "affected": "FreeType 2.13.0 and earlier",
+      "fixed": "2.13.1",
+      "reached_by": "open",
+      "trigger": "Rendering a PDF whose embedded font is a TrueType GX or variable font with crafted subglyph structures; FreeType parses the font when poppler draws the text.",
+      "bucket": "C",
+      "finding": "Reached by rendering, through the embedded font; nothing is filtered. Embedded fonts are not unusual: every searchable PDF carries one for its text layer, Tetrak OCR's own output included (all thirty-eight PDFs in its checkouts), so a policy refusing fonts, which pdffonts could support, would refuse the very files the check exists to protect. A flaw in the font program is out of this library's reach; the boxed process is the defence.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to FreeType 2.13.1.",
+        "specific": "Render in a boxed process; a PDF with no text layer carries no font for FreeType to parse."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-27363"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Moved from B2 to C on 2026-11-02, with the finding above."
+    },
+    {
+      "key": "CVE-2024-56827",
+      "aliases": [],
+      "library": "OpenJPEG",
+      "package": "openjpeg2",
+      "ecosystem": "Debian",
+      "title": "opj_decompress overruns a heap buffer with certain options (second report)",
+      "summary": "A flaw was found in the OpenJPEG project.",
+      "published": "2025-01-09",
+      "severity": 5.6,
+      "affected": "OpenJPEG, as packaged; see the upstream record",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the opj_decompress command-line tool with particular options on a crafted JPEG 2000 file.",
+      "bucket": "N",
+      "finding": "As CVE-2024-56826: the opj_decompress utility, not a library call opening a file; a JPEG 2000 file is refused by name in any case.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade OpenJPEG to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2024-56827"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2024-56826",
+      "aliases": [],
+      "library": "OpenJPEG",
+      "package": "openjpeg2",
+      "ecosystem": "Debian",
+      "title": "opj_decompress overruns a heap buffer with certain options",
+      "summary": "A flaw was found in the OpenJPEG project.",
+      "published": "2025-01-09",
+      "severity": 5.6,
+      "affected": "OpenJPEG, as packaged; see the upstream record",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the opj_decompress command-line tool with particular options on a crafted JPEG 2000 file.",
+      "bucket": "N",
+      "finding": "Reached only through the opj_decompress utility's option handling, which no library call opening a file runs; a JPEG 2000 file is in any case refused by name before any decoder sees it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade OpenJPEG to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2024-56826"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "triaged": "2026-11-01",

@@ -253,7 +253,7 @@ BUCKETS: tuple[tuple[str, str], ...] = (
     ("B2", "preventable only by a coarse policy on what `pdfimages -list` or `pdffonts` report"),
     ("C", "needs decoding to detect; out of this library's reach"),
     ("D", "reaches `pdfinfo` itself"),
-    ("N", "not reached by opening a file"),
+    ("N", "the check is not in the path: no file carries the trigger"),
     ("U", "a reserved CVE with no text yet; re-checked weekly"),
 )
 

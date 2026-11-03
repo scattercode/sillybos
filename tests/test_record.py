@@ -209,6 +209,19 @@ class TestTheProposals:
         assert (moved["triaged"], moved["checked"]) == ("2026-11-02", "2026-11-02")
         assert not (proposed / "CVE-2026-1001.json").exists()
 
+    def test_promote_marks_the_note_as_confirmed(self, tmp_path: Path) -> None:
+        proposed, record = tmp_path / "proposed", tmp_path / "record"
+        proposed.mkdir()
+        record.mkdir()
+        _write(
+            proposed, {**SOUND, "notes": "Proposed on 2026-11-01; not yet confirmed by a person."}
+        )
+
+        assert ar.promote(["CVE-2026-1001"], "2026-11-02", proposed, record) == []
+
+        moved = ar.load(record / "CVE-2026-1001.json")
+        assert moved["notes"] == "Proposed on 2026-11-01; confirmed by a person on 2026-11-02."
+
     def test_promote_refuses_what_is_not_ready(self, tmp_path: Path) -> None:
         proposed, record = tmp_path / "proposed", tmp_path / "record"
         proposed.mkdir()
