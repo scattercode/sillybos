@@ -17,13 +17,13 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 40,
+    "records": 41,
     "refused_by_default": 16,
     "by_bucket": {
       "A": 5,
       "B": 16,
       "B2": 0,
-      "C": 6,
+      "C": 7,
       "D": 0,
       "N": 13,
       "U": 0
@@ -34,7 +34,7 @@
       "Pillow": 14,
       "libpng": 7,
       "libtiff": 11,
-      "poppler": 2
+      "poppler": 3
     }
   },
   "records": [
@@ -1249,6 +1249,35 @@
       },
       "sources": [
         "https://osv.dev/vulnerability/DEBIAN-CVE-2025-8176"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-32364",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "A PostScript calculator function in a PDF divides by INT_MIN and crashes poppler",
+      "summary": "A floating-point exception in the PSStack::roll function of Poppler before 25.04.0 can cause an application to crash when handling malformed inputs associated with INT_MIN.",
+      "published": "2025-04-05",
+      "severity": 5.5,
+      "affected": "poppler before 25.04.0",
+      "fixed": "25.04.0",
+      "reached_by": "open",
+      "trigger": "Rendering a PDF whose Type 4 (PostScript calculator) function stream makes PSStack::roll handle INT_MIN.",
+      "bucket": "C",
+      "finding": "The function stream is content that only the renderer evaluates; nothing in the structure pdfinfo reports, or in any header, shows it. Out of a pre-decode check's reach.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to poppler 25.04.0.",
+        "specific": "Render PDFs in a boxed process with memory and time limits (see Decoding in a box); nothing read before decoding can see this."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-32364"
       ],
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
