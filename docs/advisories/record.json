@@ -17,7 +17,7 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 28,
+    "records": 29,
     "refused_by_default": 16,
     "by_bucket": {
       "A": 5,
@@ -25,14 +25,14 @@
       "B2": 0,
       "C": 0,
       "D": 0,
-      "N": 7,
+      "N": 8,
       "U": 0
     },
     "by_library": {
       "OpenJPEG": 2,
       "Pillow": 14,
       "libpng": 5,
-      "libtiff": 7
+      "libtiff": 8
     }
   },
   "records": [
@@ -845,6 +845,35 @@
       "triaged": "2026-11-02",
       "checked": "2026-11-02",
       "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-02."
+    },
+    {
+      "key": "CVE-2025-8534",
+      "aliases": [],
+      "library": "libtiff",
+      "package": "tiff",
+      "ecosystem": "Debian",
+      "title": "tiff2ps dereferences a null pointer in PS_Lvl2page",
+      "summary": "A vulnerability classified as problematic was found in libtiff 4.6.0.",
+      "published": "2025-08-05",
+      "severity": null,
+      "affected": "libtiff 4.6.0",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the tiff2ps command-line tool on a crafted TIFF.",
+      "bucket": "N",
+      "finding": "In tools/tiff2ps.c, a command-line tool; no library call opening a file runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libtiff to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-8534"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "key": "CVE-2024-13978",
