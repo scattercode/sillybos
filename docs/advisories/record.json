@@ -17,10 +17,10 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 119,
-    "refused_by_default": 43,
+    "records": 120,
+    "refused_by_default": 44,
     "by_bucket": {
-      "A": 38,
+      "A": 39,
       "B": 16,
       "B2": 3,
       "C": 19,
@@ -31,7 +31,7 @@
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 6,
-      "Pillow": 57,
+      "Pillow": 58,
       "libpng": 15,
       "libtiff": 18,
       "poppler": 16,
@@ -104,6 +104,41 @@
       "sources": [
         "https://github.com/advisories/GHSA-5x8w-8jj5-q52h"
       ]
+    },
+    {
+      "key": "GHSA-78g4-xqwv-q3g8",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Pillow's bundled OpenJPEG carries an unreleased heap-overflow fix",
+      "summary": "Pillow: Bundled libopenjp2 2.5.4 in all wheels since 11.1.0 carries OSV-2025-219 heap-buffer-overflow write reachable from Image.open().load()",
+      "published": "2026-10-22",
+      "severity": 8.1,
+      "affected": ">= 11.1.0 (bundled libopenjp2 2.5.4)",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Image.open and load on a crafted JPEG 2000 file with a Pillow wheel from 11.1.0 onward, whose bundled libopenjp2 2.5.4 lacks the upstream fix for OSV-2025-219.",
+      "bucket": "A",
+      "finding": "A JPEG 2000 file is refused by name before Pillow sees it. A patched system OpenJPEG does not help a wheel that bundles its own, which is one more reason to refuse the format by name rather than trust the decoder's version.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_format_a_scan_never_is"
+      ],
+      "protect": {
+        "general": "Upgrade Pillow to a version that has the fix; the upstream record names it.",
+        "specific": "Refuse JPEG 2000 by name, as sillybos does by default."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-78g4-xqwv-q3g8"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "key": "CVE-2026-96778",
