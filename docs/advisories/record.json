@@ -17,10 +17,10 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 110,
+    "records": 111,
     "refused_by_default": 39,
     "by_bucket": {
-      "A": 31,
+      "A": 32,
       "B": 16,
       "B2": 3,
       "C": 18,
@@ -31,7 +31,7 @@
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 6,
-      "Pillow": 48,
+      "Pillow": 49,
       "libpng": 15,
       "libtiff": 18,
       "poppler": 16,
@@ -537,6 +537,41 @@
       "sources": [
         "https://github.com/advisories/GHSA-w889-685w-c8fh"
       ]
+    },
+    {
+      "key": "CVE-2026-112891",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Saving a GIF with a long comment copies it in quadratic time",
+      "summary": "Pillow: Quadratic GIF comment copying during save",
+      "published": "2026-10-21",
+      "severity": null,
+      "affected": "12.3.0",
+      "fixed": null,
+      "reached_by": "save",
+      "trigger": "Image.save(format=\"GIF\") of an image carrying a long comment.",
+      "bucket": "A",
+      "finding": "The comment rides from the opened file into a GIF save on its own. From a file it can only come through a PNG text chunk, since a JPEG comment segment is at most 65,533 bytes by format, too short to matter, and a GIF is refused by name. The chunk is a block the reader measures: the default ceiling of 4 MiB allows a comment long enough to cost tens of seconds, and a lower ceiling bounds it.",
+      "refusal": {
+        "check": "max_metadata_bytes",
+        "default": false,
+        "setting": "Policy(max_metadata_bytes=65_536)"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_png_text_chunk_under_a_lower_ceiling"
+      ],
+      "protect": {
+        "general": "Upgrade Pillow to a version that has the fix; the upstream record names it.",
+        "specific": "Set max_metadata_bytes to what a scan carries, tens of kilobytes, where images from outside are re-saved as GIF; upgrade to a Pillow with the fix."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-fc9g-5qg7-mf45"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-read on 2026-11-03 against the question of what rides from an opened file into a save: the file is the input."
     },
     {
       "key": "CVE-2026-112406",
