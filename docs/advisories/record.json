@@ -17,7 +17,7 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 74,
+    "records": 75,
     "refused_by_default": 21,
     "by_bucket": {
       "A": 11,
@@ -25,7 +25,7 @@
       "B2": 1,
       "C": 10,
       "D": 3,
-      "N": 33,
+      "N": 34,
       "U": 0
     },
     "by_library": {
@@ -33,7 +33,7 @@
       "OpenJPEG": 5,
       "Pillow": 21,
       "libpng": 15,
-      "libtiff": 17,
+      "libtiff": 18,
       "poppler": 10,
       "zlib": 2
     }
@@ -690,6 +690,35 @@
       },
       "sources": [
         "https://osv.dev/vulnerability/DEBIAN-CVE-2026-52491"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-52492",
+      "aliases": [],
+      "library": "libtiff",
+      "package": "tiff",
+      "ecosystem": "Debian",
+      "title": "rgb2ycbcr undersizes a strip buffer and overflows it",
+      "summary": "An integer overflow in the libtiff rgb2ycbcr utility's cvtRaster() function when computing strip buffer sizes can result in an undersized heap allocation and subsequent heap-based buffer overflow during YCbCr conversion of a crafted TIFF...",
+      "published": "2026-08-24",
+      "severity": 7.8,
+      "affected": "libtiff, as packaged; see the upstream record",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the rgb2ycbcr command-line tool on a crafted TIFF.",
+      "bucket": "N",
+      "finding": "In the rgb2ycbcr utility; no library call opening a file runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libtiff to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-52492"
       ],
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
