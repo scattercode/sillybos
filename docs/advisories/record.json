@@ -17,7 +17,7 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 45,
+    "records": 46,
     "refused_by_default": 16,
     "by_bucket": {
       "A": 5,
@@ -25,7 +25,7 @@
       "B2": 1,
       "C": 7,
       "D": 1,
-      "N": 15,
+      "N": 16,
       "U": 0
     },
     "by_library": {
@@ -34,7 +34,7 @@
       "Pillow": 15,
       "libpng": 7,
       "libtiff": 11,
-      "poppler": 6
+      "poppler": 7
     }
   },
   "records": [
@@ -1191,6 +1191,35 @@
       },
       "sources": [
         "https://osv.dev/vulnerability/DEBIAN-CVE-2025-8534"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-50420",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "pdfseparate recurses without limit on a crafted PDF",
+      "summary": "An issue in the pdfseparate utility of freedesktop poppler v25.04.0 allows attackers to cause an infinite recursion via supplying a crafted PDF file.",
+      "published": "2025-08-04",
+      "severity": 6.5,
+      "affected": "poppler 25.04.0",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running poppler's pdfseparate utility on a crafted PDF.",
+      "bucket": "N",
+      "finding": "Reported against the pdfseparate utility; pdfinfo and the renderer are not named. If the recursion were in shared parsing code, pdfinfo's time limit would turn it into a refusal.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade poppler to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-50420"
       ],
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
