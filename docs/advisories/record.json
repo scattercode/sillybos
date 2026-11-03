@@ -17,7 +17,7 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 26,
+    "records": 27,
     "refused_by_default": 16,
     "by_bucket": {
       "A": 5,
@@ -25,14 +25,14 @@
       "B2": 0,
       "C": 0,
       "D": 0,
-      "N": 5,
+      "N": 6,
       "U": 0
     },
     "by_library": {
       "OpenJPEG": 2,
       "Pillow": 14,
       "libpng": 5,
-      "libtiff": 5
+      "libtiff": 6
     }
   },
   "records": [
@@ -870,6 +870,35 @@
       },
       "sources": [
         "https://osv.dev/vulnerability/DEBIAN-CVE-2024-13978"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-8176",
+      "aliases": [],
+      "library": "libtiff",
+      "package": "tiff",
+      "ecosystem": "Debian",
+      "title": "tiffmedian uses memory after freeing it",
+      "summary": "A vulnerability was found in LibTIFF up to 4.7.0.",
+      "published": "2025-07-26",
+      "severity": 7.8,
+      "affected": "LibTIFF up to 4.7.0",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the tiffmedian command-line tool on a crafted TIFF.",
+      "bucket": "N",
+      "finding": "In tools/tiffmedian.c, a command-line tool; no library call opening a file runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade libtiff to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-8176"
       ],
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
