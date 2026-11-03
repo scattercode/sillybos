@@ -17,10 +17,10 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 102,
-    "refused_by_default": 34,
+    "records": 103,
+    "refused_by_default": 35,
     "by_bucket": {
-      "A": 25,
+      "A": 26,
       "B": 16,
       "B2": 3,
       "C": 17,
@@ -31,7 +31,7 @@
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 6,
-      "Pillow": 40,
+      "Pillow": 41,
       "libpng": 15,
       "libtiff": 18,
       "poppler": 16,
@@ -785,6 +785,42 @@
       "sources": [
         "https://github.com/advisories/GHSA-462x-pgg6-55fp"
       ]
+    },
+    {
+      "key": "CVE-2026-112392",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A rank filter on a zero-size image dereferences a null pointer",
+      "summary": "Pillow: NULL dereference in ImagingExpand via rank filters on zero-size images",
+      "published": "2026-10-19",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Applying a median, minimum, maximum or rank filter to an image with zero width or height.",
+      "bucket": "A",
+      "finding": "The trigger is an image with a zero width or height, handed to a rank filter. A file whose header gives a zero dimension is refused under every policy before Pillow sees it, so from a file the image cannot come; only an image the program makes itself (Image.new with a zero side, or a crop to nothing) reaches the filter. The check claims the refusal for the file.",
+      "refusal": {
+        "check": "dimensions",
+        "default": true,
+        "setting": "none: a zero dimension is refused under every policy"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_an_image_with_a_zero_dimension"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Run the check on files from outside, which refuses a zero dimension; and never filter an image whose size the program has reduced to nothing."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-27h8-gf7j-v5hc",
+        "https://osv.dev/vulnerability/PYSEC-2026-4326"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-bucketed on 2026-11-03: the file that carries the trigger is refused."
     },
     {
       "key": "CVE-2026-107705",
