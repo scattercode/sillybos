@@ -17,10 +17,10 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 85,
-    "refused_by_default": 23,
+    "records": 86,
+    "refused_by_default": 24,
     "by_bucket": {
-      "A": 13,
+      "A": 14,
       "B": 16,
       "B2": 1,
       "C": 13,
@@ -31,7 +31,7 @@
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 5,
-      "Pillow": 31,
+      "Pillow": 32,
       "libpng": 15,
       "libtiff": 18,
       "poppler": 10,
@@ -844,6 +844,42 @@
       "sources": [
         "https://osv.dev/vulnerability/GHSA-62p4-gmf7-7g93",
         "https://osv.dev/vulnerability/PYSEC-2026-3493"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-59203",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A negative byte count in an EPS file loops Image.open for ever",
+      "summary": "Pillow EpsImagePlugin negative %%BeginBinary byte count causes infinite loop denial of service",
+      "published": "2026-07-14",
+      "severity": 5.3,
+      "affected": ">= 12.0.0, <= 12.2.0",
+      "fixed": "12.3.0",
+      "reached_by": "open",
+      "trigger": "Image.open on an EPS file whose %%BeginBinary directive carries a negative byte count; the loop is in Image.open itself, before any load.",
+      "bucket": "A",
+      "finding": "A PostScript file is refused by name before Pillow sees it: the first bytes say what it is, whatever its name. This is the EPS reader October's command-execution flaw was also in.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_renamed_postscript_file"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Refuse PostScript by name, as sillybos does by default, and never hand Pillow an EPS from outside."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-pg7v-jwj7-p798",
+        "https://osv.dev/vulnerability/PYSEC-2026-3452"
       ],
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
