@@ -17,7 +17,7 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 64,
+    "records": 65,
     "refused_by_default": 19,
     "by_bucket": {
       "A": 9,
@@ -25,14 +25,14 @@
       "B2": 1,
       "C": 9,
       "D": 3,
-      "N": 26,
+      "N": 27,
       "U": 0
     },
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 5,
       "Pillow": 16,
-      "libpng": 12,
+      "libpng": 13,
       "libtiff": 15,
       "poppler": 10,
       "zlib": 2
@@ -827,6 +827,35 @@
         "https://github.com/advisories/GHSA-wjr5-c57x-95m2",
         "https://osv.dev/vulnerability/CVE-2026-33636"
       ]
+    },
+    {
+      "key": "CVE-2026-33416",
+      "aliases": [],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "png_set_tRNS and png_set_PLTE share one buffer between two structs",
+      "summary": "LIBPNG is a reference library for use in applications that read, create, and manipulate PNG (Portable Network Graphics) raster image files.",
+      "published": "2026-03-26",
+      "severity": 7.5,
+      "affected": "libpng 1.2.1 through 1.6.55",
+      "fixed": "1.6.56",
+      "reached_by": "api",
+      "trigger": "A libpng caller that sets the palette or transparency on a png_info it then frees separately from the png_struct.",
+      "bucket": "N",
+      "finding": "A lifetime flaw between the setter APIs and the caller's own frees, not something a crafted file causes on its own; reading a PNG through Pillow does not call these setters.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to libpng 1.6.56.",
+        "specific": "Not a pre-decode matter: the flaw is in a call that opening a file never makes."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-33416"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "triaged": "2026-11-01",
