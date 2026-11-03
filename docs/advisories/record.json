@@ -17,7 +17,7 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 65,
+    "records": 66,
     "refused_by_default": 19,
     "by_bucket": {
       "A": 9,
@@ -25,14 +25,14 @@
       "B2": 1,
       "C": 9,
       "D": 3,
-      "N": 27,
+      "N": 28,
       "U": 0
     },
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 5,
       "Pillow": 16,
-      "libpng": 13,
+      "libpng": 14,
       "libtiff": 15,
       "poppler": 10,
       "zlib": 2
@@ -785,6 +785,35 @@
       },
       "sources": [
         "https://osv.dev/vulnerability/DEBIAN-CVE-2026-6192"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-34757",
+      "aliases": [],
+      "library": "libpng",
+      "package": "libpng1.6",
+      "ecosystem": "Debian",
+      "title": "Passing a libpng getter's pointer back to its setter reads freed memory",
+      "summary": "LIBPNG is a reference library for use in applications that read, create, and manipulate PNG (Portable Network Graphics) raster image files.",
+      "published": "2026-04-09",
+      "severity": 4.4,
+      "affected": "libpng 1.0.9 to before 1.6.57",
+      "fixed": "1.6.57",
+      "reached_by": "api",
+      "trigger": "Calling png_set_PLTE, png_set_tRNS or png_set_hIST with the pointer the matching getter returned.",
+      "bucket": "N",
+      "finding": "A misuse of the setter API by the caller, not a crafted file; Pillow does not do it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to libpng 1.6.57.",
+        "specific": "Not a pre-decode matter: the flaw is in a call that opening a file never makes."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-34757"
       ],
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
