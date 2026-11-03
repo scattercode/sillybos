@@ -18,14 +18,14 @@
   },
   "counts": {
     "records": 102,
-    "refused_by_default": 33,
+    "refused_by_default": 34,
     "by_bucket": {
-      "A": 24,
+      "A": 25,
       "B": 16,
       "B2": 3,
       "C": 17,
       "D": 3,
-      "N": 39,
+      "N": 38,
       "U": 0
     },
     "by_library": {
@@ -800,20 +800,26 @@
       "fixed": null,
       "reached_by": "api",
       "trigger": "Opening an encrypted (AESV3, revision 6) PDF with a password longer than 127 bytes supplied by the caller.",
-      "bucket": "N",
-      "finding": "The password, not the file, is the over-long input, and an encrypted PDF is refused by default before poppler is asked to open it. A pipeline that supplies no password never reaches it.",
-      "refusal": null,
-      "verified_by": [],
+      "bucket": "A",
+      "finding": "The over-long input is the password the caller supplies, but the file has to be an encrypted PDF (AESV3, revision 6) for it to reach the flaw, and an encrypted PDF is refused by default before poppler is asked to open it; the check's own pdfinfo run supplies no password. A policy that allows encrypted PDFs and a program that passes passwords from outside is the only path.",
+      "refusal": {
+        "check": "allow_encrypted_pdf",
+        "default": true,
+        "setting": "allow_encrypted_pdf"
+      },
+      "verified_by": [
+        "tests/test_pdf.py::test_an_encrypted_pdf_is_refused_unless_allowed"
+      ],
       "protect": {
         "general": "Upgrade poppler to a version that has the fix; the upstream record names it.",
-        "specific": "Keep allow_encrypted_pdf off, as the default does; where passwords are accepted, bound their length."
+        "specific": "Keep allow_encrypted_pdf off, as it is by default; where it must be on, bound the password's length before passing it; upgrade poppler."
       },
       "sources": [
         "https://osv.dev/vulnerability/DEBIAN-CVE-2026-107705"
       ],
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
-      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-bucketed on 2026-11-03: the file that carries the trigger is refused by default."
     },
     {
       "key": "CVE-2026-95512",
