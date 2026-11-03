@@ -6,7 +6,7 @@
     "B2": "Preventable only by a coarse policy on a PDF's contents",
     "C": "Needs decoding to detect; out of this library's reach by design",
     "D": "Reaches pdfinfo itself",
-    "N": "Not reached by opening a file",
+    "N": "The check is not in the path: the file is not the input, or it is not an image or PDF",
     "U": "A reserved CVE with no text yet"
   },
   "reached_by": {
@@ -18,14 +18,14 @@
   },
   "counts": {
     "records": 82,
-    "refused_by_default": 22,
+    "refused_by_default": 23,
     "by_bucket": {
-      "A": 12,
+      "A": 13,
       "B": 16,
       "B2": 1,
-      "C": 10,
+      "C": 12,
       "D": 3,
-      "N": 40,
+      "N": 37,
       "U": 0
     },
     "by_library": {
@@ -373,7 +373,7 @@
     {
       "triaged": "2026-11-01",
       "checked": "2026-11-01",
-      "notes": null,
+      "notes": " Re-read on 2026-11-03 against the question of what rides from an opened file into a save: the file is the input.",
       "key": "CVE-2026-112391",
       "aliases": [
         "GHSA-254f-3936-288h"
@@ -389,13 +389,13 @@
       "fixed": "13.0.0",
       "reached_by": "save",
       "trigger": "Image.save(..., format=\"PDF\", append=True) onto an attacker-controlled existing PDF.",
-      "bucket": "N",
-      "finding": "Reached only through Pillow's PDF append path, which Image.open never runs.",
+      "bucket": "C",
+      "finding": "The existing PDF is the input, so the check belongs in front of it: the format gate and pdfinfo's time limit apply. But the trigger is a value nested thousands of levels deep in the Root object's own dictionary, in the object graph, which a bounded check does not parse and pdfinfo's summary does not show. Out of a pre-decode check's reach.",
       "refusal": null,
       "verified_by": [],
       "protect": {
         "general": "Upgrade to Pillow 13.0.0. Do not append to PDFs you did not make.",
-        "specific": "Not a pre-decode matter."
+        "specific": "Run the check on a PDF before appending to it, for what it does see; append only to PDFs the program wrote itself; upgrade to a Pillow with the fix."
       },
       "sources": [
         "https://github.com/advisories/GHSA-254f-3936-288h"
@@ -892,13 +892,19 @@
       "fixed": "12.3.0",
       "reached_by": "api",
       "trigger": "Calling PIL.GdImageFile.open directly on a GD 2.x file.",
-      "bucket": "N",
-      "finding": "GdImageFile is not registered with Image.open; only a direct call reaches it, and a GD file is in any case refused by sillybos as an unknown format.",
-      "refusal": null,
-      "verified_by": [],
+      "bucket": "A",
+      "finding": "A GD file is not one of the four formats a scan can be; the check does not know it and refuses it as unknown. It is reached only by calling GdImageFile.open by name, which Image.open never does.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_an_unknown_format"
+      ],
       "protect": {
         "general": "Upgrade to Pillow 12.3.0.",
-        "specific": "Not a pre-decode matter: the flaw is in a call that opening a file never makes."
+        "specific": "Refuse what is not an image a scan can be, as sillybos does by default; GdImageFile.open is a direct call that bypasses Image.open's registry."
       },
       "sources": [
         "https://osv.dev/vulnerability/GHSA-phj9-mv4w-65pm",
@@ -906,7 +912,7 @@
       ],
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
-      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-read on 2026-11-03 against the question of what rides from an opened file into a save: the file is the input."
     },
     {
       "key": "CVE-2026-55379",
@@ -1143,13 +1149,13 @@
       "fixed": "12.2.0",
       "reached_by": "api",
       "trigger": "Opening an existing PDF with Pillow's PdfParser, which Image.save(append=True) does; Image.open does not read PDFs.",
-      "bucket": "N",
-      "finding": "PdfParser runs only when a PDF is appended to; opening a file never runs it. A PDF handed to poppler is checked by pdfinfo with a time limit instead.",
+      "bucket": "C",
+      "finding": "The existing PDF is the input, so the check belongs in front of it: the format gate and pdfinfo's time limit apply. But the trigger is a trailer whose /Prev pointer forms a cycle, in the object graph, which a bounded check does not parse and pdfinfo's summary does not show. Out of a pre-decode check's reach.",
       "refusal": null,
       "verified_by": [],
       "protect": {
         "general": "Upgrade to Pillow 12.2.0.",
-        "specific": "Not a pre-decode matter: the flaw is in a call that opening a file never makes."
+        "specific": "Run the check on a PDF before appending to it, for what it does see; append only to PDFs the program wrote itself; upgrade to a Pillow with the fix."
       },
       "sources": [
         "https://osv.dev/vulnerability/GHSA-r73j-pqj5-w3x7",
@@ -1157,7 +1163,7 @@
       ],
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
-      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-read on 2026-11-03 against the question of what rides from an opened file into a save: the file is the input."
     },
     {
       "key": "CVE-2026-42309",

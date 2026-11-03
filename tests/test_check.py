@@ -255,6 +255,35 @@ class TestHostileFiles:
             .startswith("a JPEG colour profile")
         )
 
+    def test_a_jpeg_profile_that_fills_the_encoder_buffer(self, tmp_path: Path) -> None:
+        # CVE-2026-96778: a 65,498-byte profile fills Pillow's 64 KB JPEG
+        # output buffer exactly, and a comment written after it overflows.
+        # Both ride from the opened file into a save that keeps the profile.
+        # The profile is the measured block; a ceiling under it refuses the file.
+        data = corpus.jpeg(10, 10, before_sof=corpus.jpeg_profile(65_498) + corpus.jpeg_padding(1))
+        path = corpus.write(tmp_path / "scan.jpg", data)
+        assert check(path).ok
+        verdict = check(path, Policy(max_metadata_bytes=65_000))
+        assert verdict.reasons == ("a JPEG colour profile of 65,498 bytes; the limit is 65,000",)
+
+    def test_a_png_text_chunk_under_a_lower_ceiling(self, tmp_path: Path) -> None:
+        # CVE-2026-112891: a comment carried from an opened file is copied in
+        # quadratic time when the image is saved as a GIF. From a file it can
+        # only come through a PNG text chunk, whose size the reader measures.
+        data = corpus.png(10, 10, extra=corpus.png_chunk(b"tEXt", 1_000_000))
+        path = corpus.write(tmp_path / "scan.png", data)
+        assert check(path).ok
+        verdict = check(path, Policy(max_metadata_bytes=65_536))
+        assert verdict.reasons == ("a PNG tEXt chunk of 1,000,000 bytes; the limit is 65,536",)
+
+    def test_an_animated_png_that_declares_too_many_frames(self, tmp_path: Path) -> None:
+        # CVE-2026-112894: Pillow's PDF writer takes time proportional to the
+        # square of the frame count it reads from the file before seeking any
+        # frame. The acTL count is read here and bounded by max_pages.
+        data = corpus.png(10, 10, frames=2**31 - 1)
+        verdict = check(corpus.write(tmp_path / "scan.png", data))
+        assert verdict.reasons == ("2,147,483,647 pages; the limit is 500",)
+
     def test_a_tiff_tag_over_the_limit(self, tmp_path: Path) -> None:
         data = corpus.tiff([(10, 10)], tags=[(34377, 7, b"\x00" * 4_194_305)])
         verdict = check(corpus.write(tmp_path / "scan.tif", data))

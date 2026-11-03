@@ -156,11 +156,39 @@ answer to the question at the top of this page.
 | **B2** | Preventable only by a coarse policy on a PDF's contents: the codec of an image, found by its filter's name in the bytes (`pdf_image_codecs`). Not an embedded font: every searchable PDF carries one, so a policy on fonts has no user, and a flaw in the font program is C | The same as B, through the PDF path; note that the policy will be coarse |
 | **C** | Needs decoding to detect: a flaw in the pixel data, the entropy-coded segment, the font program | Out of this library's reach by design; say so and close. Updating the decoder is the fix |
 | **D** | Reaches `pdfinfo` itself | Check that the check still fails closed (a timeout or a non-zero exit is a refusal), and close |
-| **N** | Not reached by opening a file: a command-line tool, a save or encode path, a drawing or font API, a parser that only runs on append | Close |
+| **N** | The check is not in the path. Either the file is not the input (a tool's options, a size or coordinates the program chooses, an encoder run on the program's own image, a misuse of an API), or the input is not an image or PDF anyone would run the check on (a font, a tar archive). Not "our pipeline never calls this": a save path that carries a crafted file's metadata is in the path, below | Close |
 | **U** | A reserved CVE with no text yet | The job never opens an issue for one; it stays pending and is re-checked weekly. The bucket exists so a hand-filed issue can say so |
 
 The backfill ran 138 advisories through these: 70 N, 30 A, 17 B, 8 B2,
 10 C, 1 D, 2 U. Expect the same shape.
+
+### What rides from an opened file into a save
+
+The first reading put every save-path advisory in N, on the reasoning
+that opening a file never runs an encoder. That answers the question for
+one pipeline, not for a library other people use: the question is whether
+the *file* is the input. A program that opens a file from outside and
+saves it again, which Tetrak OCR does in three places and most pipelines
+do somewhere, carries parts of that file into the encoder: a JPEG's
+comment and, when the program passes it, its colour profile; a TIFF's
+compression, and its tag table when the program keeps it; a declared frame
+count. So the second reading (3 November 2026) asks, for each save-path
+advisory, what rides across:
+
+- Nothing from the file (an encoder run on any image, a save to memory,
+  a tool's own options): N.
+- A block or a count the readers already measure (a colour profile that
+  fills the encoder's buffer, a text chunk, a frame count): A, usually by
+  a setting of `max_metadata_bytes` or `max_pages` rather than by default.
+- A tag in the directory the TIFF reader already walks (private and DNG
+  tags, a ColorMap that does not fit the sample depth, a Predictor libtiff
+  rejects): B, awaiting a policy on a TIFF's tags.
+- The object graph of a PDF handed to Pillow's own parser on append: C.
+  The check belongs in front of that PDF for what it does see, but a
+  cycle in the page tree is not a header field.
+
+A record in N should say which of the first kind it is, so that nobody
+reads "not reached" as "not reached by us".
 
 ## What a B finding becomes
 
