@@ -17,13 +17,13 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 109,
+    "records": 110,
     "refused_by_default": 39,
     "by_bucket": {
       "A": 31,
       "B": 16,
       "B2": 3,
-      "C": 17,
+      "C": 18,
       "D": 3,
       "N": 39,
       "U": 0
@@ -31,7 +31,7 @@
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 6,
-      "Pillow": 47,
+      "Pillow": 48,
       "libpng": 15,
       "libtiff": 18,
       "poppler": 16,
@@ -537,6 +537,35 @@
       "sources": [
         "https://github.com/advisories/GHSA-w889-685w-c8fh"
       ]
+    },
+    {
+      "key": "CVE-2026-112406",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "PdfParser.rewrite_pages loops for ever on a page-tree Parent cycle",
+      "summary": "Pillow: Infinite loop in PdfParser.rewrite_pages on page tree Parent cycle",
+      "published": "2026-10-21",
+      "severity": null,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Appending to an existing PDF with Image.save(format=\"PDF\", append=True).",
+      "bucket": "C",
+      "finding": "The existing PDF is the input, so the check belongs in front of it: the format gate and pdfinfo's time limit apply. But the trigger is a /Parent cycle among page-tree nodes, in the object graph, which a bounded check does not parse and pdfinfo's summary does not show. Out of a pre-decode check's reach.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Run the check on a PDF before appending to it, for what it does see; append only to PDFs the program wrote itself; upgrade to a Pillow with the fix."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-f2g6-542v-9j58"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Re-read on 2026-11-03 against the question of what rides from an opened file into a save: the file is the input."
     },
     {
       "key": "CVE-2026-112401",
