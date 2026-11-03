@@ -183,6 +183,15 @@ class TestHostileFiles:
         verdict = check(path, Policy(tiff_compressions=frozenset({"lzw"})))
         assert verdict.reasons == ("a zstd-compressed TIFF; the policy allows lzw",)
 
+    def test_a_jpeg_compressed_tiff_under_a_policy_without_jpeg(self, tmp_path: Path) -> None:
+        # CVE-2026-112897: short JPEG strips in a TIFF return uninitialised
+        # memory as pixels. The default allows JPEG in a TIFF, since scanners
+        # write it; a policy without it refuses the file before libtiff sees it.
+        path = corpus.write(tmp_path / "scan.tif", corpus.tiff([(10, 10)], compression=7))
+        assert check(path).ok
+        verdict = check(path, Policy(tiff_compressions=frozenset({"none", "ccitt", "lzw"})))
+        assert verdict.reasons == ("a jpeg-compressed TIFF; the policy allows none, ccitt and lzw",)
+
     def test_a_cielab_tiff(self, tmp_path: Path) -> None:
         path = corpus.write(tmp_path / "scan.tif", corpus.tiff([(10, 10)], layout=(8, 3, 8)))
         verdict = check(path)
