@@ -17,7 +17,7 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 76,
+    "records": 77,
     "refused_by_default": 22,
     "by_bucket": {
       "A": 12,
@@ -25,13 +25,13 @@
       "B2": 1,
       "C": 10,
       "D": 3,
-      "N": 34,
+      "N": 35,
       "U": 0
     },
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 5,
-      "Pillow": 22,
+      "Pillow": 23,
       "libpng": 15,
       "libtiff": 18,
       "poppler": 10,
@@ -817,6 +817,36 @@
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
       "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Moved from B2 to C on 2026-11-02, with the finding above."
+    },
+    {
+      "key": "CVE-2026-54059",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "A PCF font's glyph sizes bypass Pillow's decompression-bomb check",
+      "summary": "Pillow `PcfFontFile._load_bitmaps()`: `Image.frombytes()` called without `_decompression_bomb_check()` — bomb protection bypass via PCF font loading",
+      "published": "2026-07-06",
+      "severity": 7.5,
+      "affected": "< 12.3.0",
+      "fixed": "12.3.0",
+      "reached_by": "api",
+      "trigger": "Loading a PCF font file through PcfFontFile, which Image.open never does.",
+      "bucket": "N",
+      "finding": "In font loading, a separate entry point from Image.open; not reached by opening an image.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 12.3.0.",
+        "specific": "Not a pre-decode matter: the flaw is in a call that opening a file never makes."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-8v84-f9pq-wr9x",
+        "https://osv.dev/vulnerability/PYSEC-2026-2253"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "triaged": "2026-11-01",
