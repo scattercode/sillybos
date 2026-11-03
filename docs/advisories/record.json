@@ -17,7 +17,7 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 60,
+    "records": 61,
     "refused_by_default": 18,
     "by_bucket": {
       "A": 8,
@@ -25,7 +25,7 @@
       "B2": 1,
       "C": 9,
       "D": 3,
-      "N": 23,
+      "N": 24,
       "U": 0
     },
     "by_library": {
@@ -34,7 +34,8 @@
       "Pillow": 15,
       "libpng": 11,
       "libtiff": 15,
-      "poppler": 10
+      "poppler": 10,
+      "zlib": 1
     }
   },
   "records": [
@@ -1133,6 +1134,35 @@
         "https://github.com/advisories/GHSA-mmq5-27w3-rxpp",
         "https://osv.dev/vulnerability/CVE-2026-22695"
       ]
+    },
+    {
+      "key": "CVE-2026-22184",
+      "aliases": [],
+      "library": "zlib",
+      "package": "zlib",
+      "ecosystem": "Debian",
+      "title": "zlib's untgz demonstration overruns a global buffer",
+      "summary": "zlib versions up to and including 1.3.1.2 include a global buffer overflow in the untgz utility located under contrib/untgz.",
+      "published": "2026-01-07",
+      "severity": 7.8,
+      "affected": "zlib up to 1.3.1.2 (contrib/untgz only)",
+      "fixed": null,
+      "reached_by": "tool",
+      "trigger": "Running the contrib/untgz demonstration utility with an over-long archive name.",
+      "bucket": "N",
+      "finding": "A standalone demonstration under contrib/, which the zlib library does not contain; no library call runs it.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade zlib to a version that has the fix; the upstream record names it.",
+        "specific": "Not a pre-decode matter: a command-line tool, not the library, runs the flawed code."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-22184"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "triaged": "2026-11-01",
