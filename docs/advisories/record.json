@@ -17,7 +17,7 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 69,
+    "records": 70,
     "refused_by_default": 20,
     "by_bucket": {
       "A": 10,
@@ -25,13 +25,13 @@
       "B2": 1,
       "C": 10,
       "D": 3,
-      "N": 29,
+      "N": 30,
       "U": 0
     },
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 5,
-      "Pillow": 18,
+      "Pillow": 19,
       "libpng": 15,
       "libtiff": 15,
       "poppler": 10,
@@ -785,6 +785,36 @@
       },
       "sources": [
         "https://osv.dev/vulnerability/DEBIAN-CVE-2026-10118"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-42309",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Nested coordinate lists overrun a heap buffer in Pillow's drawing",
+      "summary": "Pillow has a heap buffer overflow with nested list coordinates",
+      "published": "2026-05-04",
+      "severity": 5.5,
+      "affected": ">= 11.2.1, < 12.2.0",
+      "fixed": "12.2.0",
+      "reached_by": "api",
+      "trigger": "Passing nested lists as coordinates to ImageDraw or ImagePath.",
+      "bucket": "N",
+      "finding": "In the drawing APIs, which Image.open never runs.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to Pillow 12.2.0.",
+        "specific": "Not a pre-decode matter: the flaw is in a call that opening a file never makes."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-5xmw-vc9v-4wf2",
+        "https://osv.dev/vulnerability/PYSEC-2026-2251"
       ],
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
