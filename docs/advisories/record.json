@@ -17,13 +17,13 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 99,
+    "records": 100,
     "refused_by_default": 33,
     "by_bucket": {
       "A": 24,
       "B": 16,
       "B2": 3,
-      "C": 16,
+      "C": 17,
       "D": 3,
       "N": 37,
       "U": 0
@@ -34,7 +34,7 @@
       "Pillow": 40,
       "libpng": 15,
       "libtiff": 18,
-      "poppler": 14,
+      "poppler": 15,
       "zlib": 3
     }
   },
@@ -785,6 +785,35 @@
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
       "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Moved from B2 to C on 2026-11-02, with the finding above."
+    },
+    {
+      "key": "CVE-2026-102621",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "A clipping path overflows an integer in poppler's Splash renderer",
+      "summary": "A vulnerability was identified in Freedesktop Poppler up to 26.08.0.",
+      "published": "2026-09-29",
+      "severity": null,
+      "affected": "poppler up to 26.08.0",
+      "fixed": "26.09.0",
+      "reached_by": "open",
+      "trigger": "Rendering a PDF whose clipping path makes SplashClip::clipToPath overflow.",
+      "bucket": "C",
+      "finding": "Page content that only the renderer evaluates; out of a pre-decode check's reach.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to poppler 26.09.0.",
+        "specific": "Render PDFs in a boxed process with memory and time limits (see Decoding in a box); nothing read before decoding can see this."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-102621"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "key": "CVE-2026-102620",
