@@ -17,13 +17,13 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 57,
+    "records": 58,
     "refused_by_default": 18,
     "by_bucket": {
       "A": 8,
       "B": 16,
       "B2": 1,
-      "C": 8,
+      "C": 9,
       "D": 3,
       "N": 21,
       "U": 0
@@ -34,7 +34,7 @@
       "Pillow": 15,
       "libpng": 10,
       "libtiff": 14,
-      "poppler": 9
+      "poppler": 10
     }
   },
   "records": [
@@ -701,6 +701,35 @@
       "sources": [
         "https://github.com/advisories/GHSA-cg4c-j43f-qcg7"
       ]
+    },
+    {
+      "key": "CVE-2026-10118",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "A tiling pattern overflows an allocation in poppler's Splash renderer",
+      "summary": "A flaw was found in Poppler's Splash backend.",
+      "published": "2026-06-01",
+      "severity": 7.8,
+      "affected": "poppler, as packaged; see the upstream record",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Rendering a PDF page whose tiling pattern makes tilingPatternFill compute an undersized allocation.",
+      "bucket": "C",
+      "finding": "In the renderer's pattern filling; the pattern is page content that no header or pdfinfo report shows. Out of a pre-decode check's reach.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade poppler to a version that has the fix; the upstream record names it.",
+        "specific": "Render PDFs in a boxed process with memory and time limits (see Decoding in a box); nothing read before decoding can see this."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-10118"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "key": "CVE-2026-6192",
