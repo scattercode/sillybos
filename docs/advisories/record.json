@@ -17,10 +17,10 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 49,
-    "refused_by_default": 17,
+    "records": 50,
+    "refused_by_default": 18,
     "by_bucket": {
-      "A": 6,
+      "A": 7,
       "B": 16,
       "B2": 1,
       "C": 7,
@@ -30,7 +30,7 @@
     },
     "by_library": {
       "FreeType": 4,
-      "OpenJPEG": 3,
+      "OpenJPEG": 4,
       "Pillow": 15,
       "libpng": 7,
       "libtiff": 11,
@@ -1255,6 +1255,41 @@
       },
       "sources": [
         "https://osv.dev/vulnerability/DEBIAN-CVE-2025-8534"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2025-54874",
+      "aliases": [],
+      "library": "OpenJPEG",
+      "package": "openjpeg2",
+      "ecosystem": "Debian",
+      "title": "A short JP2 stream makes OpenJPEG write out of bounds in opj_jp2_read_header",
+      "summary": "OpenJPEG is an open-source JPEG 2000 codec.",
+      "published": "2025-08-05",
+      "severity": 9.8,
+      "affected": "OpenJPEG 2.5.1 through 2.5.3",
+      "fixed": "2.5.4",
+      "reached_by": "open",
+      "trigger": "Opening a JPEG 2000 file whose stream ends before the header is complete.",
+      "bucket": "A",
+      "finding": "A JPEG 2000 file is not one of the four formats a scan can be and is refused by name before any decoder sees it. Inside a PDF, a JPX image stream still reaches OpenJPEG when poppler renders the page; the default allows it, and a policy that knows its source refuses it by name (pdf_image_codecs without jpx). pdfimages -list would show the stream too, but it opens it with OpenJPEG just to describe it, so the library never runs that tool.",
+      "refusal": {
+        "check": "format",
+        "default": true,
+        "setting": "formats"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_format_a_scan_never_is"
+      ],
+      "protect": {
+        "general": "Upgrade to OpenJPEG 2.5.4.",
+        "specific": "Refuse JPEG 2000 by name, as sillybos does by default; for a JPX stream inside a PDF, refuse the codec with pdf_image_codecs if the source never uses it, and render in a boxed process in any case."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-54874"
       ],
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
