@@ -17,13 +17,13 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 89,
+    "records": 90,
     "refused_by_default": 25,
     "by_bucket": {
       "A": 15,
       "B": 16,
       "B2": 1,
-      "C": 13,
+      "C": 14,
       "D": 3,
       "N": 41,
       "U": 0
@@ -34,7 +34,7 @@
       "Pillow": 34,
       "libpng": 15,
       "libtiff": 18,
-      "poppler": 10,
+      "poppler": 11,
       "zlib": 3
     }
   },
@@ -636,6 +636,35 @@
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
       "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03. Moved from B2 to C on 2026-11-02, with the finding above."
+    },
+    {
+      "key": "CVE-2026-93311",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "A sampled function's BitsPerSample overflows an integer in poppler",
+      "summary": "A vulnerability was detected in Freedesktop Poppler 26.07.0.",
+      "published": "2026-09-18",
+      "severity": null,
+      "affected": "poppler 26.07.0",
+      "fixed": null,
+      "reached_by": "open",
+      "trigger": "Rendering a PDF whose Type 0 (sampled) function declares a crafted BitsPerSample.",
+      "bucket": "C",
+      "finding": "A function dictionary is page content that only the renderer evaluates; no header or pdfinfo report shows it. Out of a pre-decode check's reach.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade poppler to a version that has the fix; the upstream record names it.",
+        "specific": "Render PDFs in a boxed process with memory and time limits (see Decoding in a box); nothing read before decoding can see this."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-93311"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "key": "CVE-2026-18495",
