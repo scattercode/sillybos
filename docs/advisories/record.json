@@ -17,14 +17,14 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 47,
+    "records": 48,
     "refused_by_default": 17,
     "by_bucket": {
       "A": 6,
       "B": 16,
       "B2": 1,
       "C": 7,
-      "D": 1,
+      "D": 2,
       "N": 16,
       "U": 0
     },
@@ -34,7 +34,7 @@
       "Pillow": 15,
       "libpng": 7,
       "libtiff": 11,
-      "poppler": 7
+      "poppler": 8
     }
   },
   "records": [
@@ -1015,6 +1015,35 @@
         "https://github.com/advisories/GHSA-hfc7-ph9c-wcww",
         "https://osv.dev/vulnerability/CVE-2025-64720"
       ]
+    },
+    {
+      "key": "CVE-2025-52885",
+      "aliases": [],
+      "library": "poppler",
+      "package": "poppler",
+      "ecosystem": "Debian",
+      "title": "poppler's structure tree holds dangling pointers after a vector resize",
+      "summary": "Poppler ia a library for rendering PDF files, and examining or modifying their structure.",
+      "published": "2025-10-10",
+      "severity": null,
+      "affected": "poppler before 25.10.0",
+      "fixed": "25.10.0",
+      "reached_by": "open",
+      "trigger": "A tagged PDF whose structure tree makes poppler resize the vector that refToParentMap points into.",
+      "bucket": "D",
+      "finding": "In StructTreeRoot, parsed when a tool reads the structure of a tagged file; pdfinfo may do so for a tagged document. A crash in pdfinfo is a refusal (fails closed); in the renderer, nothing a header shows distinguishes the file.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade to poppler 25.10.0.",
+        "specific": "Render PDFs in a boxed process with memory and time limits (see Decoding in a box); nothing read before decoding can see this."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2025-52885"
+      ],
+      "triaged": "2026-11-03",
+      "checked": "2026-11-03",
+      "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
     },
     {
       "key": "CVE-2025-43718",
