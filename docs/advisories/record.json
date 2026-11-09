@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-03",
+  "generated": "2026-11-09",
   "buckets": {
     "A": "Already refused by an existing check",
     "B": "Preventable from a header field our readers can see",
@@ -17,7 +17,7 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 123,
+    "records": 124,
     "refused_by_default": 46,
     "by_bucket": {
       "A": 39,
@@ -25,7 +25,7 @@
       "B2": 3,
       "C": 19,
       "D": 3,
-      "N": 40,
+      "N": 41,
       "U": 0
     },
     "by_library": {
@@ -35,7 +35,7 @@
       "libpng": 15,
       "libtiff": 18,
       "poppler": 16,
-      "zlib": 3
+      "zlib": 4
     }
   },
   "records": [
@@ -1872,6 +1872,35 @@
       "triaged": "2026-11-03",
       "checked": "2026-11-03",
       "notes": "Proposed from the advisory's text on 2026-11-01, as part of folding the backfill into the record; confirmed by a person on 2026-11-03."
+    },
+    {
+      "key": "CVE-2026-76844",
+      "aliases": [],
+      "library": "zlib",
+      "package": "zlib",
+      "ecosystem": "Debian",
+      "title": "zlib's gz_write overflows a heap buffer after a failed write",
+      "summary": "zlib 1.2.11 through 1.3.2 contains a heap buffer overflow: after an underlying write() fails, gz_write() returns without resetting strm.next_in, and a later gz* write call derives a position from the stale pointer and writes past a heap allocation.",
+      "published": "2026-08-24",
+      "severity": 7.4,
+      "affected": "zlib 1.2.11 through 1.3.2",
+      "fixed": null,
+      "reached_by": "save",
+      "trigger": "A further gz* write call after the program's own write() failed (EPIPE on a blocking descriptor is enough; before 1.3.1.2 a gzclearerr() call must come between).",
+      "bucket": "N",
+      "finding": "In zlib's gz file layer (gz_write), after the program's own write() fails. The trigger is an I/O failure, not anything a file carries, and nothing in the image stack calls that layer: libpng and libtiff use the raw deflate stream, Pillow's wheel references none of the gz write functions, and Python's zlib module has no gz API. Only a program that writes .gz files through zlib's own file functions is in the path.",
+      "refusal": null,
+      "verified_by": [],
+      "protect": {
+        "general": "Upgrade zlib to a version that has the fix; the upstream record names it.",
+        "specific": "Not reached through an image: only a program's own gzwrite after a failed write; upgrade zlib."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/DEBIAN-CVE-2026-76844"
+      ],
+      "triaged": "2026-11-09",
+      "checked": "2026-11-09",
+      "notes": "Severity is the CVSS 3.1 base score worked out from the vector the upstream record gives (AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:H); the record gives no number. A sibling of CVE-2026-85091 in the same gz write layer; the check there that nothing in the image stack calls it carries over."
     },
     {
       "key": "CVE-2026-52492",
