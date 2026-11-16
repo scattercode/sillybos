@@ -101,10 +101,15 @@ def jpeg(
     out, as a file cut short after its header.
     """
     app0 = _segment(0xE0, b"JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00")
-    layout = b"".join(bytes([n + 1, 0x11, 0]) for n in range(components))
-    frame = _segment(marker, struct.pack(">BHHB", 8, height, width, components) + layout)
+    frame = jpeg_frame(width, height, marker=marker, components=components)
     end = b"\xff\xda\x00\x02\xff\xd9" if scan else b""
     return b"\xff\xd8" + app0 + before_sof + (frame if sof else b"") + after_sof + end
+
+
+def jpeg_frame(width: int, height: int, *, marker: int = 0xC0, components: int = 1) -> bytes:
+    """A frame header segment on its own, for :func:`jpeg`'s ``after_sof`` or :func:`jpeg_with`."""
+    layout = b"".join(bytes([n + 1, 0x11, 0]) for n in range(components))
+    return _segment(marker, struct.pack(">BHHB", 8, height, width, components) + layout)
 
 
 def jpeg_exif(block: bytes, *, pieces: int = 1) -> bytes:

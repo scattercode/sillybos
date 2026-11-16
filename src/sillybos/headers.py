@@ -409,6 +409,11 @@ def _frame(
     or a Multi-Picture index from wherever it sits before the scan. Up to
     the frame header, a segment the reader cannot follow is an error. After
     it, the walk simply stops there, as the decoder does.
+
+    A second frame header before the image data is an error wherever it
+    sits. A frame has one; given two, Pillow reports the size in the last
+    and libjpeg refuses to decode, so the first would not be the size a
+    program is told.
     """
     f.seek(start)
     if _read_exactly(f, 2, "header") != b"\xff\xd8":
@@ -433,7 +438,10 @@ def _frame(
             break
         payload = f.tell()
         next_offset = payload + length - 2
-        if marker in _FRAME_CODINGS and frame is None:
+        if marker in _FRAME_CODINGS and frame is not None:
+            where = "the image data" if index else f"{what}'s image data"
+            raise HeaderError(f"a second frame header before {where}")
+        if marker in _FRAME_CODINGS:
             if length < 8:
                 raise HeaderError("the frame header is too short to hold the dimensions")
             _precision, height, width, components = struct.unpack(

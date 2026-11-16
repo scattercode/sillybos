@@ -600,9 +600,37 @@ class TestJpegSegmentsAfterTheFrameHeader:
         overrun = corpus.jpeg(640, 480, scan=False) + b"\xff\xfe\xff\xff"
         assert read("jpeg", overrun).width == 640
 
-    def test_a_second_frame_header_is_passed_over(self) -> None:
-        second = struct.pack(">BBHBHHB", 0xFF, 0xC0, 11, 8, 32, 32, 1) + b"\x01\x11\x00"
-        assert read("jpeg", corpus.jpeg(640, 480, after_sof=second)).width == 640
+    @pytest.mark.parametrize("marker", [0xC0, 0xC2, 0xC3])
+    def test_a_second_frame_header_is_refused(self, marker: int) -> None:
+        second = corpus.jpeg_frame(30_000, 30_000, marker=marker)
+        for filler in (b"", corpus.jpeg_padding(3)):
+            data = corpus.jpeg(640, 480, after_sof=filler + second)
+            with pytest.raises(HeaderError, match="a second frame header before the image data"):
+                read("jpeg", data)
+
+    def test_a_second_frame_header_in_a_later_picture(self) -> None:
+        data = corpus.mpo([(64, 64), (32, 32)])
+        at = data.rindex(b"\xff\xd8") + 20  # after the second picture's SOI and APP0
+        data = data[:at] + corpus.jpeg_frame(8, 8) + data[at:]
+        with pytest.raises(
+            HeaderError, match="a second frame header before picture 2's image data"
+        ):
+            read("jpeg", data)
+
+    def test_a_frame_header_after_the_scan_starts_is_not_read(self) -> None:
+        """A hierarchical file's later frames follow its first scan; the walk has stopped by then."""
+        data = corpus.jpeg(640, 480) + corpus.jpeg_frame(32, 32)
+        assert read("jpeg", data).width == 640
+
+    def test_two_frame_headers_as_pillow_reads_them(self) -> None:
+        """Why it is refused: Pillow reports the size in the last, and then cannot decode it."""
+        data = corpus.jpeg_with(_real("JPEG"), corpus.jpeg_frame(3000, 2000), after_frame=True)
+        with Image.open(io.BytesIO(data)) as image:
+            assert image.size == (3000, 2000)
+            with pytest.raises(OSError, match="broken data stream"):
+                image.load()
+        with pytest.raises(HeaderError, match="a second frame header"):
+            read("jpeg", data)
 
     def test_no_scan_within_the_segment_limit(self) -> None:
         data = corpus.jpeg(64, 64, after_sof=corpus.jpeg_padding(headers.MAX_SEGMENTS))

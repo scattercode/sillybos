@@ -173,7 +173,8 @@ prints one object per line for a pipeline; `-q` prints only refusals.
    unknown format". Refused by name, and no reader of ours runs on it.
 3. **Name against contents.** `says PNG, is JPEG`.
 4. **The header**, with a reader of its own for each raster format: the
-   dimensions, coding and component count from a JPEG's frame header, the
+   dimensions, coding and component count from a JPEG's frame header,
+   which must be the only one before the image data, the
    size of its colour profile and the tag directories of its EXIF block,
    from every segment up to the start of the image data, as a decoder
    reads them, and every picture of a multi-picture (MPF)
@@ -252,7 +253,7 @@ The tests build the hostile corpus by hand at test time (`tests/corpus.py`):
 renamed PostScript, a 100-byte PNG that claims ten billion pixels, a PNG
 with a five-megabyte EXIF chunk after the image data, an interlaced PNG,
 a PNG whose header pairs a colour type with a bit depth it cannot have, a
-TIFF whose tag points past the end of the file, a lossless JPEG, a multi-picture JPEG whose second picture is four billion
+TIFF whose tag points past the end of the file, a lossless JPEG, a JPEG with a second frame header that claims a larger picture, a multi-picture JPEG whose second picture is four billion
 pixels or changes colour mode, a PixarLog-compressed TIFF, a CIELab TIFF, a YCbCr TIFF subsampled four to one, a TIFF that
 changes compression or colour mode between frames, a TIFF whose tiles are four billion pixels each, a TIFF with ten thousand frames, a
 TIFF whose frame chain loops, a TIFF, a JPEG and a PNG whose tags all claim the same bytes, a PDF of a thousand pages, a PDF with a page 200
