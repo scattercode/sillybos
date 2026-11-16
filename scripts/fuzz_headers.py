@@ -73,6 +73,7 @@ def seeds() -> list[bytes]:
         corpus.tiff([(64, 64), (32, 32), (16, 16)]),
         corpus.tiff([(64, 64)], endian=">"),
         corpus.tiled_tiff(256, 256, 64),
+        corpus.spare_sample_tiff(64, 8),
     ]
     try:
         from PIL import Image

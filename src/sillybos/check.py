@@ -91,6 +91,10 @@ class Facts:
             and for a TIFF of standard tags only.
         inconsistencies: Each way a TIFF's tags contradict each other, in
             a sentence. Empty when they agree, and for the other formats.
+        spare_samples: How many samples each pixel of a greyscale or
+            palette TIFF carries beyond the one the image uses, unless
+            that is a single alpha sample. 0 for every other TIFF and
+            for the other formats.
     """
 
     bytes: int
@@ -113,6 +117,7 @@ class Facts:
     codecs: tuple[str, ...] = ()
     tags: tuple[tuple[str, int], ...] = ()
     inconsistencies: tuple[str, ...] = ()
+    spare_samples: int = 0
 
 
 @dataclass(frozen=True)
@@ -268,6 +273,7 @@ def _facts(path: Path, fmt: str, f: headers.Reader, size: int, policy: Policy) -
         subsampling=header.subsampling,
         tags=header.tags,
         inconsistencies=header.inconsistencies,
+        spare_samples=header.spare_samples,
     )
 
 
@@ -348,6 +354,12 @@ def _against_limits(facts: Facts, policy: Policy, fmt: str) -> list[str]:
     if facts.inconsistencies and not policy.allow_inconsistent_tiff_tags:
         reasons.append(
             "a TIFF whose tags contradict each other: " + "; ".join(facts.inconsistencies)
+        )
+    if facts.spare_samples and not policy.allow_spare_tiff_samples:
+        reasons.append(
+            f"a {facts.colour} TIFF with {facts.spare_samples + 1:,} samples per pixel, where "
+            "the image uses one and the rest are not an alpha channel; the policy does not "
+            "allow spare samples"
         )
     return reasons
 

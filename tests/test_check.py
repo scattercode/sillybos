@@ -237,6 +237,32 @@ class TestHostileFiles:
         )
         assert check(path, Policy(allow_inconsistent_tiff_tags=True)).ok
 
+    def test_a_palette_tiff_with_a_spare_sample_under_a_policy_without_them(
+        self, tmp_path: Path
+    ) -> None:
+        # CVE-2026-128067: SamplesPerPixel 2 on a palette image, which Pillow
+        # opens as one band and whose tag a bare save hands to libtiff's
+        # encoder, to read two samples for every one in the row.
+        path = corpus.write(tmp_path / "scan.tif", corpus.spare_sample_tiff(64, 4))
+        verdict = check(path)
+        assert verdict.ok and verdict.facts is not None and verdict.facts.spare_samples == 1
+        assert check(path, STRICT).ok
+        assert check(path, Policy(allow_spare_tiff_samples=False)).reasons == (
+            "a palette TIFF with 2 samples per pixel, where the image uses one and the rest "
+            "are not an alpha channel; the policy does not allow spare samples",
+        )
+        grey = corpus.write(tmp_path / "grey.tif", corpus.spare_sample_tiff(64, 4, photometric=1))
+        assert check(grey, Policy(allow_spare_tiff_samples=False)).reasons == (
+            "a greyscale TIFF with 2 samples per pixel, where the image uses one and the rest "
+            "are not an alpha channel; the policy does not allow spare samples",
+        )
+        for photometric, samples, extra in ((3, 2, 2), (1, 2, 2), (2, 4, 0)):
+            data = corpus.spare_sample_tiff(
+                64, 4, photometric=photometric, samples=samples, extra=extra
+            )
+            kept = corpus.write(tmp_path / f"kept-{photometric}-{extra}.tif", data)
+            assert check(kept, Policy(allow_spare_tiff_samples=False)).ok
+
     def test_a_cielab_tiff(self, tmp_path: Path) -> None:
         path = corpus.write(tmp_path / "scan.tif", corpus.tiff([(10, 10)], layout=(8, 3, 8)))
         verdict = check(path)

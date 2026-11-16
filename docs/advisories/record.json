@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-09",
+  "generated": "2026-11-16",
   "buckets": {
     "A": "Already refused by an existing check",
     "B": "Preventable from a header field our readers can see",
@@ -17,11 +17,11 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 124,
+    "records": 125,
     "refused_by_default": 46,
     "by_bucket": {
       "A": 39,
-      "B": 19,
+      "B": 20,
       "B2": 3,
       "C": 19,
       "D": 3,
@@ -31,7 +31,7 @@
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 6,
-      "Pillow": 61,
+      "Pillow": 62,
       "libpng": 15,
       "libtiff": 18,
       "poppler": 16,
@@ -39,6 +39,41 @@
     }
   },
   "records": [
+    {
+      "key": "CVE-2026-128067",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Tags carried into a TIFF save make Pillow's libtiff encoder read or write past its row buffer",
+      "summary": "Pillow: Heap buffer overflow saving TIFF with libtiff when tags override image size",
+      "published": "2026-11-12",
+      "severity": 8.4,
+      "affected": "< 13.0.0",
+      "fixed": "13.0.0",
+      "reached_by": "save",
+      "trigger": "Opening a greyscale or palette TIFF that gives each pixel a spare sample and saving it back as TIFF; or saving any image as a compressed TIFF with the EXIF or the tag table of the file it came from.",
+      "bucket": "B",
+      "finding": "The file is the input by three routes, and the check reaches one of them. First, a greyscale or palette TIFF whose pixels carry a second sample declared unspecified (SamplesPerPixel 2, ExtraSamples 0) opens in Pillow as a one-band image while its tag still says two, and a bare save, with no option from the program, hands that tag to libtiff's encoder, which reads two samples for every one in the row. SamplesPerPixel is in the directory the reader walks, and a policy that refuses spare samples refuses the file before Pillow sees it (allow_spare_tiff_samples). It is a valid TIFF that a read is not harmed by, so the default allows it and the setting is what closes this. Second, a JPEG whose EXIF holds TIFF geometry tags (ImageWidth, SamplesPerPixel) reaches the encoder only when the program passes the file's EXIF to a compressed TIFF save; the tags sit in a block the JPEG reader measures and does not parse, so nothing refuses that file. Third, a TIFF with a rotating Orientation, which Pillow turns on load while its tags keep the old size, reaches it when the program passes the tag table or the EXIF back; that file is well formed and every rotated scan is one, so no policy could refuse it without refusing them all. A size that is stale because the program resized the image is the program's own. Tetrak OCR copies each frame before saving, which drops the tag table, and passes no EXIF, so it is not reached there.",
+      "refusal": {
+        "check": "allow_spare_tiff_samples",
+        "default": false,
+        "setting": "Policy(allow_spare_tiff_samples=False)"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_palette_tiff_with_a_spare_sample_under_a_policy_without_them"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 13.0.0, whose encoder refuses a scanline longer than the row it was given.",
+        "specific": "Refuse spare samples (allow_spare_tiff_samples) wherever a file from outside is saved back as TIFF; on a Pillow before 13.0.0, do not pass a file's own EXIF or tag table to a TIFF save (exif=, tiffinfo=); upgrade to Pillow 13.0.0."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-xcvg-w56q-r89m"
+      ],
+      "triaged": "2026-11-16",
+      "checked": "2026-11-16",
+      "notes": "Triaged from the advisory's text on 2026-11-16, and the bucket confirmed by a person the same day. The words filter labelled the issue likely-not-reached on \"saving\"; read against the question of what rides from an opened file into a save, the file is the input. The advisory names the palette layout for the bare save; the greyscale one was found by trying a bare save of each layout on Pillow 13.0.0, where the encoder's new guard refuses (encoder error -8) the greyscale and the palette image with an unspecified sample, and no image with an alpha channel, nor RGB or CMYK with a spare sample. The overflow itself was not reproduced on an earlier Pillow. The policy was built on 2026-11-16."
+    },
     {
       "key": "CVE-2026-107080",
       "aliases": [],

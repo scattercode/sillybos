@@ -259,6 +259,78 @@ class TestTiffTags:
         assert read("tiff", data).inconsistencies == ()
 
 
+class TestTiffSpareSamples:
+    @pytest.mark.parametrize(
+        ("layout", "extra", "spare"),
+        [
+            ((3, 2, 8), [(338, 3, b"\x00\x00")], 1),  # CVE-2026-128067: palette, unspecified
+            ((1, 2, 8), [(338, 3, b"\x00\x00")], 1),  # greyscale, unspecified
+            ((0, 2, 8), [(338, 3, b"\x00\x00")], 1),  # white-is-zero greyscale
+            ((1, 2, 8), [], 1),  # two samples and no ExtraSamples tag at all
+            ((3, 3, 8), [(338, 3, b"\x02\x00\x00\x00")], 2),  # alpha and one more
+            ((3, 2, 8), [(338, 3, b"\x03\x00")], 1),  # a value the tag does not define
+            ((3, 2, 8), [(338, 1, b"\x02")], 1),  # alpha, but not written as a SHORT
+            ((3, 2, 8), [(338, 3, b"\x00\x00"), (338, 3, b"\x02\x00")], 1),  # said twice
+            ((3, 2, 8), [(338, 3, b"\x02\x00"), (338, 3, b"\x03\x00")], 1),
+            ((3, 2, 8), [(338, 3, b"\x02\x00")], 0),  # unassociated alpha
+            ((1, 2, 8), [(338, 3, b"\x01\x00")], 0),  # associated alpha
+            ((1, 1, 8), [], 0),
+            ((3, 1, 8), [], 0),
+            ((2, 4, 8), [(338, 3, b"\x00\x00")], 0),  # RGB keeps its own count of samples
+            ((5, 5, 8), [(338, 3, b"\x00\x00")], 0),  # as does CMYK
+        ],
+    )
+    def test_samples_beyond_the_one_a_one_sample_image_uses(
+        self, layout: corpus.Layout, extra: list[tuple[int, int, bytes]], spare: int
+    ) -> None:
+        data = corpus.tiff([(10, 10)], compression=5, layout=layout, tags=extra)
+        assert read("tiff", data).spare_samples == spare
+
+    def test_the_tag_is_read_in_either_byte_order(self) -> None:
+        for endian in "<>":
+            alpha = [(338, 3, struct.pack(endian + "H", 2))]
+            data = corpus.tiff([(10, 10)], endian=endian, layout=(3, 2, 8), tags=alpha)
+            assert read("tiff", data).spare_samples == 0
+            unspecified = [(338, 3, struct.pack(endian + "H", 0))]
+            data = corpus.tiff([(10, 10)], endian=endian, layout=(3, 2, 8), tags=unspecified)
+            assert read("tiff", data).spare_samples == 1
+
+    def test_the_most_in_any_frame_is_reported_when_the_walk_stops(self) -> None:
+        data = corpus.tiff([(10, 10)] * 4, layout=(3, 2, 8), tags=[(338, 3, b"\x00\x00")])
+        header = read("tiff", data, limit=2)
+        assert not header.complete and header.spare_samples == 1
+
+    @pytest.mark.parametrize(
+        ("photometric", "samples", "extra", "mode"),
+        [
+            (3, 2, 0, "P"),  # CVE-2026-128067
+            (1, 2, 0, "L"),
+            (3, 2, 2, "PA"),
+            (1, 2, 2, "LA"),
+            (2, 4, 0, "RGB"),
+            (2, 4, 2, "RGBA"),
+        ],
+    )
+    def test_spare_samples_as_pillow_reads_them(
+        self, photometric: int, samples: int, extra: int, mode: str
+    ) -> None:
+        """Spare is what Pillow opens as one band while the tag it keeps says more.
+
+        That pair is the flaw's precondition: a save sizes its row from the
+        bands and hands libtiff the tag.
+        """
+        data = corpus.spare_sample_tiff(
+            16, 4, photometric=photometric, samples=samples, extra=extra
+        )
+        header = read("tiff", data)
+        with Image.open(io.BytesIO(data)) as image:
+            assert isinstance(image, TiffImagePlugin.TiffImageFile)
+            image.load()
+            assert image.mode == mode and image.tag_v2[277] == samples
+            one_band_and_a_tag_that_says_more = len(image.getbands()) == 1 and samples > 1
+        assert bool(header.spare_samples) == one_band_and_a_tag_that_says_more
+
+
 class TestTiffCompression:
     def test_no_tag_means_uncompressed(self) -> None:
         assert read("tiff", corpus.tiff([(10, 10)])).compression == "none"
