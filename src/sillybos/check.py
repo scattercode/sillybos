@@ -95,6 +95,11 @@ class Facts:
             palette TIFF carries beyond the one the image uses, unless
             that is a single alpha sample. 0 for every other TIFF and
             for the other formats.
+        overlaps: Each tag directory whose tags claim more data between
+            them than the file holds, in a sentence: a TIFF's frame or
+            one of the directories it points to, the EXIF block of a
+            JPEG or a PNG, a JPEG's multi-picture index. Empty when none
+            does, and for a PDF.
     """
 
     bytes: int
@@ -118,6 +123,7 @@ class Facts:
     tags: tuple[tuple[str, int], ...] = ()
     inconsistencies: tuple[str, ...] = ()
     spare_samples: int = 0
+    overlaps: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -274,6 +280,7 @@ def _facts(path: Path, fmt: str, f: headers.Reader, size: int, policy: Policy) -
         tags=header.tags,
         inconsistencies=header.inconsistencies,
         spare_samples=header.spare_samples,
+        overlaps=header.overlaps,
     )
 
 
@@ -360,6 +367,11 @@ def _against_limits(facts: Facts, policy: Policy, fmt: str) -> list[str]:
             f"a {facts.colour} TIFF with {facts.spare_samples + 1:,} samples per pixel, where "
             "the image uses one and the rest are not an alpha channel; the policy does not "
             "allow spare samples"
+        )
+    if facts.overlaps and not policy.allow_overlapping_tag_data:
+        reasons.append(
+            f"a {sniff.describe(fmt)} whose tags claim more data than it holds: "
+            + "; ".join(facts.overlaps)
         )
     return reasons
 

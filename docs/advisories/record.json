@@ -17,11 +17,11 @@
     "other": "some other way; the finding says"
   },
   "counts": {
-    "records": 125,
-    "refused_by_default": 46,
+    "records": 126,
+    "refused_by_default": 47,
     "by_bucket": {
       "A": 39,
-      "B": 20,
+      "B": 21,
       "B2": 3,
       "C": 19,
       "D": 3,
@@ -31,7 +31,7 @@
     "by_library": {
       "FreeType": 4,
       "OpenJPEG": 6,
-      "Pillow": 62,
+      "Pillow": 63,
       "libpng": 15,
       "libtiff": 18,
       "poppler": 16,
@@ -73,6 +73,43 @@
       "triaged": "2026-11-16",
       "checked": "2026-11-16",
       "notes": "Triaged from the advisory's text on 2026-11-16, and the bucket confirmed by a person the same day. The words filter labelled the issue likely-not-reached on \"saving\"; read against the question of what rides from an opened file into a save, the file is the input. The advisory names the palette layout for the bare save; the greyscale one was found by trying a bare save of each layout on Pillow 13.0.0, where the encoder's new guard refuses (encoder error -8) the greyscale and the palette image with an unspecified sample, and no image with an alpha channel, nor RGB or CMYK with a spare sample. The overflow itself was not reproduced on an earlier Pillow. The policy was built on 2026-11-16."
+    },
+    {
+      "key": "CVE-2026-128066",
+      "aliases": [],
+      "library": "Pillow",
+      "package": "pillow",
+      "ecosystem": "PyPI",
+      "title": "Tags that all claim the same bytes make Pillow hold thousands of times a file's size in memory",
+      "summary": "Pillow: Memory DoS in TIFF and EXIF IFD parsing via overlapping tag data",
+      "published": "2026-11-12",
+      "severity": null,
+      "affected": "< 13.0.0",
+      "fixed": "13.0.0",
+      "reached_by": "open",
+      "trigger": "Opening a TIFF or a JPEG whose tag directory holds thousands of tags that each claim the same bytes as their value; for a PNG, asking for the EXIF of one.",
+      "bucket": "B",
+      "finding": "The trigger is a tag directory, which is a header: each entry gives the size of its value and where it lies, and the loader reads every value into memory with nothing to stop them all being the same bytes. The values of an honest directory do not overlap, so they cannot add up to more than the bytes they are read from, and the reader now adds them up: for each frame of a TIFF and the Exif, GPS and interoperability directories it points to, against the file; for the EXIF block of a JPEG or a PNG (its main, thumbnail, Exif, GPS and interoperability directories) and a JPEG's multi-picture index, against the block. A directory that claims more is refused by default, as is a block whose directories hold more entries between them than it has bytes for. The JPEG walk now goes on past the frame header to the image data, since Pillow reads an EXIF block from anywhere before the scan. The advisory's own TIFF was already refused, by accident: its tags point at the second byte of the file, inside the header, which the reader does not allow; moved eight bytes on, it passed every policy. Refusing private tags did not help, since the standard numbers serve as well. Two carriers are not seen: EXIF that a PNG holds in a text chunk (\"Raw profile type exif\"), which may be compressed and so cannot be read without inflating it, and a camera maker's own directory inside a maker note. Both are reached only when a program asks for the EXIF, not on opening.",
+      "refusal": {
+        "check": "allow_overlapping_tag_data",
+        "default": true,
+        "setting": "allow_overlapping_tag_data"
+      },
+      "verified_by": [
+        "tests/test_check.py::TestHostileFiles::test_a_tiff_whose_tags_all_claim_the_same_bytes",
+        "tests/test_check.py::TestHostileFiles::test_a_jpeg_whose_exif_tags_all_claim_the_same_bytes",
+        "tests/test_check.py::TestHostileFiles::test_a_png_whose_exif_tags_all_claim_the_same_bytes"
+      ],
+      "protect": {
+        "general": "Upgrade to Pillow 13.0.0, whose loader skips a tag once the directory's values add up to more than the stream.",
+        "specific": "Keep allow_overlapping_tag_data off, as it is by default; on a Pillow before 13.0.0, do not ask for the EXIF of a PNG from outside (getexif, ImageOps.exif_transpose) unless its text chunks are known to hold none; upgrade to Pillow 13.0.0."
+      },
+      "sources": [
+        "https://osv.dev/vulnerability/GHSA-wqgw-9xfh-qf2g"
+      ],
+      "triaged": "2026-11-16",
+      "checked": "2026-11-16",
+      "notes": "Triaged from the advisory's text on 2026-11-16, and the bucket and the default confirmed by a person the same day. Upstream gives the severity as moderate, with no score. Each route was tried on Pillow 13.0.0, whose bounded loader warns where it used to read: a TIFF, a JPEG's EXIF block before or after the frame header and across several segments, and a JPEG's multi-picture index all reach the loader inside Image.open; a PNG's eXIf chunk and its raw-profile text chunk, compressed or not, on getexif; the Exif and GPS directories on get_ifd. An EXIF block with a BigTIFF header does not reach it. The reader was run over 3.2 million real images (7,501 JPEG, 126,337 TIFF, 3,064,088 PNG) and reported an overlap in none. The memory cost itself was not reproduced on an earlier Pillow. The check was built on 2026-11-16."
     },
     {
       "key": "CVE-2026-107080",

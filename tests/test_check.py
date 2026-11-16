@@ -237,6 +237,62 @@ class TestHostileFiles:
         )
         assert check(path, Policy(allow_inconsistent_tiff_tags=True)).ok
 
+    def test_a_tiff_whose_tags_all_claim_the_same_bytes(self, tmp_path: Path) -> None:
+        # CVE-2026-128066: the advisory's 144 KB file, 12,000 tags that each
+        # claim the whole of it, which cost Pillow 1.6 GB inside Image.open.
+        data = corpus.overlapping_tiff(12_000)
+        assert len(data) == 144_110
+        path = corpus.write(tmp_path / "scan.tif", data)
+        reason = (
+            "a TIFF whose tags claim more data than it holds: frame 1's tags claim "
+            "1,729,224,000 bytes of data between them in a file of 144,110 bytes"
+        )
+        assert check(path).reasons == (reason,)
+        assert check(path, STRICT).reasons == (reason,)
+        # Refusing private tags would not have done: the standard numbers serve as well.
+        assert check(path, Policy(tiff_tags=frozenset({"standard", "metadata"}))).reasons[-1] == (
+            reason
+        )
+        assert check(path, Policy(allow_overlapping_tag_data=True)).ok
+        hidden = corpus.write(tmp_path / "hidden.tif", corpus.overlapping_tiff(200, pointer=34665))
+        assert check(hidden).reasons == (
+            "a TIFF whose tags claim more data than it holds: frame 1's Exif tags claim "
+            "504,000 bytes of data between them in a file of 2,528 bytes",
+        )
+
+    def test_a_jpeg_whose_exif_tags_all_claim_the_same_bytes(self, tmp_path: Path) -> None:
+        # CVE-2026-128066: a 66 KB JPEG whose APP1 segment holds 5,400 such
+        # tags, about 340 MB inside Image.open, wherever the segment sits.
+        exif = corpus.jpeg_exif(corpus.overlapping_block(5_400))
+        reason = (
+            "a JPEG whose tags claim more data than it holds: the EXIF block's tags claim "
+            "349,952,400 bytes of data between them in a block of 64,814 bytes"
+        )
+        for data in (
+            corpus.jpeg(64, 64, before_sof=exif),
+            corpus.jpeg(64, 64, after_sof=exif),
+        ):
+            path = corpus.write(tmp_path / "scan.jpg", data)
+            assert check(path).reasons == (reason,)
+            assert check(path, Policy(allow_overlapping_tag_data=True)).ok
+        index = corpus.jpeg_mp_index(corpus.overlapping_block(5_400))
+        path = corpus.write(tmp_path / "pictures.jpg", corpus.jpeg(64, 64, before_sof=index))
+        assert check(path).reasons == (
+            "a JPEG whose tags claim more data than it holds: the multi-picture index's tags "
+            "claim 349,952,400 bytes of data between them in a block of 64,814 bytes",
+        )
+
+    def test_a_png_whose_exif_tags_all_claim_the_same_bytes(self, tmp_path: Path) -> None:
+        # CVE-2026-128066: a 96 KB eXIf chunk, 754 MB once a program asks
+        # for the EXIF, as one does to turn a photograph the right way up.
+        chunk = corpus.png_exif(corpus.overlapping_block(8_000))
+        path = corpus.write(tmp_path / "scan.png", corpus.png(64, 64, extra=chunk))
+        assert check(path).reasons == (
+            "a PNG whose tags claim more data than it holds: the EXIF block's tags claim "
+            "768,048,000 bytes of data between them in a block of 96,014 bytes",
+        )
+        assert check(path, Policy(allow_overlapping_tag_data=True)).ok
+
     def test_a_palette_tiff_with_a_spare_sample_under_a_policy_without_them(
         self, tmp_path: Path
     ) -> None:

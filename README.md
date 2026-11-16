@@ -111,6 +111,7 @@ check(path, Policy(formats={"tiff", "pdf"}, max_pages=50))
 | `jpeg_frames` | baseline, extended, progressive | the same | How a JPEG's frame may be coded. Lossless, hierarchical and arithmetic frames are legal JPEG that no scanner writes and the decoder's least-exercised code; a lossless frame was the way into a heap overflow in Pillow's JPEG decoder (CVE-2026-112403) |
 | `tiff_tags` | standard, metadata, private | the same | Which kinds of tag a TIFF's directories may hold. Standard is the TIFF 6.0 set; metadata the registered blocks (XMP, IPTC, Photoshop, Exif, ICC, GPS, GeoTIFF); private everything else, the vendor and DNG tags a scan never carries. A read is not harmed by a private tag, so the default allows all three; a program that saves a file back as TIFF with its tag table carries every tag into libtiff's encoder, where a crafted one copied process memory into the output (CVE-2026-112902), and should allow standard and metadata only |
 | `allow_inconsistent_tiff_tags` | no | no | Pass a TIFF whose tags contradict each other: a ColorMap of the wrong size for the bit depth (CVE-2026-112896), a floating-point Predictor on integer samples (CVE-2026-112396). No scanner writes either; both reach an encoder that trusts the tag, so the default refuses them, malformed by design or by accident. Allow only for a source known to write such files |
+| `allow_overlapping_tag_data` | no | no | Pass a file with a tag directory whose tags claim more data between them than the file holds: a TIFF's frame or one of the Exif, GPS and interoperability directories it points to, or, measured against the block itself, the EXIF block of a JPEG or a PNG and a JPEG's multi-picture index. A decoder reads every tag's value into memory as it loads a directory, and nothing in the format stops each of thousands of tags from pointing at the same bytes: a 144 KB TIFF cost Pillow 1.6 GB to open, and a 66 KB JPEG 340 MB (CVE-2026-128066). The values of an honest directory do not overlap, so they cannot add up to more than the bytes they are read from, and no writer produces a file that fails this. Not seen: EXIF that a PNG carries in a text chunk, which may be compressed, and a camera maker's own directory inside a maker note |
 | `allow_spare_tiff_samples` | yes | yes | Pass a greyscale or palette TIFF whose pixels carry more samples than the one the image uses, where the rest are not a single alpha sample (two samples per pixel with ExtraSamples 0, "unspecified data"). A valid TIFF that no scanner writes; a decoder drops the spare sample, so a read is not harmed and the default allows it. A program that saves such a file back as a compressed TIFF carries its SamplesPerPixel tag into libtiff's encoder, which read two samples for every one in the row it was given and copied process memory into the output (CVE-2026-128067), and should refuse them. An alpha channel, and a spare sample on an RGB or CMYK TIFF, are not refused: there the decoder's own count is what the encoder is given |
 | `allow_encrypted_pdf` | no | no | A scanned book is never encrypted |
 | `pdf_features` | none | none | Which of JavaScript, forms, attached files and launch actions a PDF may carry. Each makes a viewer do something other than draw the page, and a scanned book has none. Forms are read from `pdfinfo`'s report and attached files from `pdfdetach`'s; a launch action is found by its name in the file, since no poppler tool reports one; JavaScript is looked for both ways |
@@ -173,18 +174,22 @@ prints one object per line for a pipeline; `-q` prints only refusals.
 3. **Name against contents.** `says PNG, is JPEG`.
 4. **The header**, with a reader of its own for each raster format: the
    dimensions, coding and component count from a JPEG's frame header, the
-   size of its colour profile, and every picture of a multi-picture (MPF)
+   size of its colour profile and the tag directories of its EXIF block,
+   from every segment up to the start of the image data, as a decoder
+   reads them, and every picture of a multi-picture (MPF)
    JPEG, each read the same way and required to match the first; a PNG's
    whole `IHDR` (bit depth, colour type, interlacing, and the methods the
-   specification fixes), its `acTL` frame count, and the size of every
-   other chunk, before and after the image data; and every directory in a TIFF's
+   specification fixes), its `acTL` frame count, the size of every
+   other chunk, before and after the image data, and the tag directories
+   of an `eXIf` chunk; and every directory in a TIFF's
    chain, each with its dimensions, its
    compression scheme, which must be one the policy names, and its pixel
    layout (photometric interpretation and, for YCbCr, chroma subsampling,
    both of which the policy names; samples per pixel; bits per sample),
    all of which must be the same in every frame, since the decoder sizes
    its buffers from the first, its tile size if it is tiled, every
-   tag's data checked to lie inside the file, every tag sorted into
+   tag's data checked to lie inside the file and, added together, to be
+   no more than the file holds, every tag sorted into
    standard, metadata or private, and its ColorMap and Predictor checked
    against its samples; the chain is walked with a limit and a memory of where it has
    been, so that one that loops or points off the end of the file is a
@@ -250,7 +255,7 @@ a PNG whose header pairs a colour type with a bit depth it cannot have, a
 TIFF whose tag points past the end of the file, a lossless JPEG, a multi-picture JPEG whose second picture is four billion
 pixels or changes colour mode, a PixarLog-compressed TIFF, a CIELab TIFF, a YCbCr TIFF subsampled four to one, a TIFF that
 changes compression or colour mode between frames, a TIFF whose tiles are four billion pixels each, a TIFF with ten thousand frames, a
-TIFF whose frame chain loops, a PDF of a thousand pages, a PDF with a page 200
+TIFF whose frame chain loops, a TIFF, a JPEG and a PNG whose tags all claim the same bytes, a PDF of a thousand pages, a PDF with a page 200
 inches wide. Nothing hostile is
 checked in. The readers are also checked against Pillow's reading of real
 files, so that they agree with the decoder they stand in front of.

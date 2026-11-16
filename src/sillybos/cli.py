@@ -58,6 +58,8 @@ def _policy(args: argparse.Namespace) -> Policy:
         changes["tiff_tags"] = frozenset(args.tiff_tags.split(","))
     if args.inconsistent_tiff_tags:
         changes["allow_inconsistent_tiff_tags"] = True
+    if args.overlapping_tag_data:
+        changes["allow_overlapping_tag_data"] = True
     if args.no_spare_tiff_samples:
         changes["allow_spare_tiff_samples"] = False
     if args.pdf_features:
@@ -164,6 +166,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="do not refuse a TIFF whose tags contradict each other (a ColorMap of the wrong "
         "size, a floating-point Predictor on integer samples)",
+    )
+    parser.add_argument(
+        "--overlapping-tag-data",
+        action="store_true",
+        help="do not refuse a file whose tags claim more data between them than it holds "
+        "(a TIFF's directory, the EXIF block of a JPEG or PNG)",
     )
     parser.add_argument(
         "--no-spare-tiff-samples",
