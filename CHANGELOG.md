@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.1.0] - 2026-11-16
+
+### Changed
+
+- Confirm CVE-2026-76844, a zlib gz write overflow that no file reaches
+- Bump zensical from 0.0.74 to 0.1.1
+- Bump ruff from 0.17.3 to 0.17.4
+- Bump markdown-exec from 1.12.6 to 1.13.0
+- A policy on a greyscale or palette TIFF's spare samples
+
 ## [5.0.0] - 2026-11-03
 
 ### Changed
