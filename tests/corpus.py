@@ -65,6 +65,17 @@ def png_chunk(kind: bytes, size: int) -> bytes:
     return _chunk(kind, b"\x00" * size)
 
 
+def png_exif(block: bytes) -> bytes:
+    """An ``eXIf`` chunk holding ``block``, for :func:`png`'s ``extra`` or ``after_idat``."""
+    return _chunk(b"eXIf", block)
+
+
+def png_with(data: bytes, chunk: bytes, *, after_idat: bool = False) -> bytes:
+    """A real PNG's bytes with ``chunk`` put in before its image data, or after it."""
+    at = data.index(b"IEND" if after_idat else b"IDAT") - 4
+    return data[:at] + chunk + data[at:]
+
+
 # --- JPEG --------------------------------------------------------------------
 
 
@@ -77,15 +88,48 @@ def jpeg(
     height: int,
     *,
     before_sof: bytes = b"",
+    after_sof: bytes = b"",
     sof: bool = True,
     marker: int = 0xC0,
     components: int = 1,
+    scan: bool = True,
 ) -> bytes:
-    """A JPEG header: SOI, a JFIF APP0, optional padding segments, a SOF (baseline by default)."""
+    """A JPEG header: SOI, a JFIF APP0, optional padding segments, a SOF (baseline by default).
+
+    ``after_sof`` goes between the frame header and the start of the scan,
+    where a decoder still reads segments; ``scan`` false leaves the scan
+    out, as a file cut short after its header.
+    """
     app0 = _segment(0xE0, b"JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00")
     layout = b"".join(bytes([n + 1, 0x11, 0]) for n in range(components))
     frame = _segment(marker, struct.pack(">BHHB", 8, height, width, components) + layout)
-    return b"\xff\xd8" + app0 + before_sof + (frame if sof else b"") + b"\xff\xda\x00\x02\xff\xd9"
+    end = b"\xff\xda\x00\x02\xff\xd9" if scan else b""
+    return b"\xff\xd8" + app0 + before_sof + (frame if sof else b"") + after_sof + end
+
+
+def jpeg_exif(block: bytes, *, pieces: int = 1) -> bytes:
+    """``block`` as a JPEG's EXIF: one APP1 segment, or split across ``pieces`` of them."""
+    step = max(1, -(-len(block) // pieces))
+    return b"".join(
+        _segment(0xE1, b"Exif\x00\x00" + block[at : at + step])
+        for at in range(0, max(1, len(block)), step)
+    )
+
+
+def jpeg_mp_index(block: bytes) -> bytes:
+    """``block`` as a JPEG's Multi-Picture index: an APP2 segment with the ``MPF`` identifier."""
+    return _segment(0xE2, b"MPF\x00" + block)
+
+
+def jpeg_with(data: bytes, segments: bytes, *, after_frame: bool = False) -> bytes:
+    """A real JPEG's bytes with ``segments`` put in after its SOI, or after its frame header."""
+    at = 2
+    while after_frame:
+        marker = data[at + 1]
+        at += 2 + struct.unpack(">H", data[at + 2 : at + 4])[0]
+        if marker in (0xC0, 0xC1, 0xC2):
+            break
+    return data[:at] + segments + data[at:]
 
 
 _MP_HEADER_AT = 2 + 18 + 4 + 4
@@ -309,6 +353,49 @@ def tiled_tiff(width: int, height: int, tile: int) -> bytes:
     offsets = b"".join(struct.pack("<I", pixels_at + k * tile_bytes) for k in range(count))
     counts = struct.pack("<I", tile_bytes) * count
     return b"II*\x00" + struct.pack("<I", 8) + ifd + offsets + counts + bytes(tile_bytes * count)
+
+
+def _directory(entries: list[tuple[int, int, int, int]], following: int = 0) -> bytes:
+    """A little-endian tag directory of (tag, type, count, value or offset) entries."""
+    fields = b"".join(struct.pack("<HHII", *entry) for entry in sorted(entries))
+    return struct.pack("<H", len(entries)) + fields + struct.pack("<I", following)
+
+
+def overlapping_block(entries: int, *, pointer: int | None = None, pad: int = 0) -> bytes:
+    """A small TIFF of its own, as an EXIF block is, whose tags all claim the same bytes.
+
+    The carrier of CVE-2026-128066: a header and one directory of
+    ``entries`` private tags (1,000 upwards), each a run of BYTEs that
+    covers the whole block after its header, at a cost of twelve bytes
+    apiece. With ``pointer`` (34665 for the Exif directory, 34853 for GPS)
+    the main directory is honest and holds that one tag, and the
+    overlapping tags sit in the directory it points to. ``pad`` adds that
+    many bytes to the end, which the tags claim too.
+    """
+    at = 8 if pointer is None else 8 + 2 + 12 + 4
+    total = at + 2 + 12 * entries + 4 + pad
+    directory = _directory([(1000 + k, 1, total - 8, 8) for k in range(entries)])
+    main = b"" if pointer is None else _directory([(pointer, 4, 1, at)])
+    return b"II*\x00" + struct.pack("<I", 8) + main + directory + bytes(pad)
+
+
+def overlapping_tiff(entries: int, *, pointer: int | None = None) -> bytes:
+    """A complete 1x1 greyscale TIFF, which decodes, whose tags all claim the same bytes.
+
+    As :func:`overlapping_block`, with the tags a decoder needs for the one
+    pixel: the ``entries`` private tags (40,000 upwards) sit in the frame's
+    own directory, or with ``pointer`` in the directory that tag points to.
+    """
+    image = [(256, 3, 1, 1), (257, 3, 1, 1), (258, 3, 1, 8), (259, 3, 1, 1), (262, 3, 1, 1)]
+    image += [(273, 4, 1, 0), (278, 3, 1, 1), (279, 4, 1, 1)]  # the pixel is a header byte
+    own = entries if pointer is None else 1
+    after_main = 8 + 2 + 12 * (len(image) + own) + 4
+    total = after_main if pointer is None else after_main + 2 + 12 * entries + 4
+    overlapping = [(40000 + k, 1, total - 8, 8) for k in range(entries)]
+    if pointer is None:
+        return b"II*\x00" + struct.pack("<I", 8) + _directory(image + overlapping)
+    main = _directory([*image, (pointer, 4, 1, after_main)])
+    return b"II*\x00" + struct.pack("<I", 8) + main + _directory(overlapping)
 
 
 def spare_sample_tiff(

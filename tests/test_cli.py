@@ -122,6 +122,12 @@ def test_inconsistent_tiff_tags_are_refused_unless_allowed(tmp_path: Path) -> No
     assert main(["--inconsistent-tiff-tags", str(scan)]) == 0
 
 
+def test_overlapping_tag_data_is_refused_unless_allowed(tmp_path: Path) -> None:
+    scan = corpus.write(tmp_path / "scan.tif", corpus.overlapping_tiff(200))
+    assert main([str(scan)]) == 1
+    assert main(["--overlapping-tag-data", str(scan)]) == 0
+
+
 def test_spare_tiff_samples_can_be_refused(tmp_path: Path) -> None:
     scan = corpus.write(tmp_path / "scan.tif", corpus.spare_sample_tiff(64, 4))
     assert main([str(scan)]) == 0

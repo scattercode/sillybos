@@ -74,6 +74,14 @@ def seeds() -> list[bytes]:
         corpus.tiff([(64, 64)], endian=">"),
         corpus.tiled_tiff(256, 256, 64),
         corpus.spare_sample_tiff(64, 8),
+        corpus.overlapping_tiff(40),
+        corpus.overlapping_tiff(40, pointer=34665),
+        corpus.jpeg(64, 64, before_sof=corpus.jpeg_exif(corpus.overlapping_block(40))),
+        corpus.jpeg(
+            64, 64, after_sof=corpus.jpeg_exif(corpus.overlapping_block(40, pointer=34853))
+        ),
+        corpus.jpeg(64, 64, before_sof=corpus.jpeg_mp_index(corpus.overlapping_block(40))),
+        corpus.png(64, 64, extra=corpus.png_exif(corpus.overlapping_block(40))),
     ]
     try:
         from PIL import Image

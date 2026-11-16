@@ -6,6 +6,7 @@ import dataclasses
 import io
 import os
 import struct
+import warnings
 
 import pytest
 from PIL import Image, TiffImagePlugin
@@ -329,6 +330,284 @@ class TestTiffSpareSamples:
             assert image.mode == mode and image.tag_v2[277] == samples
             one_band_and_a_tag_that_says_more = len(image.getbands()) == 1 and samples > 1
         assert bool(header.spare_samples) == one_band_and_a_tag_that_says_more
+
+
+def _real(fmt: str, mode: str = "L", **options: object) -> bytes:
+    buffer = io.BytesIO()
+    Image.new(mode, (8, 8)).save(buffer, format=fmt, **options)
+    return buffer.getvalue()
+
+
+def _pillow_refuses_tags(data: bytes) -> bool:
+    """Whether Pillow's loader, bounded since 13.0.0, skips tags of this file as too large.
+
+    Opened, decoded and asked for its EXIF and the directories that points
+    to, which is every way a program reaches the loader.
+    """
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        with Image.open(io.BytesIO(data)) as image:
+            image.load()
+            exif = image.getexif()
+            for pointer in (34665, 34853, 40965):
+                exif.get_ifd(pointer)
+    return any("Tag data larger than file" in str(warning.message) for warning in caught)
+
+
+class TestOverlappingTagData:
+    """CVE-2026-128066: tags that all claim the same bytes cost a decoder N times the file."""
+
+    def test_a_tiff_frame_whose_tags_all_claim_the_file(self) -> None:
+        data = corpus.overlapping_tiff(200)
+        assert read("tiff", data).overlaps == (
+            f"frame 1's tags claim {200 * (len(data) - 8):,} bytes of data between them "
+            f"in a file of {len(data):,} bytes",
+        )
+
+    @pytest.mark.parametrize(("pointer", "name"), [(34665, "Exif"), (34853, "GPS")])
+    def test_a_directory_a_tiff_frame_points_to(self, pointer: int, name: str) -> None:
+        data = corpus.overlapping_tiff(200, pointer=pointer)
+        assert read("tiff", data).overlaps == (
+            f"frame 1's {name} tags claim {200 * (len(data) - 8):,} bytes of data between "
+            f"them in a file of {len(data):,} bytes",
+        )
+
+    def test_tags_with_data_of_their_own_do_not_overlap(self) -> None:
+        tags = [(700, 1, b"<x/>" * 64), (270, 2, b"a scan of a page\x00"), (34675, 7, bytes(512))]
+        assert read("tiff", corpus.tiff([(10, 10)] * 3, tags=tags)).overlaps == ()
+
+    def test_two_tags_may_share_one_value(self) -> None:
+        """Some writers store one resolution and point both tags at it; that is not this."""
+        image = [(256, 3, 1, 1), (257, 3, 1, 1), (282, 5, 1, 62), (283, 5, 1, 62)]
+        directory = struct.pack("<H", 4) + b"".join(struct.pack("<HHII", *e) for e in image)
+        data = b"II*\x00" + struct.pack("<I", 8) + directory + bytes(4) + bytes(8)
+        assert len(data) == 70 and read("tiff", data).overlaps == ()
+
+    def test_a_jpeg_whose_exif_tags_all_claim_the_block(self) -> None:
+        block = corpus.overlapping_block(200)
+        expected = (
+            f"the EXIF block's tags claim {200 * (len(block) - 8):,} bytes of data between "
+            f"them in a block of {len(block):,} bytes",
+        )
+        for exif in (corpus.jpeg_exif(block), corpus.jpeg_exif(block, pieces=3)):
+            assert read("jpeg", corpus.jpeg(64, 64, before_sof=exif)).overlaps == expected
+            assert read("jpeg", corpus.jpeg(64, 64, after_sof=exif)).overlaps == expected
+
+    def test_the_directories_an_exif_block_points_to(self) -> None:
+        for pointer, name in ((34665, "Exif"), (34853, "GPS"), (40965, "interoperability")):
+            block = corpus.overlapping_block(200, pointer=pointer)
+            data = corpus.jpeg(64, 64, before_sof=corpus.jpeg_exif(block))
+            assert read("jpeg", data).overlaps == (
+                f"the EXIF block's {name} tags claim {200 * (len(block) - 8):,} bytes of data "
+                f"between them in a block of {len(block):,} bytes",
+            )
+
+    def test_the_thumbnail_directory_of_an_exif_block(self) -> None:
+        honest = struct.pack("<HHHIII", 1, 274, 3, 1, 1, 26)  # one tag, then the next directory
+        total = 26 + 2 + 12 * 50 + 4
+        entries = b"".join(struct.pack("<HHII", 1000 + k, 1, total - 8, 8) for k in range(50))
+        block = b"II*\x00" + struct.pack("<I", 8) + honest + struct.pack("<H", 50) + entries
+        block += bytes(4)
+        data = corpus.jpeg(64, 64, before_sof=corpus.jpeg_exif(block))
+        assert read("jpeg", data).overlaps == (
+            f"the EXIF block's thumbnail tags claim {50 * (total - 8):,} bytes of data between "
+            f"them in a block of {total:,} bytes",
+        )
+
+    def test_the_exif_block_of_a_later_picture(self) -> None:
+        data = corpus.mpo([(64, 64), (32, 32)])
+        second = data.rindex(b"\xff\xd8")
+        exif = corpus.jpeg_exif(corpus.overlapping_block(100))
+        data = data[: second + 2] + exif + data[second + 2 :]
+        header = read("jpeg", data)
+        assert header.pages == 2
+        assert len(header.overlaps) == 1
+        assert header.overlaps[0].startswith("picture 2's EXIF block's tags claim ")
+
+    def test_a_multi_picture_index_whose_tags_all_claim_the_block(self) -> None:
+        block = corpus.overlapping_block(100)
+        header = read("jpeg", corpus.mpo([(64, 64)], index=block))
+        assert header.pages == 1
+        assert header.overlaps == (
+            f"the multi-picture index's tags claim {100 * (len(block) - 8):,} bytes of data "
+            f"between them in a block of {len(block):,} bytes",
+        )
+
+    def test_a_png_whose_exif_tags_all_claim_the_block(self) -> None:
+        block = corpus.overlapping_block(200)
+        expected = (
+            f"the EXIF block's tags claim {200 * (len(block) - 8):,} bytes of data between "
+            f"them in a block of {len(block):,} bytes",
+        )
+        assert read("png", corpus.png(64, 64, extra=corpus.png_exif(block))).overlaps == expected
+        after = corpus.png(64, 64, after_idat=corpus.png_exif(block))
+        assert read("png", after).overlaps == expected
+
+    @pytest.mark.parametrize(
+        "block",
+        [
+            b"",
+            b"II*\x00",  # too short for a header
+            b"not a TIFF header at all",
+            b"II+\x00" + bytes(40),  # a BigTIFF header, which Pillow gives up on
+            b"II*\x00" + struct.pack("<I", 4000),  # the directory lies outside the block
+            b"II*\x00" + struct.pack("<I", 8) + b"\x05",  # and here its count is cut short
+        ],
+    )
+    def test_a_block_with_no_directory_to_load_is_not_measured(self, block: bytes) -> None:
+        assert read("jpeg", corpus.jpeg(64, 64, before_sof=corpus.jpeg_exif(block))).overlaps == ()
+        assert read("png", corpus.png(64, 64, extra=corpus.png_exif(block))).overlaps == ()
+
+    def test_a_value_outside_the_block_is_not_counted(self) -> None:
+        """A decoder reads nothing for it, and cameras do write EXIF this sloppy."""
+        entries = [(1000 + k, 1, 5000, 4000) for k in range(50)]
+        block = b"II*\x00" + struct.pack("<I", 8) + struct.pack("<H", 50)
+        block += b"".join(struct.pack("<HHII", *entry) for entry in entries) + bytes(4)
+        assert read("jpeg", corpus.jpeg(64, 64, before_sof=corpus.jpeg_exif(block))).overlaps == ()
+
+    def test_a_directory_cut_short_is_measured_as_far_as_it_goes(self) -> None:
+        """Pillow keeps the values it read before the directory ran out."""
+        block = corpus.overlapping_block(200)[: 8 + 2 + 12 * 60]
+        header = read("jpeg", corpus.jpeg(64, 64, before_sof=corpus.jpeg_exif(block)))
+        assert len(header.overlaps) == 0  # every value now runs past the end of the block
+        entries = b"".join(struct.pack("<HHII", 1000 + k, 1, 700, 8) for k in range(60))
+        block = b"II*\x00" + struct.pack("<I", 8) + struct.pack("<H", 200) + entries
+        header = read("jpeg", corpus.jpeg(64, 64, before_sof=corpus.jpeg_exif(block)))
+        assert header.overlaps == (
+            f"the EXIF block's tags claim 42,000 bytes of data between them in a block of "
+            f"{len(block):,} bytes",
+        )
+
+    def test_directories_that_overlap_each_other(self) -> None:
+        """The GPS pointer leads back into the main directory, twelve bytes on.
+
+        Read from there, the first entry's tag number is a count of two
+        entries, so the block's directories hold five entries between
+        them where it has room for four.
+        """
+        entries = [(2, 1, 1, 0), (3, 1, 1, 0), (34853, 4, 1, 10)]
+        block = b"II*\x00" + struct.pack("<I", 8) + struct.pack("<H", 3)
+        block += b"".join(struct.pack("<HHII", *entry) for entry in entries) + bytes(4)
+        assert len(block) == 50
+        assert read("jpeg", corpus.jpeg(64, 64, before_sof=corpus.jpeg_exif(block))).overlaps == (
+            "the tag directories of a block of 50 bytes hold more entries between them than "
+            "it has room for",
+        )
+
+    def test_an_app1_segment_that_is_not_exif_is_passed_over(self) -> None:
+        xmp = (
+            b"\xff\xe1"
+            + struct.pack(">H", 2 + 29 + 8)
+            + b"http://ns.adobe.com/xap/1.0/\x00<x:xmp/>"
+        )
+        assert read("jpeg", corpus.jpeg(64, 64, before_sof=xmp)).overlaps == ()
+
+    def test_a_pointer_written_as_a_short(self) -> None:
+        sub = 8 + 2 + 12 + 4
+        total = sub + 2 + 12 * 50 + 4
+        main = struct.pack("<H", 1) + struct.pack("<HHIHH", 34665, 3, 1, sub, 0) + bytes(4)
+        entries = b"".join(struct.pack("<HHII", 1000 + k, 1, total - 8, 8) for k in range(50))
+        block = b"II*\x00" + struct.pack("<I", 8) + main + struct.pack("<H", 50) + entries
+        block += bytes(4)
+        header = read("jpeg", corpus.jpeg(64, 64, before_sof=corpus.jpeg_exif(block)))
+        assert header.overlaps[0].startswith("the EXIF block's Exif tags claim ")
+
+    def test_a_directory_is_measured_once(self) -> None:
+        """Both pointers lead to the same honest directory; it is not counted twice."""
+        sub = 8 + 2 + 24 + 4
+        main = struct.pack("<H", 2) + struct.pack("<HHII", 34665, 4, 1, sub)
+        main += struct.pack("<HHII", 34853, 4, 1, sub) + bytes(4)
+        block = b"II*\x00" + struct.pack("<I", 8) + main + struct.pack("<H", 1)
+        block += struct.pack("<HHII", 1, 2, 2, 0x4E) + bytes(4)
+        assert read("jpeg", corpus.jpeg(64, 64, before_sof=corpus.jpeg_exif(block))).overlaps == ()
+
+    @pytest.mark.parametrize(
+        ("name", "data", "overlaps"),
+        [
+            ("a TIFF", corpus.overlapping_tiff(200), True),
+            ("a TIFF's Exif directory", corpus.overlapping_tiff(200, pointer=34665), True),
+            ("a TIFF's GPS directory", corpus.overlapping_tiff(200, pointer=34853), True),
+            ("an honest TIFF", _real("TIFF", description="a scan", compression="tiff_lzw"), False),
+            (
+                "a JPEG",
+                corpus.jpeg_with(_real("JPEG"), corpus.jpeg_exif(corpus.overlapping_block(200))),
+                True,
+            ),
+            (
+                "a JPEG, after the frame header and in three segments",
+                corpus.jpeg_with(
+                    _real("JPEG"),
+                    corpus.jpeg_exif(corpus.overlapping_block(200), pieces=3),
+                    after_frame=True,
+                ),
+                True,
+            ),
+            (
+                "a JPEG's GPS directory",
+                corpus.jpeg_with(
+                    _real("JPEG"), corpus.jpeg_exif(corpus.overlapping_block(200, pointer=34853))
+                ),
+                True,
+            ),
+            (
+                "a JPEG's multi-picture index",
+                corpus.jpeg_with(
+                    _real("JPEG"), corpus.jpeg_mp_index(corpus.overlapping_block(200))
+                ),
+                True,
+            ),
+            (
+                "a JPEG whose EXIF block is a BigTIFF",
+                corpus.jpeg_with(_real("JPEG"), corpus.jpeg_exif(b"II+\x00" + bytes(40))),
+                False,
+            ),
+            ("an honest JPEG", _real("JPEG", exif=Image.Exif()), False),
+            (
+                "a PNG",
+                corpus.png_with(_real("PNG"), corpus.png_exif(corpus.overlapping_block(200))),
+                True,
+            ),
+            (
+                "a PNG, after the image data",
+                corpus.png_with(
+                    _real("PNG"), corpus.png_exif(corpus.overlapping_block(200)), after_idat=True
+                ),
+                True,
+            ),
+            ("an honest PNG", _real("PNG"), False),
+        ],
+        ids=lambda value: value if isinstance(value, str) else "",
+    )
+    def test_overlaps_as_pillow_bounds_them(self, name: str, data: bytes, overlaps: bool) -> None:
+        """What the reader calls overlapping is what Pillow's bounded loader skips, and no more."""
+        fmt = {b"\xff\xd8": "jpeg", b"\x89P": "png", b"II": "tiff"}[data[:2]]
+        assert bool(read(fmt, data).overlaps) == overlaps, name
+        assert _pillow_refuses_tags(data) == overlaps, name
+
+
+class TestJpegSegmentsAfterTheFrameHeader:
+    """A decoder reads segments up to the scan, so the reader does too."""
+
+    def test_a_profile_after_the_frame_header_is_measured(self) -> None:
+        data = corpus.jpeg(64, 64, after_sof=corpus.jpeg_profile(70_000))
+        assert read("jpeg", data).metadata == ("JPEG colour profile", 70_000)
+
+    def test_a_header_cut_short_after_its_frame_still_reads(self) -> None:
+        for cut in (corpus.jpeg(640, 480, scan=False), corpus.jpeg(640, 480, scan=False) + b"\xff"):
+            assert (read("jpeg", cut).width, read("jpeg", cut).height) == (640, 480)
+        junk = corpus.jpeg(640, 480, scan=False) + b"not a segment"
+        assert read("jpeg", junk).width == 640
+        overrun = corpus.jpeg(640, 480, scan=False) + b"\xff\xfe\xff\xff"
+        assert read("jpeg", overrun).width == 640
+
+    def test_a_second_frame_header_is_passed_over(self) -> None:
+        second = struct.pack(">BBHBHHB", 0xFF, 0xC0, 11, 8, 32, 32, 1) + b"\x01\x11\x00"
+        assert read("jpeg", corpus.jpeg(640, 480, after_sof=second)).width == 640
+
+    def test_no_scan_within_the_segment_limit(self) -> None:
+        data = corpus.jpeg(64, 64, after_sof=corpus.jpeg_padding(headers.MAX_SEGMENTS))
+        with pytest.raises(HeaderError, match="no image data in the first 4,096 segments"):
+            read("jpeg", data)
 
 
 class TestTiffCompression:

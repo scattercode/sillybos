@@ -208,6 +208,22 @@ class Policy:
             the tag, so the default refuses them, malformed by design or
             by accident. A policy for a source known to write such files
             can allow them.
+        allow_overlapping_tag_data: Pass a file with a tag directory whose
+            tags claim more data between them than the file holds: a
+            frame of a TIFF or one of the Exif, GPS and interoperability
+            directories it points to, or, measured against the block
+            itself, the EXIF block of a JPEG or a PNG and a JPEG's
+            multi-picture index. A decoder reads every tag's value into
+            memory as it loads a directory, and nothing in the format
+            stops each of thousands of tags from pointing at the same
+            bytes, so a 144 KB TIFF cost Pillow 1.6 GB to open and a
+            66 KB JPEG 340 MB (CVE-2026-128066). The values of an honest
+            directory do not overlap, so they cannot add up to more than
+            the bytes they are read from; no writer produces a file that
+            fails this, and the default refuses one. Not seen: EXIF that
+            a PNG carries in a text chunk, as ImageMagick once wrote it,
+            which may be compressed; and a camera maker's own directory
+            inside a maker note.
         allow_spare_tiff_samples: Pass a greyscale or palette TIFF whose
             pixels carry more samples than the one the image uses, where
             the rest are not a single alpha sample: 2 samples per pixel
@@ -277,6 +293,7 @@ class Policy:
     )
     tiff_tags: frozenset[str] = field(default_factory=lambda: frozenset(TIFF_TAGS))
     allow_inconsistent_tiff_tags: bool = False
+    allow_overlapping_tag_data: bool = False
     allow_spare_tiff_samples: bool = True
     allow_encrypted_pdf: bool = False
     pdf_features: frozenset[str] = frozenset()

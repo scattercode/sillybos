@@ -97,6 +97,13 @@ class Header:
             with an alpha channel, for RGB, CMYK and YCbCr (where a
             decoder drops the sample and keeps its own count), and for
             the other formats.
+        overlaps: Each tag directory whose tags claim more data between
+            them than the file holds, in a sentence: a frame of a TIFF
+            or one of its Exif, GPS or interoperability directories; the
+            EXIF block of a JPEG or a PNG, or a JPEG's multi-picture
+            index, measured against the block. The values of an honest
+            directory do not overlap, so they cannot add up to more than
+            the bytes they are read from. Empty when none does.
     """
 
     width: int
@@ -116,6 +123,7 @@ class Header:
     tags: tuple[tuple[str, int], ...] = ()
     inconsistencies: tuple[str, ...] = ()
     spare_samples: int = 0
+    overlaps: tuple[str, ...] = ()
 
 
 def _read_exactly(f: Reader, n: int, what: str) -> bytes:
@@ -130,6 +138,160 @@ def _dimensions(width: int, height: int, what: str) -> None:
         raise HeaderError(f"the {what} gives a zero width or height")
     if width >= MAX_DIMENSION or height >= MAX_DIMENSION:
         raise HeaderError(f"the {what} gives a width or height of {max(width, height):,}")
+
+
+# --- Tag directories ----------------------------------------------------------
+
+# A TIFF's frames, the EXIF block of a JPEG or a PNG and a JPEG's
+# multi-picture index are all the same structure: a directory of twelve-byte
+# entries, each holding a value of up to four bytes or the offset of a longer
+# one. A decoder reads every longer value into memory as it loads the
+# directory, and nothing in the format stops every entry from pointing at the
+# same bytes, so a directory of N entries can cost N times the file
+# (CVE-2026-128066). The values of an honest directory do not overlap, and
+# so cannot add up to more than the bytes they are read from; that sum is
+# what is measured here.
+
+Pieces = tuple[tuple[int, int], ...]
+"""Where a block of tag directories sits in the file, as (offset, length)
+runs: one for a TIFF or a PNG's `eXIf` chunk, and one per segment for a
+JPEG's EXIF block, which a decoder joins end to end."""
+
+_BYTE_ORDERS = {b"II*\x00": "<", b"MM\x00*": ">"}
+_POINTERS = {34665: "Exif", 34853: "GPS", 40965: "interoperability"}
+"""The tags whose value is the offset of a further directory, which a
+decoder loads when the program asks for the file's EXIF."""
+
+
+@dataclass
+class _Room:
+    """How many more entries a block has room for, and which directories were measured."""
+
+    entries: int
+    seen: set[int]
+
+
+def _read_at(f: Reader, pieces: Pieces, at: int, n: int) -> bytes | None:
+    """`n` bytes from offset `at` of a block, or `None` where the block does not hold them."""
+    out = b""
+    for start, length in pieces:
+        if at >= length:
+            at -= length
+            continue
+        f.seek(start + at)
+        out += f.read(min(n - len(out), length - at))
+        at = 0
+        if len(out) >= n:
+            break
+    return out if len(out) == n else None
+
+
+def _claimed(
+    f: Reader, pieces: Pieces, length: int, endian: str, offset: int
+) -> tuple[int, int, list[tuple[int, int]], int | None] | None:
+    """Measure the tag directory at `offset` of a block of `length` bytes.
+
+    Returns how many entries were read, how many bytes of data they claim
+    between them, the (tag, offset) of each further directory they point
+    to, and the offset of the directory that follows; or `None` if no
+    directory starts there. Only a value that lies inside the block is
+    counted, since a decoder reads nothing for one that does not. A
+    directory that runs past the end of the block is measured as far as
+    it goes, since a decoder keeps what it read before it gave up.
+    """
+    head = _read_at(f, pieces, offset, 2)
+    if head is None:
+        return None
+    (count,) = struct.unpack(endian + "H", head)
+    fit = min(count, (length - offset - 2) // 12)
+    table = _read_at(f, pieces, offset + 2, fit * 12)
+    if table is None:
+        return None
+    claimed = 0
+    pointers: list[tuple[int, int]] = []
+    for tag, kind, n, raw in struct.iter_unpack(endian + "HHI4s", table):
+        data_size = n * _TYPE_SIZES.get(kind, 1)
+        if data_size > 4:
+            (where,) = struct.unpack(endian + "I", raw)
+            if where + data_size <= length:
+                claimed += data_size
+        elif tag in _POINTERS and n == 1 and kind in (_TIFF_SHORT, _TIFF_LONG):
+            width_of = 2 if kind == _TIFF_SHORT else 4
+            where = int.from_bytes(raw[:width_of], "little" if endian == "<" else "big")
+            pointers.append((tag, where))
+    following = None
+    if fit == count:
+        tail = _read_at(f, pieces, offset + 2 + count * 12, 4)
+        if tail is not None:
+            (following,) = struct.unpack(endian + "I", tail)
+    return fit, claimed, pointers, following
+
+
+def _overlapping(
+    f: Reader,
+    pieces: Pieces,
+    endian: str,
+    queue: list[tuple[str, int, bool]],
+    room: _Room,
+    what: str,
+    unit: str,
+) -> list[str]:
+    """Measure each queued directory and those it points to; a sentence for each that overlaps.
+
+    `queue` holds (name, offset, whether to go on to the directory that
+    follows). Each directory is measured once, and the entries of all of
+    them are counted against `room`: directories that hold more entries
+    between them than the block has bytes for are overlapping each other,
+    which bounds the walk by the size of the block.
+    """
+    length = sum(n for _, n in pieces)
+    found = []
+    while queue and room.entries >= 0:
+        name, offset, onward = queue.pop(0)
+        if offset in room.seen:
+            continue
+        room.seen.add(offset)
+        measured = _claimed(f, pieces, length, endian, offset)
+        if measured is None:
+            continue
+        entries, claimed, pointers, following = measured
+        room.entries -= entries
+        if room.entries < 0:
+            found.append(
+                f"the tag directories of {unit} of {length:,} bytes hold more entries "
+                "between them than it has room for"
+            )
+        elif claimed > length:
+            found.append(
+                f"{what}'s {name}tags claim {claimed:,} bytes of data between them "
+                f"in {unit} of {length:,} bytes"
+            )
+        queue.extend((f"{_POINTERS[tag]} ", where, False) for tag, where in pointers)
+        if onward and following:
+            queue.append(("thumbnail ", following, False))
+    return found
+
+
+def _block_overlaps(f: Reader, pieces: Pieces, what: str, *, onward: bool = True) -> list[str]:
+    """The overlapping directories of a block that is a small TIFF of its own.
+
+    An EXIF block has a main directory, the thumbnail's after it, and the
+    Exif, GPS and interoperability directories its tags point to; a
+    decoder loads each on request, with one pass of the same loader. A
+    block with no TIFF header has no directory for a decoder to load (a
+    BigTIFF header among them: Pillow gives up on one), so there is nothing
+    to measure.
+    """
+    length = sum(n for _, n in pieces)
+    head = _read_at(f, pieces, 0, 8)
+    if head is None:
+        return []
+    endian = _BYTE_ORDERS.get(head[:4])
+    if endian is None:
+        return []
+    (first,) = struct.unpack(endian + "I", head[4:])
+    room = _Room(length // 12, set())
+    return _overlapping(f, pieces, endian, [("", first, onward)], room, what, "a block")
 
 
 # --- JPEG -------------------------------------------------------------------
@@ -156,7 +318,9 @@ _FRAME_CODINGS = {
 }
 # Markers with no length field.
 _STANDALONE = {0x01, 0xD0, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8}
+_APP1 = 0xE1
 _APP2 = 0xE2
+_EXIF = b"Exif\x00\x00"
 _MPF = b"MPF\x00"
 _ICC = b"ICC_PROFILE\x00"
 _MP_NUMBER_OF_IMAGES = 0xB001
@@ -183,7 +347,7 @@ def jpeg(f: Reader, size: int, limit: int) -> Header:
     that sized its buffers for the first picture is the one that will decode
     the rest. As with a TIFF, the walk stops after `limit + 1` pictures.
     """
-    first, pictures, profile = _frame(f, size, 0, "frame header", index=True)
+    first, pictures, profile, overlaps = _frame(f, size, 0, "frame header", index=True)
     metadata = ("JPEG colour profile", profile) if profile else None
     pages = 1
     max_pixels = first.width * first.height
@@ -199,10 +363,12 @@ def jpeg(f: Reader, size: int, limit: int) -> Header:
                 False,
                 first.coding,
                 metadata=metadata,
+                overlaps=tuple(overlaps),
             )
         if not 2 <= offset < size:
             raise HeaderError(f"picture {number} lies outside the file")
-        picture, _, _ = _frame(f, size, offset, f"picture {number}", index=False)
+        picture, _, _, more = _frame(f, size, offset, f"picture {number}", index=False)
+        overlaps += more
         if picture.coding != first.coding:
             raise HeaderError(
                 f"picture {number} is {picture.coding} where picture 1 is {first.coding}"
@@ -223,38 +389,51 @@ def jpeg(f: Reader, size: int, limit: int) -> Header:
         max_side,
         coding=first.coding,
         metadata=metadata,
+        overlaps=tuple(overlaps),
     )
 
 
 def _frame(
     f: Reader, size: int, start: int, what: str, *, index: bool
-) -> tuple[_Frame, list[int], int]:
-    """Walk one picture's segments from `start` to its frame header.
+) -> tuple[_Frame, list[int], int, list[str]]:
+    """Walk one picture's segments from `start` to its image data.
 
-    Returns the frame and, when `index` is set, the offset in the file of
-    every further picture a Multi-Picture index names and the total bytes
-    of colour profile carried in APP2 segments.
+    Returns the frame, from the first frame header; when `index` is set,
+    the offset in the file of every further picture a Multi-Picture index
+    names and the total bytes of colour profile carried in APP2 segments;
+    and a sentence for each tag directory of the picture's EXIF block, or
+    of its Multi-Picture index, whose tags overlap.
+
+    The walk goes on past the frame header to the start of the image data,
+    because a decoder's does: Pillow reads an EXIF block, a colour profile
+    or a Multi-Picture index from wherever it sits before the scan. Up to
+    the frame header, a segment the reader cannot follow is an error. After
+    it, the walk simply stops there, as the decoder does.
     """
     f.seek(start)
     if _read_exactly(f, 2, "header") != b"\xff\xd8":
         raise HeaderError(f"no JPEG start-of-image marker in the {what}")
+    frame: _Frame | None = None
     pictures: list[int] = []
     profile = 0
+    exif: list[tuple[int, int]] = []
+    overlaps: list[str] = []
     for _ in range(MAX_SEGMENTS):
-        byte = _read_exactly(f, 1, "segment marker")
-        if byte != b"\xff":
-            raise HeaderError("a segment does not start with a marker")
-        marker = _read_exactly(f, 1, "segment marker")[0]
-        while marker == 0xFF:  # fill bytes before a marker are allowed
-            marker = _read_exactly(f, 1, "segment marker")[0]
+        try:
+            marker, length = _segment(f)
+        except HeaderError:
+            if frame is None:
+                raise
+            break
         if marker in _STANDALONE:
             continue
         if marker in (0xD9, 0xDA):
-            raise HeaderError("the image data starts before any frame header")
-        (length,) = struct.unpack(">H", _read_exactly(f, 2, "segment length"))
-        if length < 2:
-            raise HeaderError("a segment claims a length shorter than its own length field")
-        if marker in _FRAME_CODINGS:
+            if frame is None:
+                raise HeaderError("the image data starts before any frame header")
+            break
+        payload = f.tell()
+        next_offset = payload + length - 2
+        if marker in _FRAME_CODINGS and frame is None:
             if length < 8:
                 raise HeaderError("the frame header is too short to hold the dimensions")
             _precision, height, width, components = struct.unpack(
@@ -265,25 +444,56 @@ def _frame(
                 # scan; refusing it keeps every decoder's rarest path closed.
                 raise HeaderError("the height is deferred to a DNL marker")
             _dimensions(width, height, what)
-            return _Frame(width, height, _FRAME_CODINGS[marker], components), pictures, profile
-        payload = f.tell()
-        next_offset = payload + length - 2
-        if next_offset > size:
-            raise HeaderError("a segment runs past the end of the file")
-        if index and marker == _APP2 and length >= 2 + len(_MPF):
+            frame = _Frame(width, height, _FRAME_CODINGS[marker], components)
+        elif next_offset > size:
+            if frame is None:
+                raise HeaderError("a segment runs past the end of the file")
+            break
+        elif index and marker == _APP2 and length >= 2 + len(_MPF):
             ident = _read_exactly(f, len(_MPF), "APP2 segment")
             if ident == _MPF:
                 if pictures:
                     raise HeaderError("two multi-picture indexes")
+                block = ((payload + len(_MPF), length - 2 - len(_MPF)),)
                 data = _read_exactly(f, length - 2 - len(_MPF), "multi-picture index")
                 pictures = _mp_index(data, payload + len(_MPF))
+                overlaps += _block_overlaps(f, block, "the multi-picture index", onward=False)
             elif ident == _ICC[:4] and length >= 4 + len(_ICC):
                 # After the identifier come the segment's number and the
                 # count of segments, then the profile bytes themselves.
                 if _read_exactly(f, len(_ICC) - 4, "APP2 segment") == _ICC[4:]:
                     profile += length - 4 - len(_ICC)
+        elif marker == _APP1 and length >= 2 + len(_EXIF):
+            # A decoder joins the EXIF segments of a picture end to end,
+            # each without its identifier, and reads the directories from
+            # the whole.
+            if _read_exactly(f, len(_EXIF), "APP1 segment") == _EXIF:
+                exif.append((payload + len(_EXIF), length - 2 - len(_EXIF)))
         f.seek(next_offset)
-    raise HeaderError(f"no frame header in the first {MAX_SEGMENTS} segments")
+    else:
+        if frame is None:
+            raise HeaderError(f"no frame header in the first {MAX_SEGMENTS} segments")
+        raise HeaderError(f"no image data in the first {MAX_SEGMENTS:,} segments")
+    if exif:
+        block_name = "the EXIF block" if index else f"{what}'s EXIF block"
+        overlaps += _block_overlaps(f, tuple(exif), block_name)
+    return frame, pictures, profile, overlaps
+
+
+def _segment(f: Reader) -> tuple[int, int]:
+    """Read the marker of the next segment, and its length if it has one."""
+    byte = _read_exactly(f, 1, "segment marker")
+    if byte != b"\xff":
+        raise HeaderError("a segment does not start with a marker")
+    marker = _read_exactly(f, 1, "segment marker")[0]
+    while marker == 0xFF:  # fill bytes before a marker are allowed
+        marker = _read_exactly(f, 1, "segment marker")[0]
+    if marker in _STANDALONE or marker in (0xD9, 0xDA):
+        return marker, 0
+    (length,) = struct.unpack(">H", _read_exactly(f, 2, "segment length"))
+    if length < 2:
+        raise HeaderError("a segment claims a length shorter than its own length field")
+    return marker, length
 
 
 def _mp_index(data: bytes, base: int) -> list[int]:
@@ -381,6 +591,7 @@ def png(f: Reader, size: int, limit: int) -> Header:
     pages = 1
     chunks = idats = 0
     metadata: tuple[str, int] | None = None
+    overlaps: list[str] = []
     while True:
         head = f.read(8)
         if len(head) < 8:
@@ -407,6 +618,8 @@ def png(f: Reader, size: int, limit: int) -> Header:
                 (pages,) = struct.unpack(">I", _read_exactly(f, 4, "acTL"))
                 if pages < 1:
                     raise HeaderError("acTL gives zero frames")
+            if kind == b"eXIf":
+                overlaps += _block_overlaps(f, ((f.tell(), length),), "the EXIF block")
         f.seek(next_offset)
     return Header(
         width,
@@ -418,6 +631,7 @@ def png(f: Reader, size: int, limit: int) -> Header:
         colour=colour,
         depth=depth,
         interlaced=interlace == 1,
+        overlaps=tuple(overlaps),
     )
 
 
@@ -608,6 +822,8 @@ def tiff(f: Reader, size: int, limit: int) -> Header:
     tags: dict[int, str] = {}  # every tag outside the standard set, by number
     inconsistencies: list[str] = []
     spare_samples = 0
+    overlaps: list[str] = []
+    room = _Room(size // 12, set())  # for the directories the frames' tags point to
     max_pixels = 0
     max_side = 0
     pages = 0
@@ -632,6 +848,7 @@ def tiff(f: Reader, size: int, limit: int) -> Header:
                 tags=tuple((kind, number) for number, kind in tags.items()),
                 inconsistencies=tuple(inconsistencies),
                 spare_samples=spare_samples,
+                overlaps=tuple(overlaps),
             )
         if offset in seen:
             raise HeaderError("the frame chain loops back on itself")
@@ -657,6 +874,8 @@ def tiff(f: Reader, size: int, limit: int) -> Header:
         predictor = 1  # the tag's default: none
         sample_format = 1  # the tag's default: unsigned integer
         alpha: bool | None = None  # whether ExtraSamples declares one alpha sample
+        claimed = 0  # the bytes of data this directory's tags hold between them
+        pointers: list[tuple[int, int]] = []  # (tag, offset) of each directory it points to
         for _ in range(count):
             tag, kind, n, raw = struct.unpack(
                 endian + "HHI4s", _read_exactly(f, 12, "frame directory")
@@ -690,6 +909,11 @@ def tiff(f: Reader, size: int, limit: int) -> Header:
                     label = _TAG_LABELS.get(tag)
                     name = f"TIFF tag {tag:,}" + (f" ({label})" if label else "")
                     metadata = (name, data_size)
+                claimed += data_size
+            elif tag in _POINTERS and n == 1 and kind in (_TIFF_SHORT, _TIFF_LONG):
+                width_of = 2 if kind == _TIFF_SHORT else 4
+                where = int.from_bytes(raw[:width_of], "little" if endian == "<" else "big")
+                pointers.append((tag, where))
             if tag == _BITS_PER_SAMPLE:
                 if kind != _TIFF_SHORT:
                     raise HeaderError("a bits-per-sample tag is not SHORT")
@@ -797,6 +1021,16 @@ def tiff(f: Reader, size: int, limit: int) -> Header:
                 f"frame {pages + 1} is compressed with {scheme} where frame 1 is "
                 f"compressed with {compression}"
             )
+        if claimed > size:
+            # No decoder reads a frame's directory without reading these.
+            overlaps.append(
+                f"frame {pages + 1}'s tags claim {claimed:,} bytes of data between them "
+                f"in a file of {size:,} bytes"
+            )
+        queue = [(f"{_POINTERS[tag]} ", where, False) for tag, where in pointers]
+        overlaps += _overlapping(
+            f, ((0, size),), endian, queue, room, f"frame {pages + 1}", "a file"
+        )
         pages += 1
         max_pixels = max(max_pixels, width * height)
         max_side = max(max_side, width, height)
@@ -821,6 +1055,7 @@ def tiff(f: Reader, size: int, limit: int) -> Header:
         tags=tuple((kind, number) for number, kind in tags.items()),
         inconsistencies=tuple(inconsistencies),
         spare_samples=spare_samples,
+        overlaps=tuple(overlaps),
     )
 
 
