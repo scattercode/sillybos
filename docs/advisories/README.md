@@ -182,7 +182,8 @@ advisory, what rides across:
   a setting of `max_metadata_bytes` or `max_pages` rather than by default.
 - A tag in the directory the TIFF reader already walks (private and DNG
   tags, a ColorMap that does not fit the sample depth, a Predictor libtiff
-  rejects): B, awaiting a policy on a TIFF's tags.
+  rejects, a count of samples per pixel the decoder does not keep): B,
+  with a policy on a TIFF's tags.
 - The object graph of a PDF handed to Pillow's own parser on append: C.
   The check belongs in front of that PDF for what it does see, but a
   cycle in the page tree is not a header field.

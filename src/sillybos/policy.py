@@ -208,6 +208,21 @@ class Policy:
             the tag, so the default refuses them, malformed by design or
             by accident. A policy for a source known to write such files
             can allow them.
+        allow_spare_tiff_samples: Pass a greyscale or palette TIFF whose
+            pixels carry more samples than the one the image uses, where
+            the rest are not a single alpha sample: 2 samples per pixel
+            with ExtraSamples 0, "unspecified data". It is a valid TIFF,
+            a decoder drops the spare sample on a read, and the default
+            allows it. A program that opens such a file and saves it
+            back as a compressed TIFF carries its SamplesPerPixel tag
+            into libtiff's encoder, which then read two samples for
+            every one in the row it was given, copying process memory
+            into the output or, with a Predictor, writing past the row
+            (CVE-2026-128067); such a program should refuse them. No
+            scanner writes one. A greyscale or palette TIFF with an
+            alpha channel, and an RGB or CMYK TIFF with a spare sample,
+            are not what this refuses: there the decoder's own count of
+            samples is what the encoder is given.
         allow_encrypted_pdf: Pass a PDF that `pdfinfo` reports as
             encrypted. A scanned book never is, so the default refuses.
         pdf_features: Which of [PDF_FEATURES][sillybos.PDF_FEATURES] a PDF may carry:
@@ -262,6 +277,7 @@ class Policy:
     )
     tiff_tags: frozenset[str] = field(default_factory=lambda: frozenset(TIFF_TAGS))
     allow_inconsistent_tiff_tags: bool = False
+    allow_spare_tiff_samples: bool = True
     allow_encrypted_pdf: bool = False
     pdf_features: frozenset[str] = frozenset()
     pdf_image_codecs: frozenset[str] = field(default_factory=lambda: frozenset(PDF_IMAGE_CODECS))

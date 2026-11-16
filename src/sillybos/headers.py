@@ -88,6 +88,15 @@ class Header:
             other, in a sentence: a ColorMap with the wrong number of
             entries for the bit depth, a floating-point Predictor on
             integer samples. Empty when they agree.
+        spare_samples: For a greyscale or palette TIFF, how many samples
+            each pixel carries beyond the one the image uses, unless
+            that is a single sample declared as alpha: 2 samples per
+            pixel with ExtraSamples 0 ("unspecified data") is 1. The
+            most in any frame the reader looked at; 0 for a TIFF whose
+            pixels carry only what its colour model needs, for one
+            with an alpha channel, for RGB, CMYK and YCbCr (where a
+            decoder drops the sample and keeps its own count), and for
+            the other formats.
     """
 
     width: int
@@ -106,6 +115,7 @@ class Header:
     subsampling: str | None = None
     tags: tuple[tuple[str, int], ...] = ()
     inconsistencies: tuple[str, ...] = ()
+    spare_samples: int = 0
 
 
 def _read_exactly(f: Reader, n: int, what: str) -> bytes:
@@ -426,10 +436,15 @@ _TILE_LENGTH = 323
 _YCBCR_SUBSAMPLING = 530
 _PREDICTOR = 317
 _COLORMAP = 320
+_EXTRA_SAMPLES = 338
 _SAMPLE_FORMAT = 339
 _YCBCR = 6
 _FLOATING_POINT_PREDICTOR = 3
 _FLOATING_POINT_SAMPLES = 3
+_ALPHA = (1, 2)  # ExtraSamples: associated and unassociated alpha; 0 is "unspecified data"
+_ONE_SAMPLE_COLOURS = ("greyscale", "palette")
+"""The colour models whose pixels need one sample, and which a decoder
+opens as a one-band image even when the file gives each pixel more."""
 _SINGLE_VALUE_TAGS = (
     _PREDICTOR,
     _IMAGE_WIDTH,
@@ -592,6 +607,7 @@ def tiff(f: Reader, size: int, limit: int) -> Header:
     subsampling: str | None = None
     tags: dict[int, str] = {}  # every tag outside the standard set, by number
     inconsistencies: list[str] = []
+    spare_samples = 0
     max_pixels = 0
     max_side = 0
     pages = 0
@@ -615,6 +631,7 @@ def tiff(f: Reader, size: int, limit: int) -> Header:
                 subsampling=subsampling,
                 tags=tuple((kind, number) for number, kind in tags.items()),
                 inconsistencies=tuple(inconsistencies),
+                spare_samples=spare_samples,
             )
         if offset in seen:
             raise HeaderError("the frame chain loops back on itself")
@@ -639,6 +656,7 @@ def tiff(f: Reader, size: int, limit: int) -> Header:
         colormap_entries: int | None = None
         predictor = 1  # the tag's default: none
         sample_format = 1  # the tag's default: unsigned integer
+        alpha: bool | None = None  # whether ExtraSamples declares one alpha sample
         for _ in range(count):
             tag, kind, n, raw = struct.unpack(
                 endian + "HHI4s", _read_exactly(f, 12, "frame directory")
@@ -652,6 +670,14 @@ def tiff(f: Reader, size: int, limit: int) -> Header:
                 # is left as the default, since nothing here depends on
                 # reading it, and a wrong guess would refuse a sound file.
                 (sample_format,) = struct.unpack(endian + "H", raw[:2])
+            elif tag == _EXTRA_SAMPLES:
+                # Only a single SHORT can make the one extra sample alpha;
+                # any other shape of the tag leaves the samples undeclared.
+                # Should the tag appear twice, a reading that is not alpha
+                # stands: decoders differ on which entry they keep.
+                declared = kind == _TIFF_SHORT and n == 1
+                value = struct.unpack(endian + "H", raw[:2])[0] if declared else 0
+                alpha = value in _ALPHA and alpha is not False
             data_size = n * _TYPE_SIZES.get(kind, 1)
             if data_size > 4:
                 # The field holds an offset to the data. A count that would
@@ -734,6 +760,12 @@ def tiff(f: Reader, size: int, limit: int) -> Header:
                 f"frame {pages + 1} uses photometric interpretation {photometric:,}, "
                 "which is not one this library knows"
             )
+        if colour in _ONE_SAMPLE_COLOURS and samples > 1 and not (samples == 2 and alpha):
+            # A decoder opens this as a one-band image and drops the rest,
+            # but the tag still says how many samples a row holds, and a
+            # save that carries the tag across has an encoder read that
+            # many from a row of one (CVE-2026-128067).
+            spare_samples = max(spare_samples, samples - 1)
         if photometric == _YCBCR:
             this_subsampling = f"{factors[0]}x{factors[1]}"
             if subsampling is None:
@@ -788,6 +820,7 @@ def tiff(f: Reader, size: int, limit: int) -> Header:
         subsampling=subsampling,
         tags=tuple((kind, number) for number, kind in tags.items()),
         inconsistencies=tuple(inconsistencies),
+        spare_samples=spare_samples,
     )
 
 

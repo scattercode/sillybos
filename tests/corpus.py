@@ -311,6 +311,53 @@ def tiled_tiff(width: int, height: int, tile: int) -> bytes:
     return b"II*\x00" + struct.pack("<I", 8) + ifd + offsets + counts + bytes(tile_bytes * count)
 
 
+def spare_sample_tiff(
+    width: int, height: int, *, photometric: int = 3, samples: int = 2, extra: int | None = 0
+) -> bytes:
+    """A complete 8-bit PackBits TIFF with ``samples`` samples to the pixel, pixels and all.
+
+    The default is the carrier of CVE-2026-128067: a palette image whose
+    pixels each hold a second sample that ExtraSamples declares
+    "unspecified data" (0). ``photometric`` 1 makes it greyscale and 2 RGB;
+    ``extra`` 1 or 2 declares the last sample alpha, and ``None`` leaves the
+    ExtraSamples tag out. Like :func:`tiled_tiff` this one decodes, so that
+    the agreement test can open it with Pillow; it is compressed because a
+    program that saves it back with no options inherits the compression,
+    which is what sends the save through libtiff.
+    """
+    row = bytes(width * samples)
+    runs = [row[at : at + 128] for at in range(0, len(row), 128)]
+    strip = b"".join(bytes([len(run) - 1]) + run for run in runs) * height
+    # (tag, kind, count, the field's data: out of line when over four bytes)
+    entries: list[tuple[int, int, int, bytes]] = [
+        (256, 4, 1, struct.pack("<I", width)),
+        (257, 4, 1, struct.pack("<I", height)),
+        (258, 3, samples, struct.pack(f"<{samples}H", *(8,) * samples)),
+        (259, 3, 1, struct.pack("<H", 32773)),
+        (262, 3, 1, struct.pack("<H", photometric)),
+        (277, 3, 1, struct.pack("<H", samples)),
+        (278, 4, 1, struct.pack("<I", height)),
+        (279, 4, 1, struct.pack("<I", len(strip))),
+    ]
+    if photometric == 3:
+        entries.append((320, 3, 768, bytes(2 * 768)))
+    if extra is not None:
+        entries.append((338, 3, 1, struct.pack("<H", extra)))
+    ifd_size = 2 + 12 * (len(entries) + 1) + 4
+    out_of_line_at = 8 + ifd_size
+    strip_at = out_of_line_at + sum(len(data) for *_, data in entries if len(data) > 4)
+    entries.append((273, 4, 1, struct.pack("<I", strip_at)))
+    fields = out_of_line = b""
+    for tag, kind, count, data in sorted(entries):
+        if len(data) > 4:
+            fields += struct.pack("<HHII", tag, kind, count, out_of_line_at + len(out_of_line))
+            out_of_line += data
+        else:
+            fields += struct.pack("<HHI", tag, kind, count) + data.ljust(4, b"\x00")
+    ifd = struct.pack("<H", len(entries)) + fields + struct.pack("<I", 0)
+    return b"II*\x00" + struct.pack("<I", 8) + ifd + out_of_line + strip
+
+
 # --- PDF ---------------------------------------------------------------------
 
 
