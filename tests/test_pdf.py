@@ -15,6 +15,12 @@ from sillybos.headers import HeaderError
 from sillybos.pdf import PdfInfoMissing
 from tests import corpus
 
+_CODEC_FILTERS = (
+    ("DCTDecode", "jpeg"),
+    ("JPXDecode", "jpx"),
+    ("JBIG2Decode", "jbig2"),
+    ("CCITTFaxDecode", "ccitt"),
+)
 needs_pdfinfo = pytest.mark.skipif(shutil.which("pdfinfo") is None, reason="pdfinfo (poppler)")
 
 
@@ -125,6 +131,66 @@ def test_the_launch_scan_sees_a_name_across_a_chunk_boundary(
     path = tmp_path / "a.pdf"
     path.write_bytes(b"%PDF-1.4\n<< /S /Launch /F (x) >>")  # "/Launch" straddles byte 16
     assert pdf_module._has_launch_action(path)
+
+
+def _escaped(name: str) -> bytes:
+    """The PDF name with every letter written as a `#xx` escape, its longest spelling."""
+    return b"/" + b"".join(b"#%02x" % ord(c) for c in name)
+
+
+@pytest.mark.parametrize(
+    ("name", "pattern"),
+    [
+        ("Launch", pdf_module._LAUNCH),
+        ("JavaScript", pdf_module._JAVASCRIPT_NAME),
+        ("Rendition", pdf_module._RENDITION),
+        *((name, dict(pdf_module._CODEC_NAMES)[codec]) for name, codec in _CODEC_FILTERS),
+    ],
+)
+def test_the_scan_sees_the_longest_spelling_wherever_a_chunk_boundary_falls(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, name: str, pattern: re.Pattern[bytes]
+) -> None:
+    """`/JBIG2Decode` fully escaped is 34 bytes; the scan once carried 32 across a boundary."""
+    chunk = 64
+    monkeypatch.setattr(pdf_module, "_SCAN_CHUNK", chunk)
+    path = tmp_path / "a.pdf"
+    for spelling in (b"/" + name.encode(), _escaped(name)):
+        for start in range(chunk - len(spelling) - 2, chunk + 2):
+            path.write_bytes(b" " * start + spelling + b" >>" + b" " * chunk)
+            assert pdf_module._names_in(path, pattern) == [True], (spelling, start)
+            # ...and the last bytes of the file are a name too.
+            path.write_bytes(b" " * start + spelling)
+            assert pdf_module._names_in(path, pattern) == [True], (spelling, start)
+
+
+def test_the_scan_sees_a_name_longer_than_a_chunk(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(pdf_module, "_SCAN_CHUNK", 16)
+    path = tmp_path / "a.pdf"
+    path.write_bytes(b"%PDF-1.4\n<< /Filter " + _escaped("CCITTFaxDecode") + b" >>")
+    assert pdf_module._names_in(path, dict(pdf_module._CODEC_NAMES)["ccitt"]) == [True]
+
+
+def test_the_scan_answers_for_each_name_wherever_in_the_file_it_is(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(pdf_module, "_SCAN_CHUNK", 16)
+    path = tmp_path / "a.pdf"
+    path.write_bytes(b"/Launch " + b" " * 40 + b"/Rendition " + b" " * 40)
+    names = (pdf_module._LAUNCH, pdf_module._JAVASCRIPT_NAME, pdf_module._RENDITION)
+    assert pdf_module._names_in(path, *names) == [True, False, True]
+
+
+@pytest.mark.parametrize("after", [b"er /F (x) >>", b"2", b"#65r"])
+def test_a_name_cut_by_a_chunk_boundary_is_read_whole(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, after: bytes
+) -> None:
+    """`/Launch` at the end of one chunk and `er` at the start of the next is `/Launcher`."""
+    monkeypatch.setattr(pdf_module, "_SCAN_CHUNK", 16)
+    path = tmp_path / "a.pdf"
+    path.write_bytes(b"%PDF-1.4\n/Launch" + after)  # "/Launch" ends at byte 16
+    assert not pdf_module._has_launch_action(path)
 
 
 @pytest.mark.parametrize(

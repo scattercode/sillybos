@@ -103,7 +103,6 @@ _CODEC_NAMES: tuple[tuple[str, re.Pattern[bytes]], ...] = (
     ("ccitt", _any_name("CCITTFaxDecode", "CCF")),
 )
 _SCAN_CHUNK = 1024 * 1024
-_SCAN_OVERLAP = 32  # longer than the longest escaped spelling of the name
 
 
 class PdfInfoMissing(RuntimeError):
@@ -180,21 +179,36 @@ def _tool(tool: str, args: list[str], path: Path, timeout: float) -> str:
 def _names_in(path: Path, *patterns: re.Pattern[bytes]) -> list[bool]:
     """Whether the bytes of the file spell each name anywhere, one answer per pattern.
 
-    Read a chunk at a time with a short overlap, so a name across a chunk
-    boundary is still seen and the memory used does not grow with the file.
+    Read a chunk at a time, so the memory used does not grow with the file,
+    and carry the end of each chunk over to the next, so a name across a
+    chunk boundary is still seen. What is carried is as long as the longest
+    pattern, and a pattern made by `_name_pattern` is longer than any
+    spelling it matches: a fixed 32 bytes was shorter
+    than `/JBIG2Decode` or `/CCITTFaxDecode` with every letter escaped, so
+    one placed just before a boundary went unseen.
+
+    A name that ends exactly where a chunk does is not counted yet, since
+    the letters that follow may make it another name (`/Launch` and then
+    `er`); the next chunk settles it. One that ends where the file does is
+    counted.
     """
+    overlap = max(len(pattern.pattern) for pattern in patterns)
     found = [False] * len(patterns)
+    at_end = [False] * len(patterns)
     tail = b""
     with path.open("rb") as f:
         while chunk := f.read(_SCAN_CHUNK):
             window = tail + chunk
             for i, pattern in enumerate(patterns):
-                if not found[i] and pattern.search(window):
-                    found[i] = True
+                if found[i]:
+                    continue
+                match = pattern.search(window)
+                found[i] = match is not None and match.end() < len(window)
+                at_end[i] = match is not None and match.end() == len(window)
             if all(found):
                 break
-            tail = chunk[-_SCAN_OVERLAP:]
-    return found
+            tail = window[-overlap:]
+    return [hit or last for hit, last in zip(found, at_end, strict=True)]
 
 
 def _has_launch_action(path: Path) -> bool:
