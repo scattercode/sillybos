@@ -202,7 +202,10 @@ prints one object per line for a pipeline; `-q` prints only refusals.
    scan of the bytes finds the name of a launch action, of JavaScript
    that an older poppler does not report, and of the filters its images
    are coded with (DCT, JPX, JBIG2, CCITT), with the `#xx` escapes a name
-   may hide behind undone.
+   may hide behind undone. A script's own key, `/JS`, is three bytes that
+   compressed image data spells by chance, so it counts only beside the
+   name of a rendition action, the one action besides a JavaScript action
+   that may carry a script.
 5. **The limits**, against what the header said.
 
 ## What it does not do
@@ -257,7 +260,7 @@ TIFF whose tag points past the end of the file, a lossless JPEG, a JPEG with a s
 pixels or changes colour mode, a PixarLog-compressed TIFF, a CIELab TIFF, a YCbCr TIFF subsampled four to one, a TIFF that
 changes compression or colour mode between frames, a TIFF whose tiles are four billion pixels each, a TIFF with ten thousand frames, a
 TIFF whose frame chain loops, a TIFF, a JPEG and a PNG whose tags all claim the same bytes, a PDF of a thousand pages, a PDF with a page 200
-inches wide. Nothing hostile is
+inches wide, a PDF whose script sits inside another object's stream. Nothing hostile is
 checked in. The readers are also checked against Pillow's reading of real
 files, so that they agree with the decoder they stand in front of.
 

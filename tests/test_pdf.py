@@ -127,9 +127,40 @@ def test_the_launch_scan_sees_a_name_across_a_chunk_boundary(
     assert pdf_module._has_launch_action(path)
 
 
+@pytest.mark.parametrize(
+    ("body", "scripted"),
+    [
+        (b"<< /S /JavaScript /JS (x) >>", True),
+        (b"<< /Names << /JavaScript 4 0 R >> >>", True),
+        (b"<< /S /#4aavaScript /#4a#53 (x) >>", True),
+        (b"<< /S /Rendition /JS (x) >>", True),
+        (b"<< /S /R#65ndition /J#53 (x) >>", True),
+        # The key with no action that could carry it: bytes, not a script.
+        (b"<< /Length 9 >> stream\n\x00/JS(\x9c\x00\nendstream", False),
+        (b"<< /Font << /JS 4 0 R >> >>", False),
+        # A rendition that plays its media and runs nothing.
+        (b"<< /S /Rendition /OP 0 /R 4 0 R >>", False),
+        # Other names that begin the same way.
+        (b"<< /Renditions 4 0 R /JS (x) >>", False),
+        (b"<< /S /Rendition /JSON (x) >>", False),
+    ],
+)
+def test_the_script_key_counts_only_beside_an_action_that_carries_one(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, body: bytes, scripted: bool
+) -> None:
+    monkeypatch.setattr(pdf_module, "_tool", lambda tool, args, path, timeout: "")
+    path = tmp_path / "a.pdf"
+    path.write_bytes(b"%PDF-1.4\n1 0 obj " + body + b" endobj\n")
+    features, _ = pdf_module._contents("", path, Policy(), within_limit=True)
+    assert ("javascript" in features) is scripted
+
+
 @needs_pdfinfo
+@pytest.mark.parametrize(
+    "feature", ["javascript", "rendition-javascript", "javascript-in-a-stream"]
+)
 def test_javascript_is_found_by_name_when_pdfinfo_does_not_report_it(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, feature: str
 ) -> None:
     """poppler before 26 says `JavaScript: no` for a script on an open action; the name scan still sees it."""
     real = pdf_module._pdfinfo
@@ -140,5 +171,5 @@ def test_javascript_is_found_by_name_when_pdfinfo_does_not_report_it(
         )
 
     monkeypatch.setattr(pdf_module, "_pdfinfo", older)
-    verdict = check(corpus.write(tmp_path / "scripted.pdf", corpus.pdf_with("javascript")))
+    verdict = check(corpus.write(tmp_path / "scripted.pdf", corpus.pdf_with(feature)))
     assert verdict.facts is not None and verdict.facts.features == ("javascript",)

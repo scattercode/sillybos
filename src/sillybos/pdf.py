@@ -17,6 +17,25 @@ written with undone, and no parsing. JavaScript is looked for both ways,
 because poppler before 26 reports only document-level scripts and not one
 attached to an open-document action.
 
+The name that says JavaScript is `/JavaScript`: it is the type of the
+action that carries a script, and the key of the document's own table of
+scripts. The script itself sits under the key `/JS`, and that name alone
+says nothing, because it is three bytes long and compressed image data
+spells any three bytes by chance: about once in 24 MB of random bytes,
+and about once in 2 MB of the ASCII85 text that ReportLab writes its
+streams in. Taking `/JS` alone for a script refused 27 of 689 ordinary
+PDFs, scanned books and newspapers among them, none of which `pdfinfo`
+found a script in. So `/JS` counts only in a file that also spells
+`/Rendition`, the one other type of action that may carry a script, and
+whose scripts `/JavaScript` would not find.
+
+Passing over the bytes of streams would not have been a fix. A reader
+finds an object where the cross-reference table says it is, and the table
+may point into the middle of another object's stream: poppler reads an
+action placed there without complaint. A scan that skipped streams would
+then miss what the viewer runs, so every byte of the file is searched,
+and it is the name searched for that has to be one chance does not spell.
+
 The codec of each image is found the same way, by the name of its filter
 (`/JBIG2Decode`, `/JPXDecode`, `/DCTDecode`, `/CCITTFaxDecode`). A stream's
 dictionary cannot be hidden inside a compressed object stream, so the name
@@ -66,7 +85,9 @@ def _name_pattern(name: str) -> re.Pattern[bytes]:
 
 
 _LAUNCH = _name_pattern("Launch")
-_JAVASCRIPT_NAMES = (_name_pattern("JavaScript"), _name_pattern("JS"))
+_JAVASCRIPT_NAME = _name_pattern("JavaScript")
+_SCRIPT_KEY = _name_pattern("JS")
+_RENDITION = _name_pattern("Rendition")
 
 
 def _any_name(*names: str) -> re.Pattern[bytes]:
@@ -197,13 +218,15 @@ def _contents(
         count = _ATTACHMENTS.search(listing)
         if count is not None and int(count.group(1)) > 0:
             found.append("attachments")
-        hits = _names_in(path, *_JAVASCRIPT_NAMES, _LAUNCH, *(p for _, p in _CODEC_NAMES))
-        scripted, script, launch = hits[:3]
-        if (scripted or script) and "javascript" not in found:
+        named, key, rendition, launch, *coded = _names_in(
+            path, _JAVASCRIPT_NAME, _SCRIPT_KEY, _RENDITION, _LAUNCH, *(p for _, p in _CODEC_NAMES)
+        )
+        # `/JS` alone is three bytes that compressed data spells by chance; see the module's notes.
+        if (named or (key and rendition)) and "javascript" not in found:
             found.insert(0, "javascript")
         if launch:
             found.append("launch")
-        codecs = [name for (name, _), hit in zip(_CODEC_NAMES, hits[3:], strict=True) if hit]
+        codecs = [name for (name, _), hit in zip(_CODEC_NAMES, coded, strict=True) if hit]
     return tuple(found), tuple(codecs)
 
 

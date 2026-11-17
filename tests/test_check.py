@@ -636,6 +636,8 @@ class TestPdf:
             ("javascript", "javascript", "JavaScript"),
             ("document-javascript", "javascript", "JavaScript"),
             ("escaped-javascript", "javascript", "JavaScript"),
+            ("rendition-javascript", "javascript", "JavaScript"),
+            ("javascript-in-a-stream", "javascript", "JavaScript"),
             ("forms", "forms", "a form"),
             ("attachments", "attachments", "attached files"),
             ("launch", "launch", "a launch action"),
@@ -654,6 +656,16 @@ class TestPdf:
         )
         assert verdict.facts is not None and verdict.facts.features == (found,)
         assert check(path, Policy(pdf_features=frozenset({found}))).ok
+
+    def test_a_scan_whose_image_data_spells_the_script_key(self, tmp_path: Path) -> None:
+        # `/JS` is three bytes, and compressed pixels spell them by chance:
+        # 27 of 689 ordinary PDFs were refused as JavaScript for it.
+        path = corpus.write(tmp_path / "scan.pdf", corpus.pdf_with("script-key-by-chance"))
+        assert b"/JS(" in path.read_bytes()
+        verdict = check(path)
+        assert verdict.ok
+        assert verdict.facts is not None and verdict.facts.features == ()
+        assert check(path, STRICT).ok
 
     def test_the_policy_names_what_it_allows(self, tmp_path: Path) -> None:
         path = corpus.write(tmp_path / "form.pdf", corpus.pdf_with("forms"))
