@@ -518,17 +518,27 @@ def pdf_with(feature: str, pages: int = 1) -> bytes:
     ``javascript`` and ``launch`` are open-document actions; ``escaped-javascript``
     is the same JavaScript action with its name written in ``#xx`` escapes;
     ``escaped-launch`` likewise; ``document-javascript`` is a script in the
-    document's name tree, which is what every poppler reports; ``forms`` is an
+    document's name tree, which is what every poppler reports;
+    ``rendition-javascript`` is a script on a rendition action, the one other
+    action that may carry one, which never spells ``/JavaScript``;
+    ``javascript-in-a-stream`` is the open-document script again, with its
+    object written inside another object's stream and the cross-reference
+    table pointing into it, which poppler reads all the same; ``forms`` is an
     AcroForm with one text field; ``attachments`` is one embedded file.
 
     ``jpeg``, ``jpx``, ``jbig2`` and ``ccitt`` draw one image coded with that
     filter on the first page, its stream sixteen zero bytes that no decoder
     is asked to read; ``escaped-jbig2`` is the JBIG2 one with the filter's
-    name written in ``#xx`` escapes.
+    name written in ``#xx`` escapes. ``script-key-by-chance`` is the JPEG one
+    with the bytes ``/JS(`` in its image data, as megabytes of compressed
+    pixels spell them sooner or later: a scan, with nothing in it to refuse.
     """
     first = pages + 3
-    if feature in IMAGE_FILTERS:
+    if feature == "script-key-by-chance":
+        feature, data = "jpeg", b"\x00" * 6 + b"/JS(" + b"\x00" * 6
+    else:
         data = b"\x00" * 16
+    if feature in IMAGE_FILTERS:
         image = (
             "<< /Type /XObject /Subtype /Image /Width 8 /Height 8 /ColorSpace /DeviceGray "
             f"/BitsPerComponent 1 /Filter /{IMAGE_FILTERS[feature]} /Length {len(data)} >>\nstream\n"
@@ -555,6 +565,27 @@ def pdf_with(feature: str, pages: int = 1) -> bytes:
                 b"<< /Type /Action /S /JavaScript /JS (app.alert('hello');) >>",
             ],
         )
+    if feature == "rendition-javascript":
+        return pdf(
+            pages,
+            catalog=f"/OpenAction {first} 0 R",
+            objects=[
+                b"<< /Type /Action /S /Rendition /JS (app.alert('hello');) >>",
+            ],
+        )
+    if feature == "javascript-in-a-stream":
+        inner = (
+            f"{first + 1} 0 obj\n<< /Type /Action /S /JavaScript /JS (app.alert('hello');) >>"
+            "\nendobj\n"
+        ).encode()
+        holder = f"<< /Length {len(inner)} >>\nstream\n".encode() + inner + b"endstream"
+        # The second object is a placeholder, so that the table has an entry
+        # to repoint at the action inside the first one's stream.
+        built = pdf(pages, catalog=f"/OpenAction {first + 1} 0 R", objects=[holder, b"null"])
+        placeholder = built.index(f"{first + 1} 0 obj\nnull".encode())
+        entry = f"{placeholder:010d} 00000 n".encode()
+        assert built.count(entry) == 1
+        return built.replace(entry, f"{built.index(inner):010d} 00000 n".encode())
     if feature == "escaped-javascript":
         return pdf(
             pages,
