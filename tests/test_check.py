@@ -237,6 +237,15 @@ class TestHostileFiles:
         )
         assert check(path, Policy(allow_inconsistent_tiff_tags=True)).ok
 
+    def test_a_jpeg_with_a_second_frame_header(self, tmp_path: Path) -> None:
+        # The first frame header says 64 by 64, which every limit allows; the
+        # second, 30,000 by 30,000, is the size Pillow would report.
+        second = corpus.jpeg_frame(30_000, 30_000)
+        path = corpus.write(tmp_path / "scan.jpg", corpus.jpeg(64, 64, after_sof=second))
+        assert check(path).reasons == (
+            "the header could not be read: a second frame header before the image data",
+        )
+
     def test_a_tiff_whose_tags_all_claim_the_same_bytes(self, tmp_path: Path) -> None:
         # CVE-2026-128066: the advisory's 144 KB file, 12,000 tags that each
         # claim the whole of it, which cost Pillow 1.6 GB inside Image.open.
