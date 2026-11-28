@@ -1,0 +1,88 @@
+# Rebuild the security watch at tetrak.dev/security/ when the advisory
+# record changes.
+#
+# The watch is built from docs/advisories/record.json, which tetrak.dev
+# fetches from this repository's main branch each time it is built. It is
+# rebuilt every Monday regardless; this workflow asks for a build as soon
+# as a change to the record lands on main, so that a triage merged here is
+# on the site within about ten minutes, and whoever merged it needs no
+# access to the site's repository or to Cloudflare.
+#
+# It waits five minutes first. The site reads the record through
+# raw.githubusercontent.com, which serves a cached copy for up to 300
+# seconds (Cache-Control: max-age=300): a build asked for at once would
+# read the record as it was before the merge and publish that. After the
+# wait the job checks that the address serves this commit's file, and
+# fails rather than ask for a build that would publish a stale one.
+#
+# One secret: CLOUDFLARE_DEPLOY_HOOK, the URL of a deploy hook on the
+# tetrak.dev Pages project (Settings → Builds & deployments → Deploy
+# hooks). The URL is the credential, and all it can do is ask for a build
+# of the site as it stands. It is kept on the `tetrak-site` environment,
+# which only main may deploy to, so that a workflow on another branch
+# cannot read it. Until it is set, the job says so and does nothing.
+name: Refresh the security watch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/advisories/record.json
+  workflow_dispatch:
+
+permissions: {}
+
+# A second change during the wait replaces the first: the later run asks
+# for the build, and one build publishes both.
+concurrency:
+  group: watch-refresh
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    name: Ask tetrak.dev to rebuild
+    runs-on: ubuntu-latest
+    environment: tetrak-site
+    permissions:
+      contents: read
+    env:
+      RECORD: docs/advisories/record.json
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # Only after a push: a dispatch is for a record that changed some
+      # time ago, and has nothing to wait for.
+      - name: Wait for the cached copy to expire
+        if: github.event_name == 'push'
+        run: sleep 300
+
+      - name: Check that the published record is this commit's
+        env:
+          URL: https://raw.githubusercontent.com/${{ github.repository }}/main/${{ env.RECORD }}
+        run: |
+          set -euo pipefail
+          want=$(sha256sum "$RECORD" | cut -d' ' -f1)
+          for attempt in 1 2 3 4 5 6; do
+            got=$(curl --fail --silent --show-error "$URL" | sha256sum | cut -d' ' -f1)
+            if [ "$got" = "$want" ]; then
+              echo "The published record matches this commit."
+              exit 0
+            fi
+            echo "Attempt $attempt: the published record is not this commit's yet."
+            sleep 30
+          done
+          echo "::error::$URL still does not serve this commit's record; no build requested"
+          exit 1
+
+      - name: Trigger the deploy hook
+        env:
+          HOOK: ${{ secrets.CLOUDFLARE_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::notice::CLOUDFLARE_DEPLOY_HOOK is not set; nothing to trigger"
+            exit 0
+          fi
+          curl --fail --silent --show-error --request POST "$HOOK" --output /dev/null
+          echo "Rebuild requested."
