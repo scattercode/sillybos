@@ -104,6 +104,14 @@ python scripts/advisory_record.py export           # rewrite record.json
 python scripts/advisory_record.py export --check   # what the tests run: fails if stale
 ```
 
+A change to `record.json` that lands on `main` reaches the watch by
+itself. The [Refresh the security watch
+workflow](../../.github/workflows/watch-refresh.yml) asks tetrak.dev to
+rebuild, after a five-minute wait for GitHub's cached copy of the file to
+expire, so a merged triage is on the site in about ten minutes. Nobody
+needs access to the site to publish one. The site is also rebuilt every
+Monday, whether or not the record changed.
+
 To add a record: copy the nearest existing file, fill it in from the
 advisory and the issue's triage, name the test (or write it first, as a B
 finding requires), run `export`, and commit both. Dates are
